@@ -2,10 +2,8 @@
 
 import { ArrowRightIcon, Check, ChevronsUpDown } from "lucide-react";
 import React from "react";
-import { useState } from "react";
 
 import { cn } from "@/lib/utils";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +20,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { ChatgptHeatmap, ChatgptSummary } from "./chatgpt-heatmap";
+import { ChatgptSummary } from "@/components/chatgpt-heatmap";
 
 function unixTimestampToDate(timestamp: number, timeZone: string): string {
   const utcDate = new Date(timestamp * 1000);
@@ -34,15 +32,17 @@ function unixTimestampToDate(timestamp: number, timeZone: string): string {
   });
 }
 
-export function HeatMapForm() {
+export function HeatMapForm({
+  setFile,
+  timeZone,
+  setTimeZone
+}: {
+  setFile: React.Dispatch<React.SetStateAction<ChatgptSummary[] | null>>;
+  timeZone: string;
+  setTimeZone: React.Dispatch<React.SetStateAction<string>>;
+}) {
   // File Input
   const [open, setOpen] = React.useState(false);
-
-  // Input Values
-  const [file, setFile] = useState<ChatgptSummary[] | null>(null);
-  const [timeZone, setTimeZone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
 
   const timeZones = Intl.supportedValuesOf("timeZone");
 
@@ -80,8 +80,7 @@ export function HeatMapForm() {
               const parsedContent = JSON.parse(fileContent);
 
               setFile(
-                parsedContent.map((c: ParsedContent) => {
-                  return {
+                parsedContent.map((c: ParsedContent) => ({
                     title: c.title,
                     create_day: unixTimestampToDate(c.create_time, timeZone),
                     convo_create_day: Object.values(c.mapping)
@@ -99,8 +98,7 @@ export function HeatMapForm() {
                             : null // Handle null case
                       )
                       .filter((day): day is string => day !== null), // Remove null entries
-                  };
-                })
+                }))
               );
             } else setFile(null);
           }}
@@ -167,17 +165,6 @@ export function HeatMapForm() {
           </PopoverContent>
         </Popover>
       </div>
-
-      {file && (
-        <div>
-          <div className="w-[80vw] h-screen mx-auto hidden md:block">
-            <ChatgptHeatmap summary={file} vertical={false} />
-          </div>
-          <div className="w-[90vw] h-screen mx-auto md:hidden block">
-            <ChatgptHeatmap summary={file} vertical={true} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

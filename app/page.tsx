@@ -1,12 +1,20 @@
 "use client";
 
 // import Image from "next/image";
+import { useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
+import { ChatgptHeatmap, ChatgptSummary } from "@/components/chatgpt-heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 // import { useTheme } from "next-themes";
 
 export default function Home() {
   // const { theme } = useTheme();
+
+  // Input Values
+  const [file, setFile] = useState<ChatgptSummary[] | null>(null);
+  const [timeZone, setTimeZone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
@@ -16,8 +24,22 @@ export default function Home() {
           <ModeToggle />
         </div>
         <h1 className="text-2xl">ChatGPT Heatmap Generator</h1>
-        <HeatMapForm />
+        <HeatMapForm setFile={setFile} timeZone={timeZone} setTimeZone={setTimeZone} />
       </main>
+
+      {file && (
+        <div className="flex items-center justify-center w-full h-full">
+          {/* Desktop Heatmap */}
+          <div className="hidden md:block" style={{ width: "80vw", height: "80vh", overflow: "hidden" }}>
+            <ChatgptHeatmap summary={file} vertical={false} />
+          </div>
+
+          {/* Mobile Heatmap */}
+          <div className="block md:hidden" style={{ width: "90vw", height: "90vh", overflow: "hidden" }}>
+            <ChatgptHeatmap summary={file} vertical={true} />
+          </div>
+        </div>
+      )}
 
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         {/* <a
