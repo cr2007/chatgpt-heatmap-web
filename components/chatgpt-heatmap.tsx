@@ -74,23 +74,27 @@ export const ChatgptHeatmap = ({
     vertical: boolean;
 }) => {
     const data = aggregateDateData(summary);
-    const { theme } = useTheme();
+    const { theme, resolvedTheme } = useTheme();
+
+    // Resolve the theme if "system" theme is selected
+    const effectiveTheme = theme === "system" ? resolvedTheme : theme;
+
     return (
         <ResponsiveCalendarCanvas
             data={data?.heatmapData}
             from={data?.oldestDate}
             to={data?.newestDate}
             theme={{
-                labels: { text: { fill: theme === "dark" ? "#fff" : "#000" } },
+                labels: { text: { fill: effectiveTheme === "dark" ? "#fff" : "#000" } },
             }}
             direction={vertical ? "vertical" : "horizontal"}
-            emptyColor={theme === "dark" ? "#333" : "#eee"}
+            emptyColor={effectiveTheme === "dark" ? "#333" : "#eee"}
             colors={["#CCFFCC", "#5CE65C", "#008000"]}
             margin={{ top: 40, right: 40, bottom: 40, left: 40 }}
             yearSpacing={40}
-            monthBorderColor={theme === "dark" ? "#222" : "#fff"}
+            monthBorderColor={effectiveTheme === "dark" ? "#222" : "#fff"}
             dayBorderWidth={2}
-            dayBorderColor={theme === "dark" ? "#222" : "#fff"}
+            dayBorderColor={effectiveTheme === "dark" ? "#222" : "#fff"}
             tooltip={({ value, day }) => {
                 const titlesForDay = summary
                     .filter(
