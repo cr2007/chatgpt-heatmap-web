@@ -10,11 +10,11 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="w-full flex justify-end">
-        <ModeToggle />
-      </div>
 
-      <main className="flex flex-col gap-8 items-center sm:items-start justify-start self-center w-full max-w-lg">
+      <main className="flex flex-col gap-10 items-center sm:items-start justify-start self-center w-full max-w-lg">
+        <div className="w-full flex justify-end">
+          <ModeToggle />
+        </div>
         <h1 className="text-2xl">ChatGPT Heatmap Generator</h1>
         <HeatMapForm />
       </main>
