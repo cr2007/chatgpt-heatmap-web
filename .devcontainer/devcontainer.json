@@ -1,0 +1,40 @@
+{
+    "name": "AI Heatmap Dev Container",
+    "image": "ghcr.io/nhaef/devcontainer-bun:latest",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "steoates.autoimport",
+                "formulahendry.auto-rename-tag",
+                "aaron-bond.better-comments",
+                "oven.bun-vscode",
+                "ambar.bundle-size",
+                "EditorConfig.EditorConfig",
+                "dsznajder.es7-react-js-snippets",
+                "dbaeumer.vscode-eslint",
+                "capaj.vscode-exports-autocomplete",
+                "mhutchie.git-graph",
+                "github.vscode-github-actions",
+                "eamodio.gitlens",
+                "PulkitGangwar.nextjs-snippets",
+                "esbenp.prettier-vscode",
+                "mikaelkristiansson87.react-theme-vscode",
+                "bradlc.vscode-tailwindcss",
+                "meganrogge.template-string-converter",
+                "BriteSnow.vscode-toggle-quotes",
+                "vscode-icons-team.vscode-icons",
+                "redhat.vscode-yaml"
+            ]
+        }
+    },
+
+    "forwardPorts": [3000],
+    "portsAttributes": {
+        "3000": {
+            "label": "Next.js Application",
+            "onAutoForward": "notify"
+        }
+    },
+
+    "postStartCommand": "bun i"
+}

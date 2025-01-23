@@ -1,0 +1,23 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "workbench.iconTheme": "vscode-icons",
+    "editor.wordWrap": "on",
+    "editor.stickyScroll.enabled": true,
+    "editor.renderWhitespace": "all",
+    "editor.indentSize": "tabSize",
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "git.autofetch": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "diffEditor.hideUnchangedRegions.enabled": true,
+    "accessibility.signals.terminalCommandFailed": {
+        "sound": "on"
+    },
+    "accessibility.signals.save": {
+        "sound": "userGesture"
+    },
+    "accessibility.signals.format": {
+        "sound": "userGesture"
+    },
+    "npm.packageManager": "bun"
+}
