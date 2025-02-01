@@ -53,64 +53,17 @@ export default function Home() {
         >
           <Image
             aria-hidden
-            // src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg"
             src={
               effectiveTheme === "dark"
-              ? "https://github.com/cr2007/chatgpt-heatmap-web/raw/refs/heads/main/assets/github-mark-white.svg" // Light version for dark theme
-              : "https://github.com/cr2007/chatgpt-heatmap-web/raw/refs/heads/main/assets/github-mark.svg"
+              ? "/github-mark-white.svg" // Light version for dark theme
+              : "/github-mark.svg"
             }
             alt="GitHub Icon"
             width={32}
             height={32}
           />
-          Source Code
+          Project Source Code
         </a>
-
-        {/* <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a> */}
       </footer>
     </div>
   );
