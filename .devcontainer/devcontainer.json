@@ -36,5 +36,9 @@
         }
     },
 
-    "postStartCommand": "bun i"
+    "waitFor": "onCreateCommand",
+    "updateContentCommand": "bun i",
+    "postAttachCommand": {
+        "server": "bun dev"
+    }
 }
