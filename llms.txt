@@ -1,0 +1,15 @@
+This project is a web application called "ChatGPT Heatmap Web App".
+
+Purpose:
+- It allows users to visualize their ChatGPT conversation activity as a calendar heatmap.
+- Users upload their exported ChatGPT conversation history (conversations.json), select a time zone, and view their usage as a heatmap.
+
+Technical Details:
+- The app is built with Next.js, React, Tailwind CSS, shadcn/ui, Nivo, and Bun.
+- All processing is done client-side; no data is sent to any server or external API.
+- The app does not contain any proprietary models, datasets, or LLM prompts.
+- There is nothing for an LLM to parse, extract, or process in this repository.
+- The codebase contains only UI components, utility functions, and configuration files for the web app.
+
+Summary:
+This repository is strictly a visualization tool for end-users' own exported data. There is no embedded language model, training data,
