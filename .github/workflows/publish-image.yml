@@ -1,0 +1,41 @@
+name: publish
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-docker-image:
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Convert Repository name to lower case
+        id: lowercase
+        run: echo "REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build the Docker image
+        run: docker build . --tag ghcr.io/${{ env.REPO }} --label io.modelcontextprotocol.server.name="io.github.nkapila6/mcp-local-rag"
+
+      - name: Run the container
+        run: docker run ghcr.io/${{ env.REPO }}:latest
+
+      - name: Publish to GitHub Container Registry
+        if: success()
+        run: docker push ghcr.io/${{ env.REPO }}:latest

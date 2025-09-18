@@ -1,0 +1,28 @@
+# Ignore node_modules directory
+/node_modules
+
+# Ignore build directories
+build
+dist
+next/
+
+# Ignore other files irrelevant to the Docker build
+.devcontainer/
+.github/
+.vscode/
+CNAME
+README.md
+
+# Ignore Docker-related files
+Dockerfile*
+.dockerignore
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+.git
+.gitignore
+.next/
+
+conversations.json
