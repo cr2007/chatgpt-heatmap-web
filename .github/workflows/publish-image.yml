@@ -33,8 +33,13 @@ jobs:
       - name: Build the Docker image
         run: docker build . --tag ghcr.io/${{ env.REPO }} --label io.modelcontextprotocol.server.name="io.github.nkapila6/mcp-local-rag"
 
-      - name: Run the container
-        run: docker run ghcr.io/${{ env.REPO }}:latest
+      - name: Test container starts properly
+        run: |
+          docker run -d --name test-container ghcr.io/${{ env.REPO }}:latest
+          sleep 10
+          docker logs test-container
+          docker stop test-container
+          docker rm test-container
 
       - name: Publish to GitHub Container Registry
         if: success()
