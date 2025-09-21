@@ -53,3 +53,32 @@ Once that is completed, you can access the app by heading to [http://localhost:3
 2. Download and unzip the archive, then upload the `conversations.json` file
 3. Select your time zone
 4. View your ChatGPT usage as a calendar heatmap!
+
+## Self-Hosting
+
+You can self-host this application using Docker in two ways:
+
+### Option 1: Using the Pre-built Image from GitHub Container Registry
+
+```sh
+# Run the container
+docker run -d -p 3000:3000 ghcr.io/cr2007/chatgpt-heatmap-web:latest
+```
+
+You can then access the application at [http://localhost:3000](http://localhost:3000)
+
+### Option 2: Building the Docker Image Locally
+
+```sh
+# Clone the repository
+git clone https://github.com/cr2007/chatgpt-heatmap-web.git
+cd chatgpt-heatmap-web
+
+# Build the Docker image
+docker build -t chatgpt-heatmap .
+
+# Run the container
+docker run -d -p 3000:3000 chatgpt-heatmap
+```
+
+After running the aboce commands, you can access the application at [http://localhost:3000](http://localhost:3000).
