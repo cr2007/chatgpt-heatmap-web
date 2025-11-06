@@ -1,34 +1,23 @@
-# ----- Build Stage -----
-FROM oven/bun:1.2-slim AS builder
+FROM oven/bun:1 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files and lockfile
-COPY package.json bun.lock ./
+# Install dependencies with bun
+COPY package.json bun.lock* ./
+RUN bun install --no-save --frozen-lockfile
 
-# Install dependencies
-RUN bun install
-
-# Copy the rest of the application code
 COPY . .
 
-# Build the Next.js app
-RUN bun x --no-install next build
+# Builds the app (outputs to '/app/out')
+RUN bun run build
 
-# --- Serve Stage ---
-# FROM oven/bun:1.2.20 AS runner
-FROM oven/bun:1.2-slim AS runner
+# Production Build
+FROM nginx:1.29-alpine AS runner
+WORKDIR /usr/share/nginx/html
+COPY --from=builder /app/out ./
 
-WORKDIR /app
+# Optional: change default port to 3000
+RUN sed -i 's/80/3000/' /etc/nginx/conf.d/default.conf
 
-# Only copy the static output and public assets
-COPY --from=builder /app/out ./out
-COPY --from=builder /app/public ./public
-
-RUN bun add serve
-
-# Expose the default Next.js port
 EXPOSE 3000
-
-CMD ["bun", "x", "serve", "out", "-l", "3000"]
+CMD ["nginx", "-g", "daemon off;"]

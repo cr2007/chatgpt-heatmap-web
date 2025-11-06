@@ -5,6 +5,7 @@
 build
 dist
 next/
+out/
 
 # Ignore other files irrelevant to the Docker build
 .devcontainer/
