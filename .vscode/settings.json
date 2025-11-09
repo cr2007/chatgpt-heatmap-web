@@ -8,6 +8,7 @@
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
     "git.autofetch": true,
+    "diffEditor.renderSideBySide": true,
     "diffEditor.ignoreTrimWhitespace": false,
     "diffEditor.hideUnchangedRegions.enabled": true,
     "accessibility.signals.terminalCommandFailed": {
@@ -19,5 +20,17 @@
     "accessibility.signals.format": {
         "sound": "userGesture"
     },
-    "npm.packageManager": "bun"
+    "npm.packageManager": "bun",
+    "gitlens.views.scm.grouped.views": {
+        "commits": false,
+        "branches": false,
+        "remotes": false,
+        "stashes": false,
+        "tags": false,
+        "worktrees": false,
+        "contributors": true,
+        "repositories": true,
+        "searchAndCompare": true,
+        "launchpad": false
+    },
 }
