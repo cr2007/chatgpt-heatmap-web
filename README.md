@@ -1,6 +1,7 @@
 # ChatGPT Heatmap Web App
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/cr2007/chatgpt-heatmap-web)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cr2007/chatgpt-heatmap-web)
 
 <div align="center">
     <!-- JavaScript -->
