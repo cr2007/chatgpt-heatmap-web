@@ -24,6 +24,7 @@ Thumbs.db
 
 .git
 .gitignore
+.gitattributes
 .next/
 
 conversations.json
