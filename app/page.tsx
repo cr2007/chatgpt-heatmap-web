@@ -1,27 +1,36 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
 import { ChatgptHeatmap, ChatgptSummary } from "@/components/chatgpt-heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 import { useTheme } from "next-themes";
+import Snowfall from 'react-snowfall';
 
 export default function Home() {
   const { theme, resolvedTheme } = useTheme();
 
   // Resolve the theme if "system" theme is selected
   const effectiveTheme = theme === "system" ? resolvedTheme : theme;
+  const snowflakeColour = effectiveTheme === "dark" ? '#dee4fd' : "#121212"
 
   // Input Values
   const [file, setFile] = useState<ChatgptSummary[] | null>(null);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-
+      {mounted && effectiveTheme && (
+        <Snowfall color={snowflakeColour} />
+      )}
       <main className="flex flex-col gap-10 items-center sm:items-start justify-start self-center w-full max-w-lg">
         <div className="w-full flex justify-end">
           <ModeToggle />
@@ -61,6 +70,7 @@ export default function Home() {
             alt="GitHub Icon"
             width={32}
             height={32}
+            style={{ width: "32px", height: "32px" }}
           />
           Project Source Code
         </a>
