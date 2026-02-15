@@ -25,12 +25,12 @@
         "commits": false,
         "branches": false,
         "remotes": false,
-        "stashes": false,
-        "tags": false,
-        "worktrees": false,
+        "stashes": true,
+        "tags": true,
+        "worktrees": true,
         "contributors": true,
         "repositories": true,
         "searchAndCompare": true,
-        "launchpad": false
+        "launchpad": true
     },
 }
