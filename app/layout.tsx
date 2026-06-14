@@ -15,8 +15,20 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "ChatGPT Heatmap App",
-  description: "A calendar heatmap of your ChatGPT Interactions",
+  title: "AI Chat Heatmap",
+  description: "Visualise your ChatGPT and Claude conversation history as an interactive calendar heatmap",
+  keywords: [
+    "ChatGPT",
+    "Claude",
+    "AI",
+    "heatmap",
+    "calendar heatmap",
+    "conversation history",
+    "chat analytics",
+    "message activity",
+    "data visualisation",
+    "AI chat",
+  ],
 };
 
 export default function RootLayout({

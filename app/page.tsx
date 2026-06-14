@@ -3,28 +3,30 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
-import { ChatgptHeatmap, ChatgptSummary } from "@/components/chatgpt-heatmap";
+import { AIChatHeatmap, ChatgptSummary, ClaudeSummary } from "@/components/heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 import { useTheme } from "next-themes";
-import Snowfall from 'react-snowfall';
+import Snowfall from "react-snowfall";
 
 export default function Home() {
   const { theme, resolvedTheme } = useTheme();
 
   // Resolve the theme if "system" theme is selected
   const effectiveTheme = theme === "system" ? resolvedTheme : theme;
-  const snowflakeColour = effectiveTheme === "dark" ? '#dee4fd' : "#121212"
+  const snowflakeColour = effectiveTheme === "dark" ? "#dee4fd" : "#121212";
 
-  // Input Values
-  const [file, setFile] = useState<ChatgptSummary[] | null>(null);
+  const [chatgptData, setChatgptData] = useState<ChatgptSummary[] | null>(null);
+  const [claudeData, setClaudeData] = useState<ClaudeSummary[] | null>(null);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
+
+  const hasData = chatgptData !== null || claudeData !== null;
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
@@ -35,20 +37,24 @@ export default function Home() {
         <div className="w-full flex justify-end">
           <ModeToggle />
         </div>
-        <h1 className="text-2xl">ChatGPT Heatmap Generator</h1>
-        <HeatMapForm setFile={setFile} timeZone={timeZone} setTimeZone={setTimeZone} />
+        <h1 className="text-2xl">AI Chat Heatmap</h1>
+        <HeatMapForm
+          setChatgptFile={setChatgptData}
+          setClaudeFile={setClaudeData}
+          timeZone={timeZone}
+          setTimeZone={setTimeZone}
+        />
       </main>
 
-      {file && (
+      {hasData && (
         <div className="flex items-center justify-center w-full h-full">
-          {/* Desktop Heatmap */}
+          {/* Desktop */}
           <div className="hidden md:block" style={{ width: "80vw", height: "80vh", overflow: "hidden" }}>
-            <ChatgptHeatmap summary={file} vertical={false} />
+            <AIChatHeatmap chatgptSummary={chatgptData} claudeSummary={claudeData} vertical={false} />
           </div>
-
-          {/* Mobile Heatmap */}
+          {/* Mobile */}
           <div className="block md:hidden" style={{ width: "90vw", height: "90vh", overflow: "hidden" }}>
-            <ChatgptHeatmap summary={file} vertical={true} />
+            <AIChatHeatmap chatgptSummary={chatgptData} claudeSummary={claudeData} vertical={true} />
           </div>
         </div>
       )}
