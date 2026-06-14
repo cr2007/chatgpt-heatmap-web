@@ -14,12 +14,27 @@ body {
   .animate-shake {
     animation: shake 0.35s ease;
   }
+
+  .animate-fade-slide-up {
+    animation: fadeSlideUp 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
 }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-3px); }
   40%, 80% { transform: translateX(3px); }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {

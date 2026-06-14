@@ -1,10 +1,9 @@
 "use client";
 
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, Upload, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -166,7 +165,7 @@ export function HeatMapForm({
         return;
       }
 
-      const gptFiles = results.filter((r) => r.format === "chatgpt");
+      const gptFiles    = results.filter((r) => r.format === "chatgpt");
       const claudeFiles = results.filter((r) => r.format === "claude");
 
       if (gptFiles.length > 1) {
@@ -180,21 +179,13 @@ export function HeatMapForm({
 
       setLoaded((prev) => {
         const next = { ...prev };
-        if (gptFiles.length === 1) {
-          next.chatgpt = { name: gptFiles[0].name, count: gptFiles[0].data.length };
-        }
-        if (claudeFiles.length === 1) {
-          next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
-        }
+        if (gptFiles.length === 1)    next.chatgpt = { name: gptFiles[0].name,    count: gptFiles[0].data.length };
+        if (claudeFiles.length === 1) next.claude  = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
         return next;
       });
 
-      if (gptFiles.length === 1) {
-        setChatgptFile(parseChatGPT(gptFiles[0].data as RawGPTConversation[], timeZone));
-      }
-      if (claudeFiles.length === 1) {
-        setClaudeFile(parseClaude(claudeFiles[0].data as RawClaudeConversation[], timeZone));
-      }
+      if (gptFiles.length === 1)    setChatgptFile(parseChatGPT(gptFiles[0].data as RawGPTConversation[], timeZone));
+      if (claudeFiles.length === 1) setClaudeFile(parseClaude(claudeFiles[0].data as RawClaudeConversation[], timeZone));
     },
     [timeZone, setChatgptFile, setClaudeFile, showError]
   );
@@ -214,17 +205,19 @@ export function HeatMapForm({
   const hasAnyLoaded = loaded.chatgpt || loaded.claude;
 
   return (
-    <div className="flex flex-col items-center gap-2 text-center rounded-lg">
-      <div className="grid w-full max-w-sm items-center gap-2">
-        <Label htmlFor="jsonFile" className="text-left">
-          Upload <code>conversations.json</code>
-        </Label>
+    <div className="flex flex-col gap-6 w-full">
 
-        <div
+      {/* Upload zone */}
+      <div className="flex flex-col gap-3">
+        <label
+          htmlFor="jsonFile"
           className={cn(
-            "relative rounded-lg border-2 border-dashed transition-colors duration-150",
-            isDragging ? "border-primary bg-primary/5" : "border-border",
-            error && "border-destructive/60"
+            "flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center",
+            "cursor-pointer select-none transition-all duration-200",
+            isDragging
+              ? "border-primary/60 bg-primary/5 scale-[1.01]"
+              : "border-border hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
+            error && !isDragging && "border-destructive/60"
           )}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -234,27 +227,32 @@ export function HeatMapForm({
             await processFiles(e.dataTransfer.files);
           }}
         >
-          <Input
+          <Upload
+            className="h-5 w-5 text-muted-foreground"
+            strokeWidth={1.5}
+          />
+          <div>
+            <p className="text-sm font-medium">Drop your conversations.json here</p>
+            <p className="text-xs text-muted-foreground mt-0.5">or click to browse</p>
+          </div>
+          <input
             key={inputKey}
             id="jsonFile"
             type="file"
             accept="application/json,.json"
             multiple
-            className="cursor-pointer"
+            className="sr-only"
             onChange={async (e) => {
               if (e.target.files && e.target.files.length > 0) {
                 await processFiles(e.target.files);
               }
             }}
           />
-        </div>
+        </label>
 
         {error && (
           <p
-            className={cn(
-              "text-xs text-destructive text-left",
-              isShaking && "animate-shake"
-            )}
+            className={cn("text-xs text-destructive", isShaking && "animate-shake")}
             onAnimationEnd={() => setIsShaking(false)}
           >
             {error}
@@ -262,60 +260,65 @@ export function HeatMapForm({
         )}
 
         {hasAnyLoaded && (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             {loaded.chatgpt && (
-              <div className="flex items-center justify-between rounded-md bg-secondary px-3 py-1.5 text-xs">
-                <span className="text-left">
-                  <span className="font-medium text-green-700 dark:text-green-400">ChatGPT</span>
-                  <span className="text-muted-foreground ml-1">
+              <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50/50 px-3 py-2 text-xs dark:border-green-900/40 dark:bg-green-950/20">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                  <span className="font-medium text-green-700 dark:text-green-400 flex-shrink-0">ChatGPT</span>
+                  <span className="text-muted-foreground truncate">
                     {loaded.chatgpt.name} ({loaded.chatgpt.count} conversations)
                   </span>
                 </span>
                 <button
                   onClick={clearChatgpt}
-                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="ml-2 flex-shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                   aria-label="Remove ChatGPT file"
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               </div>
             )}
             {loaded.claude && (
-              <div className="flex items-center justify-between rounded-md bg-secondary px-3 py-1.5 text-xs">
-                <span className="text-left">
-                  <span className="font-medium text-orange-600 dark:text-orange-400">Claude</span>
-                  <span className="text-muted-foreground ml-1">
+              <div className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50/50 px-3 py-2 text-xs dark:border-orange-900/40 dark:bg-orange-950/20">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                  <span className="font-medium text-orange-600 dark:text-orange-400 flex-shrink-0">Claude</span>
+                  <span className="text-muted-foreground truncate">
                     {loaded.claude.name} ({loaded.claude.count} conversations)
                   </span>
                 </span>
                 <button
                   onClick={clearClaude}
-                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="ml-2 flex-shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                   aria-label="Remove Claude file"
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               </div>
             )}
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5 rounded-lg bg-secondary text-slate-950 dark:text-slate-300 p-4 text-left">
-          <p className="text-xs font-medium">How to export</p>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">ChatGPT</span> - Settings - Data Controls - Export data
-          </p>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Claude</span> - Account Settings - Export data
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">You can upload one or both files at once.</p>
+        <div className="rounded-lg border border-border/60 bg-secondary/40 p-4 text-left space-y-2.5">
+          <p className="text-xs font-semibold">How to export your data</p>
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">ChatGPT</span>{" "}
+              Settings → Data Controls → Export data
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Claude</span>{" "}
+              Account Settings → Export data
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">You can upload one or both files at the same time.</p>
         </div>
       </div>
 
-      <br />
-
-      <div className="flex flex-col items-start gap-2">
-        <Label htmlFor="timeZone" className="text-left">
+      {/* Timezone */}
+      <div className="flex flex-col items-center gap-2">
+        <Label htmlFor="timeZone" className="text-xs text-muted-foreground uppercase tracking-wide font-medium self-start">
           Time Zone
         </Label>
         <Popover open={open} onOpenChange={setOpen}>
@@ -324,13 +327,13 @@ export function HeatMapForm({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-[200px] justify-between"
+              className="w-full justify-between"
             >
               {timeZone || "Select timezone"}
               <ChevronsUpDown className="opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0">
+          <PopoverContent className="w-full p-0">
             <Command>
               <CommandInput placeholder="Search timezone..." className="h-9" />
               <CommandList>
@@ -360,6 +363,7 @@ export function HeatMapForm({
           </PopoverContent>
         </Popover>
       </div>
+
     </div>
   );
 }
