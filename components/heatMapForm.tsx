@@ -1,8 +1,7 @@
 "use client";
 
-import { ArrowRightIcon, Check, ChevronsUpDown } from "lucide-react";
-import React from "react";
-
+import { Check, ChevronsUpDown, X } from "lucide-react";
+import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +19,10 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { ChatgptSummary } from "@/components/chatgpt-heatmap";
+import { ChatgptSummary, ClaudeSummary } from "@/components/heatmap";
 
 function unixTimestampToDate(timestamp: number, timeZone: string): string {
-  const utcDate = new Date(timestamp * 1000);
-  return utcDate.toLocaleDateString("sv-SE", {
+  return new Date(timestamp * 1000).toLocaleDateString("sv-SE", {
     timeZone,
     year: "numeric",
     month: "2-digit",
@@ -32,93 +30,290 @@ function unixTimestampToDate(timestamp: number, timeZone: string): string {
   });
 }
 
+function isoStringToDate(iso: string, timeZone: string): string {
+  return new Date(iso).toLocaleDateString("sv-SE", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+interface RawGPTEntry {
+  message: { author: { role: string }; create_time: number } | null;
+}
+
+interface RawGPTConversation {
+  title: string;
+  create_time: number;
+  mapping: Record<string, RawGPTEntry | null>;
+}
+
+interface RawClaudeMessage {
+  sender: string;
+  created_at: string;
+}
+
+interface RawClaudeConversation {
+  name: string;
+  created_at: string;
+  chat_messages: RawClaudeMessage[];
+}
+
+function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
+  if (!arr.length) return "unknown";
+  const el = arr[0] as Record<string, unknown>;
+  if (typeof el.create_time === "number" && el.mapping && typeof el.mapping === "object") {
+    return "chatgpt";
+  }
+  if (typeof el.created_at === "string" && Array.isArray(el.chat_messages)) {
+    return "claude";
+  }
+  return "unknown";
+}
+
+function parseChatGPT(raw: RawGPTConversation[], timeZone: string): ChatgptSummary[] {
+  return raw.map((c) => ({
+    title: c.title?.trim() || "Untitled",
+    create_day: unixTimestampToDate(c.create_time, timeZone),
+    convo_create_day: Object.values(c.mapping)
+      .filter((e): e is RawGPTEntry => e?.message?.author.role === "user")
+      .map((e) =>
+        e.message?.create_time
+          ? unixTimestampToDate(e.message.create_time, timeZone)
+          : null
+      )
+      .filter((d): d is string => d !== null),
+  }));
+}
+
+function parseClaude(raw: RawClaudeConversation[], timeZone: string): ClaudeSummary[] {
+  return raw.map((c) => ({
+    title: c.name?.trim() || "Untitled",
+    create_day: isoStringToDate(c.created_at, timeZone),
+    convo_create_day: c.chat_messages
+      .filter((m) => m.sender === "human")
+      .map((m) => isoStringToDate(m.created_at, timeZone)),
+  }));
+}
+
+interface LoadedInfo {
+  name: string;
+  count: number;
+}
+
 export function HeatMapForm({
-  setFile,
+  setChatgptFile,
+  setClaudeFile,
   timeZone,
-  setTimeZone
+  setTimeZone,
 }: {
-  setFile: React.Dispatch<React.SetStateAction<ChatgptSummary[] | null>>;
+  setChatgptFile: React.Dispatch<React.SetStateAction<ChatgptSummary[] | null>>;
+  setClaudeFile: React.Dispatch<React.SetStateAction<ClaudeSummary[] | null>>;
   timeZone: string;
   setTimeZone: React.Dispatch<React.SetStateAction<string>>;
 }) {
-  // File Input
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState("");
+  const [isShaking, setIsShaking] = useState(false);
+  const [loaded, setLoaded] = useState<{ chatgpt: LoadedInfo | null; claude: LoadedInfo | null }>({
+    chatgpt: null,
+    claude: null,
+  });
+  const [inputKey, setInputKey] = useState(0);
 
   const timeZones = Intl.supportedValuesOf("timeZone");
 
-  interface MappingEntry {
-    message: {
-      author: { role: string };
-      create_time: number;
-    };
+  const showError = useCallback((msg: string) => {
+    setError(msg);
+    setIsShaking(true);
+  }, []);
+
+  const processFiles = useCallback(
+    async (fileList: FileList) => {
+      setError("");
+      const files = Array.from(fileList);
+
+      type ParsedFile = {
+        format: "chatgpt" | "claude" | "unknown";
+        data: unknown[];
+        name: string;
+      };
+
+      const results: ParsedFile[] = [];
+
+      for (const file of files) {
+        let parsed: unknown[];
+        try {
+          const text = await file.text();
+          const json = JSON.parse(text);
+          if (!Array.isArray(json) || json.length === 0) {
+            showError(`${file.name}: expected a non-empty array of conversations`);
+            return;
+          }
+          parsed = json;
+        } catch {
+          showError(`${file.name}: could not parse JSON`);
+          return;
+        }
+        results.push({ format: detectFormat(parsed), data: parsed, name: file.name });
+      }
+
+      const unknown = results.filter((r) => r.format === "unknown");
+      if (unknown.length > 0) {
+        showError(`${unknown[0].name}: unrecognised format - expected a ChatGPT or Claude conversations.json`);
+        return;
+      }
+
+      const gptFiles = results.filter((r) => r.format === "chatgpt");
+      const claudeFiles = results.filter((r) => r.format === "claude");
+
+      if (gptFiles.length > 1) {
+        showError("Upload at most one ChatGPT export");
+        return;
+      }
+      if (claudeFiles.length > 1) {
+        showError("Upload at most one Claude export");
+        return;
+      }
+
+      setLoaded((prev) => {
+        const next = { ...prev };
+        if (gptFiles.length === 1) {
+          next.chatgpt = { name: gptFiles[0].name, count: gptFiles[0].data.length };
+        }
+        if (claudeFiles.length === 1) {
+          next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
+        }
+        return next;
+      });
+
+      if (gptFiles.length === 1) {
+        setChatgptFile(parseChatGPT(gptFiles[0].data as RawGPTConversation[], timeZone));
+      }
+      if (claudeFiles.length === 1) {
+        setClaudeFile(parseClaude(claudeFiles[0].data as RawClaudeConversation[], timeZone));
+      }
+    },
+    [timeZone, setChatgptFile, setClaudeFile, showError]
+  );
+
+  function clearChatgpt() {
+    setChatgptFile(null);
+    setLoaded((prev) => ({ ...prev, chatgpt: null }));
+    if (!loaded.claude) setInputKey((k) => k + 1);
   }
 
-  interface ParsedContent {
-    title: string;
-    create_time: number;
-    mapping: {
-      [key: string]: MappingEntry; // Dynamic keys for mapping
-    };
+  function clearClaude() {
+    setClaudeFile(null);
+    setLoaded((prev) => ({ ...prev, claude: null }));
+    if (!loaded.chatgpt) setInputKey((k) => k + 1);
   }
+
+  const hasAnyLoaded = loaded.chatgpt || loaded.claude;
 
   return (
     <div className="flex flex-col items-center gap-2 text-center rounded-lg">
-      {/* File Input Field */}
-      <div className="grid w-full max-w-sm items-center gap-1.5">
+      <div className="grid w-full max-w-sm items-center gap-2">
         <Label htmlFor="jsonFile" className="text-left">
-          JSON Input File (<code>conversations.json</code>)
+          Upload <code>conversations.json</code>
         </Label>
-        <Input
-          id="jsonFile"
-          type="file"
-          accept="application/JSON" // Accept JSON file
-          multiple={false} // Accept only single file
-          onChange={async (e) => {
-            if (e.target.files) {
-              const file = e.target.files[0];
-              const fileContent = await file.text();
-              const parsedContent = JSON.parse(fileContent);
 
-              setFile(
-                parsedContent.map((c: ParsedContent) => ({
-                    title: c.title,
-                    create_day: unixTimestampToDate(c.create_time, timeZone),
-                    convo_create_day: Object.values(c.mapping)
-                      .filter(
-                        (entry: MappingEntry | null) =>
-                          entry?.message?.author.role === "user"
-                      )
-                      .map(
-                        (entry: MappingEntry | null) =>
-                          entry?.message?.create_time
-                            ? unixTimestampToDate(
-                                entry.message.create_time,
-                                timeZone
-                              )
-                            : null // Handle null case
-                      )
-                      .filter((day): day is string => day !== null), // Remove null entries
-                }))
-              );
-            } else setFile(null);
+        <div
+          className={cn(
+            "relative rounded-lg border-2 border-dashed transition-colors duration-150",
+            isDragging ? "border-primary bg-primary/5" : "border-border",
+            error && "border-destructive/60"
+          )}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            await processFiles(e.dataTransfer.files);
           }}
-        />
+        >
+          <Input
+            key={inputKey}
+            id="jsonFile"
+            type="file"
+            accept="application/json,.json"
+            multiple
+            className="cursor-pointer"
+            onChange={async (e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                await processFiles(e.target.files);
+              }
+            }}
+          />
+        </div>
 
-        <div className="flex flex-col items-center gap-2 text-center bg-secondary text-slate-950 dark:text-slate-300 p-4 rounded-lg">
-          <p className="text-center text-sm">
-            Export your chat history from ChatGPT and upload it here.
+        {error && (
+          <p
+            className={cn(
+              "text-xs text-destructive text-left",
+              isShaking && "animate-shake"
+            )}
+            onAnimationEnd={() => setIsShaking(false)}
+          >
+            {error}
           </p>
-          <p className="text-center text-sm flex items-center gap-1">
-            Profile
-            <ArrowRightIcon className="inline-block w-3 h-3" /> Data Controls
-            <ArrowRightIcon className="inline-block w-3 h-3" /> Export data
+        )}
+
+        {hasAnyLoaded && (
+          <div className="flex flex-col gap-1">
+            {loaded.chatgpt && (
+              <div className="flex items-center justify-between rounded-md bg-secondary px-3 py-1.5 text-xs">
+                <span className="text-left">
+                  <span className="font-medium text-green-700 dark:text-green-400">ChatGPT</span>
+                  <span className="text-muted-foreground ml-1">
+                    {loaded.chatgpt.name} ({loaded.chatgpt.count} conversations)
+                  </span>
+                </span>
+                <button
+                  onClick={clearChatgpt}
+                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Remove ChatGPT file"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+            {loaded.claude && (
+              <div className="flex items-center justify-between rounded-md bg-secondary px-3 py-1.5 text-xs">
+                <span className="text-left">
+                  <span className="font-medium text-orange-600 dark:text-orange-400">Claude</span>
+                  <span className="text-muted-foreground ml-1">
+                    {loaded.claude.name} ({loaded.claude.count} conversations)
+                  </span>
+                </span>
+                <button
+                  onClick={clearClaude}
+                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Remove Claude file"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5 rounded-lg bg-secondary text-slate-950 dark:text-slate-300 p-4 text-left">
+          <p className="text-xs font-medium">How to export</p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">ChatGPT</span> - Settings - Data Controls - Export data
           </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Claude</span> - Account Settings - Export data
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">You can upload one or both files at once.</p>
         </div>
       </div>
 
       <br />
 
-      {/* Time Zone Popover Field */}
       <div className="flex flex-col items-start gap-2">
         <Label htmlFor="timeZone" className="text-left">
           Time Zone
