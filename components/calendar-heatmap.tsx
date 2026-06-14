@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useCallback } from "react";
+import React, { useId, useRef, useState, useCallback } from "react";
 import { useTheme } from "next-themes";
 
 const CELL = 11;
@@ -46,6 +46,7 @@ export function CalendarHeatmap({
   const { theme, resolvedTheme } = useTheme();
   const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
 
+  const uid = useId().replace(/:/g, "");
   const containerRef = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ day: string; cx: number; cy: number } | null>(null);
 
@@ -93,7 +94,7 @@ export function CalendarHeatmap({
     const s1  = Math.max(2,  pct - 12);
     const s2  = Math.min(98, pct + 12);
     gradDefs.push(
-      <linearGradient key={day} id={`g${day}`} x1="0%" y1="0%" x2="100%" y2="0%">
+      <linearGradient key={day} id={`${uid}g${day}`} x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset={`${s1}%`} stopColor={shade(chatgpt, maxChatgpt, GPT_COLORS)} />
         <stop offset={`${s2}%`} stopColor={shade(claude,  maxClaude,  CLAUDE_COLORS)} />
       </linearGradient>
@@ -112,7 +113,7 @@ export function CalendarHeatmap({
     const { chatgpt = 0, claude = 0 } = data[day] ?? {};
     const hasData = chatgpt + claude > 0;
     let fill: string;
-    if      (chatgpt > 0 && claude  > 0 && maxChatgpt > 0 && maxClaude > 0) fill = `url(#g${day})`;
+    if      (chatgpt > 0 && claude  > 0 && maxChatgpt > 0 && maxClaude > 0) fill = `url(#${uid}g${day})`;
     else if (chatgpt > 0 && maxChatgpt > 0) fill = shade(chatgpt, maxChatgpt, GPT_COLORS);
     else if (claude  > 0 && maxClaude  > 0) fill = shade(claude,  maxClaude,  CLAUDE_COLORS);
     else fill = emptyFill;
@@ -243,17 +244,21 @@ export function CalendarHeatmap({
 
   let tipLeft = 0;
   if (tip && containerRef.current) {
-    const cw = containerRef.current.offsetWidth;
-    tipLeft = tip.cx + 14 + TIP_W > cw ? tip.cx - TIP_W - 6 : tip.cx + 14;
+    const b = containerRef.current.getBoundingClientRect();
+    const wouldOverflowRight = b.left + tip.cx + 14 + TIP_W > window.innerWidth;
+    if (wouldOverflowRight) {
+      // Flip left, but clamp so it never exits the viewport's left edge
+      tipLeft = Math.max(-b.left + 4, tip.cx - TIP_W - 6);
+    } else {
+      tipLeft = tip.cx + 14;
+    }
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <svg
         viewBox={`0 0 ${svgW} ${svgH}`}
         width="100%"
-        height="100%"
-        preserveAspectRatio={vertical ? "xMinYMin meet" : "xMinYMid meet"}
         style={{ display: "block" }}
       >
         <defs>{gradDefs}</defs>
