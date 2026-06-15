@@ -3,18 +3,17 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
-import { AIChatHeatmap, ChatgptSummary, ClaudeSummary } from "@/components/heatmap";
+import { AIChatHeatmap } from "@/components/heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 import { useTheme } from "next-themes";
-// Uncomment during winter (Dec-Feb) for snowfall effect:
-// import Snowfall from "react-snowfall";
+import type { ConversationSummary } from "@/lib/types";
 
 export default function Home() {
   const { theme, resolvedTheme } = useTheme();
   const effectiveTheme = theme === "system" ? resolvedTheme : theme;
 
-  const [chatgptData, setChatgptData] = useState<ChatgptSummary[] | null>(null);
-  const [claudeData, setClaudeData] = useState<ClaudeSummary[] | null>(null);
+  const [chatgptData, setChatgptData] = useState<ConversationSummary[] | null>(null);
+  const [claudeData, setClaudeData] = useState<ConversationSummary[] | null>(null);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -28,11 +27,6 @@ export default function Home() {
 
   return (
     <div className="relative flex flex-col items-center min-h-screen gap-10 p-6 pb-16 sm:p-12 font-[family-name:var(--font-geist-sans)]">
-
-      {/* Snowfall — uncomment during winter (Dec-Feb), also uncomment the import above */}
-      {/* {mounted && <Snowfall color={effectiveTheme === "dark" ? "#dee4fd" : "#c8c8d0"} snowflakeCount={80} />} */}
-
-      {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-zinc-50 dark:bg-zinc-950" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.18),transparent)]" />
 
@@ -85,7 +79,6 @@ export default function Home() {
           Project Source Code
         </a>
       </footer>
-
     </div>
   );
 }

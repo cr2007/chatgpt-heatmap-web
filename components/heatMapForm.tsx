@@ -5,11 +5,7 @@ import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -18,88 +14,19 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { ChatgptSummary, ClaudeSummary } from "@/components/heatmap";
-
-function unixTimestampToDate(timestamp: number, timeZone: string): string {
-  return new Date(timestamp * 1000).toLocaleDateString("sv-SE", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-function isoStringToDate(iso: string, timeZone: string): string {
-  return new Date(iso).toLocaleDateString("sv-SE", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-interface RawGPTEntry {
-  message: { author: { role: string }; create_time: number } | null;
-}
-
-interface RawGPTConversation {
-  title: string;
-  create_time: number;
-  mapping: Record<string, RawGPTEntry | null>;
-}
-
-interface RawClaudeMessage {
-  sender: string;
-  created_at: string;
-}
-
-interface RawClaudeConversation {
-  name: string;
-  created_at: string;
-  chat_messages: RawClaudeMessage[];
-}
-
-function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
-  if (!arr.length) return "unknown";
-  const el = arr[0] as Record<string, unknown>;
-  if (typeof el.create_time === "number" && el.mapping && typeof el.mapping === "object") {
-    return "chatgpt";
-  }
-  if (typeof el.created_at === "string" && Array.isArray(el.chat_messages)) {
-    return "claude";
-  }
-  return "unknown";
-}
-
-function parseChatGPT(raw: RawGPTConversation[], timeZone: string): ChatgptSummary[] {
-  return raw.map((c) => ({
-    title: c.title?.trim() || "Untitled",
-    create_day: unixTimestampToDate(c.create_time, timeZone),
-    convo_create_day: Object.values(c.mapping)
-      .filter((e): e is RawGPTEntry => e?.message?.author.role === "user")
-      .map((e) =>
-        e.message?.create_time
-          ? unixTimestampToDate(e.message.create_time, timeZone)
-          : null
-      )
-      .filter((d): d is string => d !== null),
-  }));
-}
-
-function parseClaude(raw: RawClaudeConversation[], timeZone: string): ClaudeSummary[] {
-  return raw.map((c) => ({
-    title: c.name?.trim() || "Untitled",
-    create_day: isoStringToDate(c.created_at, timeZone),
-    convo_create_day: c.chat_messages
-      .filter((m) => m.sender === "human")
-      .map((m) => isoStringToDate(m.created_at, timeZone)),
-  }));
-}
+import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
+import type { ConversationSummary } from "@/lib/types";
 
 interface LoadedInfo {
   name: string;
   count: number;
 }
+
+type ParsedFile = {
+  format: "chatgpt" | "claude" | "unknown";
+  data: unknown[];
+  name: string;
+};
 
 export function HeatMapForm({
   setChatgptFile,
@@ -107,8 +34,8 @@ export function HeatMapForm({
   timeZone,
   setTimeZone,
 }: {
-  setChatgptFile: React.Dispatch<React.SetStateAction<ChatgptSummary[] | null>>;
-  setClaudeFile: React.Dispatch<React.SetStateAction<ClaudeSummary[] | null>>;
+  setChatgptFile: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>;
+  setClaudeFile: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>;
   timeZone: string;
   setTimeZone: React.Dispatch<React.SetStateAction<string>>;
 }) {
@@ -132,21 +59,12 @@ export function HeatMapForm({
   const processFiles = useCallback(
     async (fileList: FileList) => {
       setError("");
-      const files = Array.from(fileList);
-
-      type ParsedFile = {
-        format: "chatgpt" | "claude" | "unknown";
-        data: unknown[];
-        name: string;
-      };
-
       const results: ParsedFile[] = [];
 
-      for (const file of files) {
+      for (const file of Array.from(fileList)) {
         let parsed: unknown[];
         try {
-          const text = await file.text();
-          const json = JSON.parse(text);
+          const json = JSON.parse(await file.text());
           if (!Array.isArray(json) || json.length === 0) {
             showError(`${file.name}: expected a non-empty array of conversations`);
             return;
@@ -159,9 +77,11 @@ export function HeatMapForm({
         results.push({ format: detectFormat(parsed), data: parsed, name: file.name });
       }
 
-      const unknown = results.filter((r) => r.format === "unknown");
-      if (unknown.length > 0) {
-        showError(`${unknown[0].name}: unrecognised format - expected a ChatGPT or Claude conversations.json`);
+      const unknownFiles = results.filter((r) => r.format === "unknown");
+      if (unknownFiles.length > 0) {
+        showError(
+          `${unknownFiles[0].name}: unrecognised format - expected a ChatGPT or Claude conversations.json`
+        );
         return;
       }
 
@@ -175,19 +95,27 @@ export function HeatMapForm({
 
       setLoaded((prev) => {
         const next = { ...prev };
-        if (gptFiles.length > 0) next.chatgpt = {
-          name:  gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
-          count: gptFiles.reduce((sum, f) => sum + f.data.length, 0),
-        };
-        if (claudeFiles.length === 1) next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
+        if (gptFiles.length > 0) {
+          next.chatgpt = {
+            name:  gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
+            count: gptFiles.reduce((sum, f) => sum + f.data.length, 0),
+          };
+        }
+
+        if (claudeFiles.length === 1) {
+          next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
+        }
+
         return next;
       });
 
       if (gptFiles.length > 0) {
-        const merged = gptFiles.flatMap((f) => f.data) as RawGPTConversation[];
-        setChatgptFile(parseChatGPT(merged, timeZone));
+        setChatgptFile(parseChatGPT(gptFiles.flatMap((f) => f.data), timeZone));
       }
-      if (claudeFiles.length === 1) setClaudeFile(parseClaude(claudeFiles[0].data as RawClaudeConversation[], timeZone));
+
+      if (claudeFiles.length === 1) {
+        setClaudeFile(parseClaude(claudeFiles[0].data, timeZone));
+      }
     },
     [timeZone, setChatgptFile, setClaudeFile, showError]
   );
@@ -229,10 +157,7 @@ export function HeatMapForm({
             await processFiles(e.dataTransfer.files);
           }}
         >
-          <Upload
-            className="h-5 w-5 text-muted-foreground"
-            strokeWidth={1.5}
-          />
+          <Upload className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
           <div>
             <p className="text-sm font-medium">Drop your conversation export files here</p>
             <p className="text-xs text-muted-foreground mt-0.5">or click to browse - multiple files supported</p>
@@ -368,7 +293,6 @@ export function HeatMapForm({
           </PopoverContent>
         </Popover>
       </div>
-
     </div>
   );
 }
