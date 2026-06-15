@@ -8,13 +8,13 @@ RUN bun install --no-save --frozen-lockfile
 
 COPY . .
 
-# Builds the app (outputs to '/app/out')
-RUN bun run build
+# Builds the app (outputs to '/app/dist')
+RUN bun --bun run build
 
 # Production Build
-FROM nginx:1.29-alpine AS runner
+FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
-COPY --from=builder /app/out ./
+COPY --from=builder /app/dist/client ./
 
 # Optional: change default port to 3000
 RUN sed -i 's/80/3000/' /etc/nginx/conf.d/default.conf
