@@ -36,3 +36,7 @@ yarn-error.log*
 next-env.d.ts
 
 *conversations*.json
+.claude/
+.agents/
+/dist/
+.vinext/
