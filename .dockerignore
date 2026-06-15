@@ -8,6 +8,8 @@ next/
 out/
 
 # Ignore other files irrelevant to the Docker build
+.agents/
+.claude/
 .devcontainer/
 .github/
 .vscode/
@@ -26,5 +28,6 @@ Thumbs.db
 .gitignore
 .gitattributes
 .next/
+.vinext/
 
-conversations.json
+*conversations*.json

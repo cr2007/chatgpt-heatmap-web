@@ -1,85 +1,88 @@
-# ChatGPT Heatmap Web App
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/cr2007/chatgpt-heatmap-web)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cr2007/chatgpt-heatmap-web)
+# AI Chat Heatmap Web App
 
 <div align="center">
-    <!-- JavaScript -->
-    <img alt="JS" title="JavaScript" src="https://img.shields.io/badge/JavaScript-informational?style=flat&logo=javascript&logoColor=black&color=F7DF1E">
-    <!-- Next.js -->
-    <img alt="Next.js" title="Next.js" src="https://img.shields.io/badge/Next.js-informational?style=flat&logo=next.js&logoColor=white&color=000000">
+    <!-- GitHub Codespaces Badge -->
+    <a href="https://codespaces.new/cr2007/chatgpt-heatmap-web">
+        <img alt="Open in GitHub Codespaces" title="Open in GitHub Codespaces" src="https://github.com/codespaces/badge.svg">
+    </a>
+    <!-- DeepWiki Badge -->
+    <a href="https://deepwiki.com/cr2007/chatgpt-heatmap-web">
+        <img alt="Ask DeepWiki" title="Ask DeepWiki" src="https://deepwiki.com/badge.svg">
+    </a>
+    <br>
+    <!-- TypeScript -->
+    <img alt="TypeScript" title="TypeScript" src="https://img.shields.io/badge/TypeScript-informational?style=flat&logo=typescript&logoColor=white&color=3178C6">
+    <!-- Vite -->
+    <img alt="Vite" title="Vite" src="https://img.shields.io/badge/Vite-informational?style=flat&logo=vite&logoColor=white&color=9135FF">
     <!-- Shadcn/ui -->
     <img alt="Shadcn UI Library" title="Component Library" src="https://img.shields.io/badge/shadcn/ui-informational?style=flat&logo=shadcn/ui&logoColor=white&color=000000">
     <!-- Bun -->
     <img alt="Bun" title="Fast JavaScript Runtime" src="https://img.shields.io/badge/Bun-informational?style=flat&logo=bun&logoColor=white&color=000000">
 </div>
 
-A web application to visualize your ChatGPT conversation activity as a calendar heatmap.
+A web application to visualize your ChatGPT and Claude conversation activity as a calendar heatmap.
 
 ## Features
 
-- 📅 Upload your exported ChatGPT conversation history (`conversations.json`)
-- 🌎 Select your preferred time zone for accurate date mapping
-- 🎨 Responsive, interactive calendar heatmap powered by [@nivo/calendar](https://nivo.rocks/calendar/)
-- 🌗 Light/Dark mode toggle
-- 💅 Modern UI built with [shadcn/ui](https://ui.shadcn.com/) and [Tailwind CSS](https://tailwindcss.com/)
-- 🔐 Fully client-side rendering, so no data is shared outside of the application
-- ⚡ Fast, type-safe, and easy to use
+- Upload ChatGPT and/or Claude conversation exports (`conversations.json`)
+- Side-by-side color-coded heatmap: green for ChatGPT, orange for Claude, gradient for days with both
+- Select your preferred time zone for accurate date mapping
+- Light/Dark mode toggle
+- Modern UI built with [shadcn/ui](https://ui.shadcn.com/) and [Tailwind CSS](https://tailwindcss.com/)
+- Fully client-side: no data leaves your browser
 
 ## Getting Started
 
-**Prerequisites:** [Bun](https://bun.sh/) (recommended), or [Node.js](https://nodejs.org/) with npm
-
-Clone the repository:
+**Prerequisites:** [Bun](https://bun.sh/)
 
 ```sh
 git clone https://github.com/cr2007/chatgpt-heatmap-web.git
 cd chatgpt-heatmap-web
 
-# Bun
-bun i   # Install Dependencies
-bun dev # Start the server
-
-# Node.js
-npm i       # Install dependencies
-npm run dev # Start the server
+bun install   # Install dependencies
+bun --bun dev # Start the dev server
 ```
 
-Once that is completed, you can access the app by heading to [http://localhost:3000](http://localhost:3000) in your browser.
+The app is available at [http://localhost:3000](http://localhost:3000).
+
+To run the test suite:
+
+```sh
+bun test
+```
 
 ## Usage
 
-1. Export your ChatGPT data from [chatgpt.com](https://chat.com)
-   1. Profile > Settings > Data controls > Export Data > Confirm export
-2. Download and unzip the archive, then upload the `conversations.json` file
-3. Select your time zone
-4. View your ChatGPT usage as a calendar heatmap!
+### ChatGPT
+
+1. Go to [chatgpt.com](https://chat.com) > Profile > Settings > Data Controls > Export Data
+2. Download and unzip the archive
+3. Upload the `conversations.json` file
+
+### Claude
+
+1. Go to [claude.ai](https://claude.ai) > Settings > Export Data
+2. Download and unzip the archive
+3. Upload the `conversations.json` file
+
+You can upload one or both files. The heatmap updates automatically after each upload.
 
 ## Self-Hosting
 
-You can self-host this application using Docker in two ways:
-
-### Option 1: Using the Pre-built Image from GitHub Container Registry
+### Option 1: Pre-built image from GitHub Container Registry
 
 ```sh
-# Run the container
 docker run -d -p 3000:3000 ghcr.io/cr2007/chatgpt-heatmap-web:latest
 ```
 
-You can then access the application at [http://localhost:3000](http://localhost:3000)
-
-### Option 2: Building the Docker Image Locally
+### Option 2: Build locally
 
 ```sh
-# Clone the repository
 git clone https://github.com/cr2007/chatgpt-heatmap-web.git
 cd chatgpt-heatmap-web
 
-# Build the Docker image
 docker build -t chatgpt-heatmap .
-
-# Run the container
 docker run -d -p 3000:3000 chatgpt-heatmap
 ```
 
-After running the aboce commands, you can access the application at [http://localhost:3000](http://localhost:3000).
+The application is available at [http://localhost:3000](http://localhost:3000).

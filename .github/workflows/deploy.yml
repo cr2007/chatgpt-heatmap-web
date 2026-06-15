@@ -1,6 +1,6 @@
-# Workflow for building and deploying a Next.js site to GitHub Pages
+# Workflow for building and deploying a Vite site to GitHub Pages
 
-name: Deploy Next.js site to Pages
+name: Deploy Vite site to Pages
 
 on:
   # Runs on pushes targeting the default branch
