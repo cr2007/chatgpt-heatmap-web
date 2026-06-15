@@ -168,10 +168,6 @@ export function HeatMapForm({
       const gptFiles    = results.filter((r) => r.format === "chatgpt");
       const claudeFiles = results.filter((r) => r.format === "claude");
 
-      if (gptFiles.length > 1) {
-        showError("Upload at most one ChatGPT export");
-        return;
-      }
       if (claudeFiles.length > 1) {
         showError("Upload at most one Claude export");
         return;
@@ -179,12 +175,18 @@ export function HeatMapForm({
 
       setLoaded((prev) => {
         const next = { ...prev };
-        if (gptFiles.length === 1)    next.chatgpt = { name: gptFiles[0].name,    count: gptFiles[0].data.length };
-        if (claudeFiles.length === 1) next.claude  = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
+        if (gptFiles.length > 0) next.chatgpt = {
+          name:  gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
+          count: gptFiles.reduce((sum, f) => sum + f.data.length, 0),
+        };
+        if (claudeFiles.length === 1) next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
         return next;
       });
 
-      if (gptFiles.length === 1)    setChatgptFile(parseChatGPT(gptFiles[0].data as RawGPTConversation[], timeZone));
+      if (gptFiles.length > 0) {
+        const merged = gptFiles.flatMap((f) => f.data) as RawGPTConversation[];
+        setChatgptFile(parseChatGPT(merged, timeZone));
+      }
       if (claudeFiles.length === 1) setClaudeFile(parseClaude(claudeFiles[0].data as RawClaudeConversation[], timeZone));
     },
     [timeZone, setChatgptFile, setClaudeFile, showError]
@@ -232,8 +234,8 @@ export function HeatMapForm({
             strokeWidth={1.5}
           />
           <div>
-            <p className="text-sm font-medium">Drop your conversations.json here</p>
-            <p className="text-xs text-muted-foreground mt-0.5">or click to browse</p>
+            <p className="text-sm font-medium">Drop your conversation export files here</p>
+            <p className="text-xs text-muted-foreground mt-0.5">or click to browse - multiple files supported</p>
           </div>
           <input
             key={inputKey}
@@ -312,7 +314,10 @@ export function HeatMapForm({
               Account Settings → Export data
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">You can upload one or both files at the same time.</p>
+          <p className="text-xs text-muted-foreground">
+            ChatGPT exports may be split across multiple files. Upload them all at once,
+            alongside an optional Claude export.
+          </p>
         </div>
       </div>
 
