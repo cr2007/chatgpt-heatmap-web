@@ -2,6 +2,7 @@
 
 import React, { useId, useRef, useState, useCallback } from "react";
 import { useTheme } from "next-themes";
+import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
 
 const CELL = 11;
 const GAP  = 2;
@@ -10,16 +11,6 @@ const STEP = CELL + GAP;
 const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-export interface CalHeatmapDay {
-  chatgpt: number;
-  claude: number;
-}
-
-export interface DayTitleBreakdown {
-  chatgpt: Record<string, number>;
-  claude: Record<string, number>;
-}
 
 export interface CalendarHeatmapProps {
   data: Record<string, CalHeatmapDay>;
@@ -57,8 +48,8 @@ export function CalendarHeatmap({
   const endYear   = to.getFullYear();
   const numYears  = endYear - startYear + 1;
 
-  // ── Layout constants ─────────────────────────────────────────────────────────
-  // Horizontal: years stack top-to-bottom, weeks → columns, dow → rows
+  // Layout constants
+  // Horizontal: years stack top-to-bottom, weeks -> columns, dow -> rows
   const H = {
     dowW:   27,           // day-of-week label column
     monthH: 18,           // month label row
@@ -68,7 +59,7 @@ export function CalendarHeatmap({
   } as const;
   const H_SEC_H = H.yearH + H.monthH + 7 * STEP;
 
-  // Vertical: years stack left-to-right, dow → columns, weeks → rows
+  // Vertical: years stack left-to-right, dow -> columns, weeks -> rows
   const V = {
     monthW:  28,          // month label column (left side)
     dowH:    15,          // day-of-week label row
@@ -86,7 +77,7 @@ export function CalendarHeatmap({
     ? V.pad.t + V.yearH + V.dowH + 54 * STEP + V.pad.b
     : H.pad.t + numYears * H_SEC_H + (numYears - 1) * H.yearGap + H.pad.b;
 
-  // ── Gradient defs (mixed days only) ─────────────────────────────────────────
+  // Gradient defs (mixed days only)
   const gradDefs: React.ReactElement[] = [];
   Object.entries(data).forEach(([day, { chatgpt, claude }]) => {
     if (chatgpt <= 0 || claude <= 0 || maxChatgpt <= 0 || maxClaude <= 0) return;
@@ -101,7 +92,7 @@ export function CalendarHeatmap({
     );
   });
 
-  // ── Cell renderer ────────────────────────────────────────────────────────────
+  // Cell renderer
   const handleEnter = useCallback((e: React.MouseEvent, day: string) => {
     if (!containerRef.current) return;
     const b = containerRef.current.getBoundingClientRect();
@@ -126,7 +117,7 @@ export function CalendarHeatmap({
     );
   }
 
-  // ── SVG elements ─────────────────────────────────────────────────────────────
+  // SVG elements
   const els: React.ReactElement[] = [];
 
   for (let yi = 0; yi < numYears; yi++) {
@@ -135,7 +126,7 @@ export function CalendarHeatmap({
     const jan1wd = jan1.getDay();
 
     if (!vertical) {
-      // ─ Horizontal ─
+      // Horizontal
       const yOff  = H.pad.t + yi * (H_SEC_H + H.yearGap);
       const gridY = yOff + H.yearH + H.monthH;
 
@@ -180,7 +171,7 @@ export function CalendarHeatmap({
       }
 
     } else {
-      // ─ Vertical ─
+      // Vertical
       const xOff  = V.pad.l + yi * (V_SEC_W + V.yearGap);
       const gridX = xOff + V.monthW;
       const gridY = V.pad.t + V.yearH + V.dowH;
@@ -237,7 +228,7 @@ export function CalendarHeatmap({
     }
   }
 
-  // ── Tooltip ──────────────────────────────────────────────────────────────────
+  // Tooltip
   const tipData  = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
   const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
   const TIP_W    = 260;
