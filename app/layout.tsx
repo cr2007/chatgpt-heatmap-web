@@ -41,6 +41,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <noscript>
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            This application requires JavaScript to run. Please enable JavaScript in your browser settings.
+          </div>
+        </noscript>
         <ThemeProvider
             attribute="class"
             defaultTheme="system"
