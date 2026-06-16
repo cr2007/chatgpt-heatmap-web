@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown, Upload, X } from "lucide-react/icons";
+import { Check, ChevronsUpDown, Upload, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
