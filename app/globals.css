@@ -6,6 +6,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+abbr[title] { cursor: help; }
+
+::selection {
+  background-color: rgba(147, 130, 255, 0.25);
+  color: inherit;
+}
+
+.dark ::selection {
+  background-color: rgba(147, 130, 255, 0.35);
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -16,7 +36,7 @@ body {
   }
 
   .animate-fade-slide-up {
-    animation: fadeSlideUp 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
 }
 

@@ -16,3 +16,8 @@ Technical Details:
 
 Summary:
 This repository is strictly a visualization tool for end-users' own exported data. There is no embedded language model, training data, or sensitive information present.
+
+## Source
+
+- [Live site](https://aiheatmap.csk.fyi)
+- [GitHub repository](https://github.com/cr2007/chatgpt-heatmap-web)

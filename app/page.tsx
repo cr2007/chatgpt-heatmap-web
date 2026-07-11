@@ -37,7 +37,7 @@ export default function Home() {
       </header>
 
       {/* Form card */}
-      <main className="w-full max-w-lg rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-6 sm:p-8">
+      <main id="main-content" tabIndex={-1} className="outline-none w-full max-w-lg rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-6 sm:p-8">
         <HeatMapForm
           setChatgptFile={setChatgptData}
           setClaudeFile={setClaudeData}

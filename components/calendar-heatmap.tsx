@@ -248,6 +248,8 @@ export function CalendarHeatmap({
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <svg
+        role="img"
+        aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
         viewBox={`0 0 ${svgW} ${svgH}`}
         width="100%"
         style={{ display: "block" }}

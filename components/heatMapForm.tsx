@@ -157,7 +157,7 @@ export function HeatMapForm({
             await processFiles(e.dataTransfer.files);
           }}
         >
-          <Upload className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
+          <Upload aria-hidden="true" className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
           <div>
             <p className="text-sm font-medium">Drop your conversation export files here</p>
             <p className="text-xs text-muted-foreground mt-0.5">or click to browse - multiple files supported</p>
@@ -179,6 +179,7 @@ export function HeatMapForm({
 
         {error && (
           <p
+            role="alert"
             className={cn("text-xs text-destructive", isShaking && "animate-shake")}
             onAnimationEnd={() => setIsShaking(false)}
           >
@@ -260,7 +261,7 @@ export function HeatMapForm({
               className="w-full justify-between"
             >
               {timeZone || "Select timezone"}
-              <ChevronsUpDown className="opacity-50" />
+              <ChevronsUpDown aria-hidden="true" className="opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-full p-0">
