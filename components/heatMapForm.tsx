@@ -14,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { toast } from "sonner";
 import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
 import type { ConversationSummary } from "@/lib/types";
 
@@ -110,11 +111,15 @@ export function HeatMapForm({
       });
 
       if (gptFiles.length > 0) {
+        const totalGpt = gptFiles.reduce((sum, f) => sum + f.data.length, 0);
         setChatgptFile(parseChatGPT(gptFiles.flatMap((f) => f.data), timeZone));
+        toast.success(`ChatGPT export loaded - ${totalGpt} conversation${totalGpt === 1 ? "" : "s"}`);
       }
 
       if (claudeFiles.length === 1) {
+        const claudeCount = claudeFiles[0].data.length;
         setClaudeFile(parseClaude(claudeFiles[0].data, timeZone));
+        toast.success(`Claude export loaded - ${claudeCount} conversation${claudeCount === 1 ? "" : "s"}`);
       }
     },
     [timeZone, setChatgptFile, setClaudeFile, showError]
