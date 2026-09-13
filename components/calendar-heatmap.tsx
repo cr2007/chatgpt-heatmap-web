@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useId, useRef, useState, useCallback } from "react";
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";

@@ -1,6 +1,3 @@
-"use client";
-
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
 import { AIChatHeatmap } from "@/components/heatmap";
@@ -67,7 +64,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           {mounted && (
-            <Image
+            <img
               aria-hidden
               src={effectiveTheme === "dark" ? "/github-mark-white.svg" : "/github-mark.svg"}
               alt="GitHub Icon"

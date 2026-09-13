@@ -2,8 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "GeistSans";
+  src: url("/GeistVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GeistMono";
+  src: url("/GeistMonoVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 body {
-  font-family: system-ui, sans-serif;
+  font-family: "GeistSans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 abbr[title] { cursor: help; }
@@ -60,5 +76,9 @@ abbr[title] { cursor: help; }
 @layer base {
   :root {
     --radius: 0.5rem;
+    --panel-border: rgb(228 228 231);
+  }
+  .dark {
+    --panel-border: rgb(39 39 42);
   }
 }

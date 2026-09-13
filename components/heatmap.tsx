@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { aggregateDateData } from "@/lib/aggregate";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import type { ConversationSummary } from "@/lib/types";
