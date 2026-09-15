@@ -9,10 +9,14 @@ export const AIChatHeatmap = ({
   chatgptSummary,
   claudeSummary,
   vertical = false,
+  viewFrom,
+  viewTo,
 }: {
   chatgptSummary: ConversationSummary[] | null;
   claudeSummary: ConversationSummary[] | null;
   vertical?: boolean;
+  viewFrom?: Date;
+  viewTo?: Date;
 }) => {
   const agg = aggregateDateData(chatgptSummary, claudeSummary);
   if (!agg) return null;
@@ -23,8 +27,8 @@ export const AIChatHeatmap = ({
       dayTitles={agg.dayTitles}
       maxChatgpt={agg.maxChatgpt}
       maxClaude={agg.maxClaude}
-      from={agg.from}
-      to={agg.to}
+      from={viewFrom ?? agg.from}
+      to={viewTo ?? agg.to}
       vertical={vertical}
     />
   );

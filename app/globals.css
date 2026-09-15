@@ -82,3 +82,301 @@ abbr[title] { cursor: help; }
     --panel-border: rgb(39 39 42);
   }
 }
+
+/* ── Layout primitives ─────────────────────────────────────────── */
+
+.layout-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  gap: 2.5rem;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.layout-stack .panel-form {
+  width: 100%;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-stack .panel-heatmap {
+  width: 100%;
+  max-width: min(90vw, 900px);
+}
+
+/* Portrait / narrow default for layout-split (same as stack) */
+.layout-split {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  gap: 2.5rem;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.layout-split .panel-form {
+  width: 100%;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-split .panel-heatmap {
+  width: 100%;
+  max-width: min(90vw, 900px);
+}
+
+/* ── Landscape side-by-side (640 px+) ──────────────────────────── */
+
+@media (orientation: landscape) and (min-width: 640px) and (pointer: fine) {
+  .layout-split {
+    display: grid;
+    grid-template-columns: clamp(320px, 36%, 420px) 1fr;
+    grid-template-rows: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+    gap: 0;
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .layout-split .panel-form {
+    display: flex;
+    flex-direction: column;
+    padding: 1.75rem;
+    overflow-y: auto;
+    max-width: none;
+    border-right: 1px solid var(--panel-border);
+    scrollbar-width: thin;
+  }
+
+  .layout-split .panel-heatmap {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    padding: 2rem;
+    overflow: hidden;
+    max-width: none;
+  }
+
+  .layout-split.split-reversed .panel-form {
+    order: 1;
+    border-right: none;
+    border-left: 1px solid var(--panel-border);
+  }
+  .layout-split.split-reversed .panel-heatmap {
+    order: 0;
+  }
+}
+
+/* ── Foldable: portrait folded (book mode) ──────────────────────── */
+/* Portrait + folded: fold runs vertically, two panels side by side  */
+
+@media (device-posture: folded) and (orientation: portrait) {
+  .layout-split {
+    display: grid;
+    grid-template-columns:
+      env(viewport-segment-width 0 0, 50vw)
+      env(viewport-segment-width 1 0, 50vw);
+    grid-template-rows: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+    gap: 0;
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .layout-split .panel-form {
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+    max-width: none;
+    border-right: 1px solid var(--panel-border);
+    scrollbar-width: thin;
+  }
+
+  .layout-split .panel-heatmap {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    padding: 0.75rem;
+    overflow: hidden;
+    max-width: none;
+  }
+
+  .layout-split.split-reversed .panel-form {
+    order: 1;
+    border-right: none;
+    border-left: 1px solid var(--panel-border);
+  }
+  .layout-split.split-reversed .panel-heatmap {
+    order: 0;
+  }
+}
+
+/* ── Foldable: landscape folded (tent / laptop mode) ────────────── */
+/* Landscape + folded: fold runs horizontally, heatmap top, form bottom */
+
+@media (device-posture: folded) and (orientation: landscape) {
+  .layout-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows:
+      env(viewport-segment-height 0 0, 50vh)
+      env(viewport-segment-height 0 1, 50vh);
+    height: 100dvh;
+    overflow: hidden;
+    gap: 0;
+    padding: 0;
+    align-items: stretch;
+    justify-items: stretch;
+  }
+
+  .layout-split .panel-form {
+    order: 2;
+    max-width: none;
+    width: 100%;
+    padding: 1rem 1.25rem;
+    overflow-y: auto;
+    border-right: none;
+    border-top: 1px solid var(--panel-border);
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .layout-split .panel-heatmap {
+    order: 1;
+    max-width: none;
+    padding: 0.75rem;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+}
+
+/* ── Book mode year nav (portrait folded, left panel) ───────────── */
+
+.book-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.book-nav .tent-years {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: none;
+}
+
+.book-nav .tent-year-btn {
+  width: 100%;
+  text-align: center;
+}
+
+/* Tent mode, no data: push form into the bottom half so it never crosses the fold */
+@media (device-posture: folded) and (orientation: landscape) {
+  .layout-split.split-no-data .panel-form {
+    grid-row: 2;
+  }
+}
+
+@media (device-posture: folded) and (orientation: portrait) {
+  .layout-split .panel-form footer {
+    display: none;
+  }
+}
+
+/* ── Tent mode bottom panel ─────────────────────────────────────── */
+
+.tent-bottom {
+  display: flex;
+  gap: 1rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tent-bottom__form {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tent-bottom__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.5rem 0.5rem 0;
+  flex-shrink: 0;
+}
+
+.tent-years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  max-width: 16rem;
+}
+
+.tent-year-btn {
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.tent-year-btn:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgb(139, 92, 246);
+}
+
+.tent-year-btn.tent-year-active {
+  background: rgb(139, 92, 246);
+  border-color: rgb(139, 92, 246);
+  color: #fff;
+}
+
+.tent-arrows {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tent-arrow-btn {
+  flex: 1;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.tent-arrow-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgb(139, 92, 246);
+}
+
+.tent-arrow-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

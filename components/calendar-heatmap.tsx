@@ -1,5 +1,5 @@
 ﻿
-import React, { useId, useRef, useState, useCallback } from "react";
+import React, { useId, useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
 
@@ -37,8 +37,30 @@ export function CalendarHeatmap({
   const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
 
   const uid = useId().replace(/:/g, "");
+  const outerRef    = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tip, setTip] = useState<{ day: string; cx: number; cy: number } | null>(null);
+  const [tip,   setTip]   = useState<{ day: string; cx: number; cy: number } | null>(null);
+  const [avail, setAvail] = useState({ w: 0, h: 0 });
+
+  // Measure on first paint (synchronous) to avoid a visible flash.
+  useLayoutEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    if (width > 0 || height > 0) setAvail({ w: width, h: height });
+  }, []);
+
+  // Track panel resizes.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([e]) => {
+      const { width, height } = e.contentRect;
+      setAvail({ w: width, h: height });
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const emptyFill = isDark ? "#2a2a2a" : "#eee";
   const textFill  = isDark ? "#888"    : "#666";
@@ -75,6 +97,17 @@ export function CalendarHeatmap({
   const svgH = vertical
     ? V.pad.t + V.yearH + V.dowH + 54 * STEP + V.pad.b
     : H.pad.t + numYears * H_SEC_H + (numYears - 1) * H.yearGap + H.pad.b;
+
+  // Scale SVG to fill the available panel area while preserving aspect ratio.
+  // No upper cap: upscaling is fine for narrow single-year panels.
+  const scale = (() => {
+    if (!avail.w) return 1;
+    const sw = avail.w / svgW;
+    if (!avail.h) return sw;
+    return Math.min(sw, avail.h / svgH);
+  })();
+  const renderedW = Math.round(svgW * scale) || svgW;
+  const renderedH = Math.round(svgH * scale) || svgH;
 
   // Gradient defs (mixed days only)
   const gradDefs: React.ReactElement[] = [];
@@ -245,12 +278,17 @@ export function CalendarHeatmap({
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
+    <div
+      ref={outerRef}
+      style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+    <div ref={containerRef} style={{ position: "relative" }}>
       <svg
         role="img"
         aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
         viewBox={`0 0 ${svgW} ${svgH}`}
-        width="100%"
+        width={renderedW}
+        height={renderedH}
         style={{ display: "block" }}
       >
         <defs>{gradDefs}</defs>
@@ -320,6 +358,7 @@ export function CalendarHeatmap({
           </div>
         );
       })()}
+    </div>
     </div>
   );
 }

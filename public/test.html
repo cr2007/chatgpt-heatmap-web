@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Loader</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --accent: #8b5cf6;
+      --accent-muted: #ede9fe;
+      --danger: #ef4444;
+      --danger-muted: #fef2f2;
+      --success: #22c55e;
+      --success-muted: #f0fdf4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --surface: #18181b;
+        --border: #27272a;
+        --text: #fafafa;
+        --muted: #a1a1aa;
+        --accent: #a78bfa;
+        --accent-muted: #2e1065;
+        --danger: #f87171;
+        --danger-muted: #450a0a;
+        --success: #4ade80;
+        --success-muted: #052e16;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 28rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Type scale: 3 levels with >=1.27 ratio between each step */
+    h1 { font-size: 1.25rem; font-weight: 600; }
+    p  { color: var(--muted); line-height: 1.5; }
+
+    .section { display: flex; flex-direction: column; gap: 0.75rem; }
+    .section-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    /* Toggle rows */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s;
+    }
+    .toggle-row:hover { border-color: var(--accent); }
+    .toggle-row.active { border-color: var(--accent); background: var(--accent-muted); }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-chatgpt { background: #22c55e; }
+    .dot-claude  { background: #f97316; }
+
+    .toggle-switch {
+      width: 2rem; height: 1.125rem;
+      background: var(--border);
+      border-radius: 9999px;
+      position: relative;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      width: 0.875rem; height: 0.875rem;
+      background: white;
+      border-radius: 50%;
+      top: 1.5px; left: 1.5px;
+      transition: transform 0.15s;
+    }
+    .active .toggle-switch { background: var(--accent); }
+    .active .toggle-switch::after { transform: translateX(0.875rem); }
+
+    /* Sliders */
+    .slider-row { display: flex; flex-direction: column; gap: 0.375rem; }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .slider-label { font-weight: 500; }
+    .slider-value {
+      font-size: 0.6875rem;
+      color: var(--accent);
+      font-weight: 600;
+      min-width: 2.5rem;
+      text-align: right;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+    .slider-hints {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6875rem;
+      color: var(--muted);
+    }
+
+    /* Status */
+    .status {
+      font-size: 0.6875rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      display: none;
+    }
+    .status.loaded { display: block; background: var(--success-muted); color: var(--success); }
+    .status.empty  { display: block; background: var(--accent-muted); color: var(--muted); }
+
+    /* Estimate */
+    .estimate {
+      font-size: 0.6875rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .estimate strong { color: var(--text); }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 0.5rem; }
+    button {
+      flex: 1;
+      padding: 0.625rem 1rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+
+    hr { border: none; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div>
+      <h1>Test Data Loader</h1>
+      <p style="margin-top:0.375rem">Generates dummy conversation history and loads it into the heatmap. Data is stored in sessionStorage and cleared when you close the tab.</p>
+    </div>
+
+    <hr />
+
+    <div class="section">
+      <div class="section-title">Data sources</div>
+
+      <label class="toggle-row active" id="row-chatgpt">
+        <span class="toggle-label">
+          <span class="dot dot-chatgpt"></span>
+          ChatGPT
+        </span>
+        <span class="toggle-switch"></span>
+        <input type="checkbox" id="chk-chatgpt" checked hidden />
+      </label>
+
+      <label class="toggle-row active" id="row-claude">
+        <span class="toggle-label">
+          <span class="dot dot-claude"></span>
+          Claude
+        </span>
+        <span class="toggle-switch"></span>
+        <input type="checkbox" id="chk-claude" checked hidden />
+      </label>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Data shape</div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Years of history</span>
+          <span class="slider-value" id="val-years">3 years</span>
+        </div>
+        <input type="range" id="sl-years" min="1" max="6" value="3" />
+        <div class="slider-hints"><span>1 yr</span><span>6 yrs</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Conversations per active day</span>
+          <span class="slider-value" id="val-density">3</span>
+        </div>
+        <input type="range" id="sl-density" min="1" max="10" value="3" />
+        <div class="slider-hints"><span>light</span><span>heavy</span></div>
+      </div>
+    </div>
+
+    <div class="estimate" id="estimate">Approx. <strong id="est-count">--</strong> conversations per source</div>
+
+    <hr />
+
+    <div id="status-loaded" class="status">Test data is loaded in this session.</div>
+    <div id="status-empty"  class="status">No test data in this session.</div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-load">Load data and open app</button>
+      <button class="btn-ghost"   id="btn-clear">Clear</button>
+    </div>
+  </div>
+
+  <script>
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function dateStr(d) {
+      // YYYY-MM-DD in local time
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    // Seeded pseudo-random (mulberry32)
+    function makeRng(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        let t = Math.imul(s ^ s >>> 15, 1 | s);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // Generate ConversationSummary[] spanning `years` back from today
+    function generate(years, density, seed) {
+      const rng = makeRng(seed);
+      const result = [];
+      const today = new Date();
+      const start = new Date(today);
+      start.setFullYear(start.getFullYear() - years);
+      start.setDate(1); // start of month
+
+      const cur = new Date(start);
+      let id = 1;
+
+      while (cur <= today) {
+        const dow = cur.getDay(); // 0=Sun, 6=Sat
+        const isWeekend = dow === 0 || dow === 6;
+
+        // Poisson-ish: draw from a distribution centered on `density`
+        const lambda = isWeekend ? density * 0.6 : density;
+        // Sample from a geometric-ish distribution
+        const roll = rng();
+        const count = roll < 0.15 ? 0 : Math.round(-lambda * Math.log(1 - rng() * 0.86));
+
+        const day = dateStr(cur);
+        for (let i = 0; i < count; i++) {
+          // Each conversation can have 1-8 messages on the same day
+          const msgCount = Math.max(1, Math.round(rng() * 7 + 1));
+          const msgs = Array.from({ length: msgCount }, () => day);
+          result.push({ title: `Conversation ${id++}`, create_day: day, convo_create_day: msgs });
+        }
+
+        cur.setDate(cur.getDate() + 1);
+      }
+      return result;
+    }
+
+    // ── State ──────────────────────────────────────────────────────────────
+    const rowChatgpt = document.getElementById("row-chatgpt");
+    const rowClaude  = document.getElementById("row-claude");
+    const chkChatgpt = document.getElementById("chk-chatgpt");
+    const chkClaude  = document.getElementById("chk-claude");
+    const slYears    = document.getElementById("sl-years");
+    const slDensity  = document.getElementById("sl-density");
+    const valYears   = document.getElementById("val-years");
+    const valDensity = document.getElementById("val-density");
+    const estCount   = document.getElementById("est-count");
+    const statusLoaded = document.getElementById("status-loaded");
+    const statusEmpty  = document.getElementById("status-empty");
+
+    function toggleRow(row, chk) {
+      row.addEventListener("click", () => {
+        chk.checked = !chk.checked;
+        row.classList.toggle("active", chk.checked);
+        updateEstimate();
+      });
+    }
+    toggleRow(rowChatgpt, chkChatgpt);
+    toggleRow(rowClaude,  chkClaude);
+
+    function updateEstimate() {
+      const years   = parseInt(slYears.value);
+      const density = parseInt(slDensity.value);
+      const days = years * 365;
+      const activeRatio = 0.5;
+      const approx = Math.round(days * activeRatio * density * 0.7);
+      estCount.textContent = approx.toLocaleString();
+      valYears.textContent  = years + (years === 1 ? " year" : " years");
+      valDensity.textContent = density;
+    }
+
+    slYears.addEventListener("input",   updateEstimate);
+    slDensity.addEventListener("input", updateEstimate);
+    updateEstimate();
+
+    function checkSession() {
+      const hasGpt   = !!sessionStorage.getItem("test-chatgpt");
+      const hasClaude = !!sessionStorage.getItem("test-claude");
+      const has = hasGpt || hasClaude;
+      statusLoaded.style.display = has  ? "block" : "none";
+      statusEmpty.style.display  = !has ? "block" : "none";
+    }
+    checkSession();
+
+    // ── Actions ────────────────────────────────────────────────────────────
+    document.getElementById("btn-load").addEventListener("click", () => {
+      const years   = parseInt(slYears.value);
+      const density = parseInt(slDensity.value);
+
+      sessionStorage.removeItem("test-chatgpt");
+      sessionStorage.removeItem("test-claude");
+
+      if (chkChatgpt.checked) {
+        sessionStorage.setItem("test-chatgpt", JSON.stringify(generate(years, density, 0xdeadbeef)));
+      }
+      if (chkClaude.checked) {
+        sessionStorage.setItem("test-claude", JSON.stringify(generate(years, density, 0xcafebabe)));
+      }
+
+      window.location.href = "/";
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      sessionStorage.removeItem("test-chatgpt");
+      sessionStorage.removeItem("test-claude");
+      checkSession();
+    });
+  </script>
+</body>
+</html>
