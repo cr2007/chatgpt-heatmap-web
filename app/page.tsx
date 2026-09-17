@@ -2,11 +2,21 @@ import React, { useEffect, useMemo, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
 import { AIChatHeatmap } from "@/components/heatmap";
 import { ModeToggle } from "@/components/modeToggle";
+import { YearNav } from "@/components/year-nav";
 import { useTheme } from "next-themes";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  DESKTOP_SPLIT_QUERY,
+  FOLDED_PORTRAIT_QUERY,
+  FOLDED_LANDSCAPE_QUERY,
+  getHeatmapOrientation,
+  getLayoutClassName,
+} from "@/lib/layout";
 import type { ConversationSummary } from "@/lib/types";
 
+/** Loads the `sessionStorage` test-data hooks used by the CDP verification
+ *  scripts (`test-chatgpt`/`test-claude`), if present. No-op otherwise. */
 function loadTestData(
   setChatgptData: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>,
   setClaudeData:  React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>,
@@ -19,6 +29,11 @@ function loadTestData(
   } catch {}
 }
 
+/**
+ * Root page: owns the loaded conversation data, the responsive layout
+ * decision (plain stack / desktop split / book / tent), and the year
+ * picker shared between the form panel and the heatmap.
+ */
 export default function Home() {
   const { theme, resolvedTheme } = useTheme();
   const effectiveTheme = theme === "system" ? resolvedTheme : theme;
@@ -27,14 +42,16 @@ export default function Home() {
   const [claudeData, setClaudeData]   = useState<ConversationSummary[] | null>(null);
   const [timeZone, setTimeZone]       = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [mounted, setMounted]         = useState(false);
+  /** Book mode only: swaps which side the form sits on. Persisted. */
   const [formOnRight, setFormOnRight] = useState(false);
+  /** Year currently shown on the heatmap in book/tent mode; null until data loads. */
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
-  const isFoldedLandscape = useMediaQuery("(device-posture: folded) and (orientation: landscape)");
-  const isFoldedPortrait  = useMediaQuery("(device-posture: folded) and (orientation: portrait)");
-  const isLandscape       = useMediaQuery("(orientation: landscape)");
-  const isMobile          = useMediaQuery("(pointer: coarse)");
+  const isBookMode     = useMediaQuery(FOLDED_PORTRAIT_QUERY);
+  const isTentMode     = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
+  const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
 
+  /** Distinct years present across both loaded exports, ascending. */
   const dataYears = useMemo<number[]>(() => {
     const allDays = [
       ...(chatgptData ?? []).map(c => c.create_day),
@@ -48,50 +65,63 @@ export default function Home() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { loadTestData(setChatgptData, setClaudeData); }, []);
 
+  // Step 1: restore/persist the book-mode panel-swap preference.
   useEffect(() => {
     try {
       const saved = localStorage.getItem("form-on-right");
       if (saved !== null) setFormOnRight(saved === "true");
     } catch {}
   }, []);
-
   useEffect(() => {
     try { localStorage.setItem("form-on-right", String(formOnRight)); } catch {}
   }, [formOnRight]);
 
+  // Step 2: keep the selected year valid as data loads/changes, defaulting
+  // to the most recent year.
   useEffect(() => {
     if (!dataYears.length) { setSelectedYear(null); return; }
     setSelectedYear(prev => (prev !== null && dataYears.includes(prev) ? prev : dataYears[dataYears.length - 1]));
   }, [dataYears]);
 
   const hasData = chatgptData !== null || claudeData !== null;
+  const isFolded = isBookMode || isTentMode;
 
-  const isBookMode = isFoldedPortrait;
-  const isTentMode = isFoldedLandscape;
+  /** Lets HeatMapForm recognise data that arrived without going through its
+   *  own upload flow (e.g. the public/test.html sessionStorage seed helper),
+   *  so its loaded badge and compact summary stay accurate either way. */
+  const externalCounts = {
+    chatgpt: chatgptData?.length ?? null,
+    claude:  claudeData?.length  ?? null,
+  };
 
-  const activeYear   = selectedYear ?? dataYears[dataYears.length - 1] ?? null;
-  const activeViewFrom = activeYear != null ? new Date(activeYear, 0, 1)  : undefined;
-  const activeViewTo   = activeYear != null ? new Date(activeYear, 11, 31) : undefined;
+  const activeYear     = selectedYear ?? dataYears[dataYears.length - 1] ?? null;
+  const activeViewFrom  = activeYear != null ? new Date(activeYear, 0, 1)  : undefined;
+  const activeViewTo    = activeYear != null ? new Date(activeYear, 11, 31) : undefined;
 
-  const goToPrevYear = () => {
+  function goToPrevYear() {
     if (activeYear == null) return;
     const idx = dataYears.indexOf(activeYear);
     if (idx > 0) setSelectedYear(dataYears[idx - 1]);
-  };
-  const goToNextYear = () => {
+  }
+  function goToNextYear() {
     if (activeYear == null) return;
     const idx = dataYears.indexOf(activeYear);
     if (idx < dataYears.length - 1) setSelectedYear(dataYears[idx + 1]);
-  };
+  }
 
-  const useVerticalHeatmap = isTentMode ? false : isBookMode ? true : isMobile && !isLandscape;
+  const useVerticalHeatmap = getHeatmapOrientation({ isTentMode, isBookMode, isDesktopSplit }) === "vertical";
+  const layoutClass = getLayoutClassName({ hasData, isFolded, formOnRight });
 
-  const isFolded = isBookMode || isTentMode;
-  const layoutClass = [
-    hasData || isFolded ? "layout-split" : "layout-stack",
-    formOnRight && hasData ? "split-reversed" : "",
-    !hasData && isFolded ? "split-no-data" : "",
-  ].filter(Boolean).join(" ");
+  /** Shared between book mode's below-form nav and tent mode's beside-form nav. */
+  const yearNav = (
+    <YearNav
+      years={dataYears}
+      activeYear={activeYear}
+      onSelectYear={setSelectedYear}
+      onPrevYear={goToPrevYear}
+      onNextYear={goToNextYear}
+    />
+  );
 
   return (
     <div className="relative">
@@ -100,7 +130,7 @@ export default function Home() {
 
       <div className={layoutClass}>
 
-        {/* Form panel -- hidden in tent mode when data is present (tent bottom replaces it) */}
+        {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
         {(!isTentMode || !hasData) && <div className="panel-form">
           <header className="flex items-center justify-between mb-6 pt-2">
             <h1 className="text-2xl font-semibold tracking-tight">AI Chat Heatmap</h1>
@@ -108,12 +138,31 @@ export default function Home() {
               {isBookMode && hasData && (
                 <button
                   onClick={() => setFormOnRight(v => !v)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
                   title={formOnRight ? "Move panel left" : "Move panel right"}
                   aria-label={formOnRight ? "Move panel left" : "Move panel right"}
                 >
                   {formOnRight ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                 </button>
+              )}
+              {mounted && (
+                <a
+                  href="https://github.com/cr2007/chatgpt-heatmap-web"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open in GitHub"
+                  aria-label="Open in GitHub"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white shadow-sm text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
+                >
+                  <img
+                    aria-hidden
+                    src={effectiveTheme === "dark" ? "/github-mark-white.svg" : "/github-mark.svg"}
+                    alt=""
+                    width={16}
+                    height={16}
+                    style={{ width: "16px", height: "16px" }}
+                  />
+                </a>
               )}
               <ModeToggle />
             </div>
@@ -122,71 +171,31 @@ export default function Home() {
           <main
             id="main-content"
             tabIndex={-1}
-            className="outline-none rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-6 sm:p-8"
+            className="outline-none rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
           >
             <HeatMapForm
               setChatgptFile={setChatgptData}
               setClaudeFile={setClaudeData}
               timeZone={timeZone}
               setTimeZone={setTimeZone}
+              externalCounts={externalCounts}
+              compact={!isDesktopSplit && !isFolded}
             />
           </main>
 
-          {isBookMode && hasData && (
-            <div className="book-nav">
-              <div className="tent-years">
-                {dataYears.map(y => (
-                  <button
-                    key={y}
-                    className={`tent-year-btn${activeYear === y ? " tent-year-active" : ""}`}
-                    onClick={() => setSelectedYear(y)}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-              <div className="tent-arrows">
-                <button
-                  className="tent-arrow-btn"
-                  disabled={activeYear == null || dataYears.indexOf(activeYear) <= 0}
-                  onClick={goToPrevYear}
-                  aria-label="Previous year"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  className="tent-arrow-btn"
-                  disabled={activeYear == null || dataYears.indexOf(activeYear) >= dataYears.length - 1}
-                  onClick={goToNextYear}
-                  aria-label="Next year"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <footer className="mt-auto pt-8 flex gap-6 flex-wrap items-center justify-center">
-            <a
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              href="https://github.com/cr2007/chatgpt-heatmap-web"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {mounted && (
-                <img
-                  aria-hidden
-                  src={effectiveTheme === "dark" ? "/github-mark-white.svg" : "/github-mark.svg"}
-                  alt="GitHub Icon"
-                  width={18}
-                  height={18}
-                  style={{ width: "18px", height: "18px" }}
-                />
-              )}
-              Project Source Code
-            </a>
-          </footer>
+          {isBookMode && hasData && <div className="book-nav">{yearNav}</div>}
         </div>}
+
+        {/* Heatmap panel empty state: visible when folded but no data loaded */}
+        {isFolded && !hasData && (
+          <div className="panel-heatmap">
+            <div className="h-full w-full flex items-center justify-center">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
+                Upload an export to see your heatmap
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Heatmap panel */}
         {hasData && (
@@ -201,7 +210,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tent mode: bottom panel replaces form panel when landscape+folded or spanning-vertical */}
+        {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
         {isTentMode && hasData && (
           <div className="panel-form">
             <div className="tent-bottom">
@@ -211,39 +220,11 @@ export default function Home() {
                   setClaudeFile={setClaudeData}
                   timeZone={timeZone}
                   setTimeZone={setTimeZone}
+                  externalCounts={externalCounts}
+                  compact={false}
                 />
               </div>
-              <div className="tent-bottom__nav">
-                <div className="tent-years">
-                  {dataYears.map(y => (
-                    <button
-                      key={y}
-                      className={`tent-year-btn${activeYear === y ? " tent-year-active" : ""}`}
-                      onClick={() => setSelectedYear(y)}
-                    >
-                      {y}
-                    </button>
-                  ))}
-                </div>
-                <div className="tent-arrows">
-                  <button
-                    className="tent-arrow-btn"
-                    disabled={activeYear == null || dataYears.indexOf(activeYear) <= 0}
-                    onClick={goToPrevYear}
-                    aria-label="Previous year"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    className="tent-arrow-btn"
-                    disabled={activeYear == null || dataYears.indexOf(activeYear) >= dataYears.length - 1}
-                    onClick={goToNextYear}
-                    aria-label="Next year"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
+              <div className="tent-bottom__nav">{yearNav}</div>
             </div>
           </div>
         )}
