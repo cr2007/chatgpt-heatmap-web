@@ -77,6 +77,7 @@ abbr[title] { cursor: help; }
   :root {
     --radius: 0.5rem;
     --panel-border: rgb(228 228 231);
+    --accent: 139 92 246;
   }
   .dark {
     --panel-border: rgb(39 39 42);
@@ -288,9 +289,103 @@ abbr[title] { cursor: help; }
   }
 }
 
-@media (device-posture: folded) and (orientation: portrait) {
-  .layout-split .panel-form footer {
-    display: none;
+/* ── Upload form grid ──────────────────────────────────────────── */
+/* A folded panel is genuinely constrained (a phone-width half-screen, or a
+   wide-but-short bar), so it's worth packing sections side by side there.
+   A regular, non-folded browser window - whether the centered stack card
+   or the landscape-split sidebar - is typically tall and narrow-ish rather
+   than short and wide, so it makes more sense to stack sections vertically
+   and let each one use the width it has, instead of forcing a fixed-width
+   row and leaving the rest of the card's height empty. */
+
+#main-content,
+.tent-bottom__form {
+  container-type: inline-size;
+}
+
+/* Fill whatever vertical room .panel-form has (header + book-nav permitting)
+   instead of sitting at natural content height with dead space below. */
+#main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.form-grid {
+  display: grid;
+  width: 100%;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "upload"
+    "info"
+    "tz";
+}
+
+.form-grid__upload { grid-area: upload; min-width: 0; min-height: 0; }
+.form-grid__info   { grid-area: info; min-width: 0; }
+.form-grid__tz     { grid-area: tz; min-width: 0; }
+
+/* Give the dropzone real presence in the default vertical stack, where it
+   has its own row and the card has vertical space to spare. A smaller
+   floor on short/narrow screens (phones) keeps the whole form - and,
+   once data exists, the heatmap below it - from needing a long scroll;
+   the full 240px floor only kicks in once there's room to spare (roughly
+   a phone in landscape or larger). Reset to 0 in folded panels - there it
+   shares its grid area with the info/tz columns via `h-full` (book mode's
+   2-row span, tent mode's single row), and a fixed floor on top of that
+   stretch can force the panel to overflow. */
+.form-grid__upload label {
+  min-height: 140px;
+}
+
+@media (min-width: 480px) {
+  .form-grid__upload label {
+    min-height: 240px;
+  }
+}
+
+@media (device-posture: folded) {
+  .form-grid__upload label {
+    min-height: 0;
+  }
+}
+
+/* Default to the plain always-on export steps; swap to compact tap-to-expand
+   cards only inside a folded, genuinely cramped panel. */
+.form-grid__info-compact  { display: none; }
+.form-grid__info-expanded { display: flex; }
+
+@media (device-posture: folded) {
+  .form-grid {
+    /* minmax(0, 1fr), not plain 1fr: a bare 1fr track keeps an automatic
+       min size equal to its content's min-content width, so a wide badge
+       or button in one column can force the other column past its fair
+       share and off the edge of a narrow card. minmax(0, 1fr) lets both
+       columns actually shrink to fit. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "upload info"
+      "upload tz";
+  }
+
+  /* Book mode's half-screen stays compact by default; only swap back to
+     the expanded text once a folded panel is wide enough to spare it
+     (tent mode's much wider bottom bar). */
+  .form-grid__info-expanded { display: none; }
+
+  @container (min-width: 500px) {
+    .form-grid__info-compact  { display: none; }
+    .form-grid__info-expanded { display: flex; }
+  }
+
+  @container (min-width: 620px) {
+    .form-grid {
+      grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.4fr) minmax(200px, 1fr);
+      grid-template-areas: "upload info tz";
+      column-gap: 2rem;
+    }
   }
 }
 
@@ -308,6 +403,9 @@ abbr[title] { cursor: help; }
   min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .tent-bottom__nav {
@@ -342,14 +440,24 @@ abbr[title] { cursor: help; }
 }
 
 .tent-year-btn:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgb(139, 92, 246);
+  background: rgb(var(--accent) / 0.1);
+  border-color: rgb(var(--accent));
 }
 
 .tent-year-btn.tent-year-active {
-  background: rgb(139, 92, 246);
-  border-color: rgb(139, 92, 246);
+  /* rgb(var(--accent)) alone is only 4.23:1 against white text (below the
+     4.5:1 AA minimum for 14px text) - darken it slightly just for this
+     filled state rather than changing the shared accent everywhere else
+     it's used as a border/hover tint against non-white text. */
+  background: color-mix(in srgb, rgb(var(--accent)) 85%, black);
+  border-color: color-mix(in srgb, rgb(var(--accent)) 85%, black);
   color: #fff;
+}
+
+.tent-year-btn:focus-visible,
+.tent-arrow-btn:focus-visible {
+  outline: 2px solid rgb(139 92 246);
+  outline-offset: 2px;
 }
 
 .tent-arrows {
@@ -372,8 +480,8 @@ abbr[title] { cursor: help; }
 }
 
 .tent-arrow-btn:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgb(139, 92, 246);
+  background: rgb(var(--accent) / 0.1);
+  border-color: rgb(var(--accent));
 }
 
 .tent-arrow-btn:disabled {
