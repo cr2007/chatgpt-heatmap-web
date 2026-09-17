@@ -28,6 +28,7 @@ A web application to visualize your ChatGPT and Claude conversation activity as 
 - Side-by-side color-coded heatmap: green for ChatGPT, orange for Claude, gradient for days with both
 - Select your preferred time zone for accurate date mapping
 - Light/Dark mode toggle
+- Responsive layout tuned for desktop, mobile, and foldable devices (book/tent posture)
 - Modern UI built with [shadcn/ui](https://ui.shadcn.com/) and [Tailwind CSS](https://tailwindcss.com/)
 - Fully client-side: no data leaves your browser
 
@@ -48,7 +49,7 @@ The app is available at [http://localhost:3000](http://localhost:3000).
 To run the test suite:
 
 ```sh
-bun test
+bun --bun test
 ```
 
 ## Usage

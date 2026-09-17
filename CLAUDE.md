@@ -1,9 +1,17 @@
 # Project Conventions
 
 - Never use emdashes (—) or emojis anywhere — not in UI copy, code, comments, or generated strings.
-- Never run `git commit` in a shell command. Draft the commit message as text for the user to run manually (GPG signing required).
+- Commits are signed via SSH (`gpg.format=ssh`), not GPG - running `git commit` in a shell command is fine.
+- Never add `Co-Authored-By` or `Claude-Session` footers to commit messages.
 - Import lucide icons from `"lucide-react"`, never from `"lucide-react/icons"`.
-- Use `bun --bun` for all script execution (`bun --bun dev`, `bun --bun build`, `bun --bun test`). Use `bun add`/`bun remove` for package management. Never use Node, npm, or bare `bun run`.
+- Use `bun --bun` for all script execution (`bun --bun dev`, `bun --bun test`). Use `bun add`/`bun remove` for package management. Never use Node or npm. Exception: `build` collides with Bun's own built-in bundler subcommand, so `bun --bun build` runs *that* instead of the `vite build` script and fails with "Missing entrypoints" - use `bun --bun run build` (and `bun --bun run start` for `vite preview`) to force package.json script resolution.
 - Use `bunx --bun` instead of `npx` for any package runner invocation (e.g. `bunx --bun @shadscan/cli`, `bunx --bun shadcn@latest`).
 - Do not add `(horizontal-viewport-segments: N)` or `(vertical-viewport-segments: N)` media queries to CSS or JS. Foldable detection uses `device-posture: folded` with orientation conditions only (Galaxy Z Fold 5 target).
 - When the device is folded with no data loaded, use `layout-split split-no-data` (not `layout-stack`). In tent mode, add `grid-row: 2` on `.panel-form` inside the tent-mode `@media` block so the form stays below the fold.
+- All interactive elements (buttons, inputs) use `ring-2 ring-violet-500 dark:ring-violet-400` for focus-visible rings, not the default neutral ring colors.
+- The violet accent color is the CSS variable `--accent: 139 92 246` (RGB components). Reference it as `rgb(var(--accent))` or `rgb(var(--accent) / <alpha>)` in CSS. Never hardcode the hex `#8B5CF6`. For a filled state with white text (not enough contrast at 139 92 246), darken locally with `color-mix(in srgb, rgb(var(--accent)) 85%, black)` rather than changing the shared variable.
+- shadcn's semantic color tokens (`text-muted-foreground`, `border-border`, `bg-primary`, `text-foreground`, `bg-accent`/`text-accent-foreground`, `text-destructive`, etc.) are **not wired up** - `app/globals.css` only defines `--panel-border` and `--accent`, so these classes are silently inert. Use explicit Tailwind colors instead (`zinc-*` for neutral/muted text, `red-*` for errors, `green-*`/`orange-*` for ChatGPT/Claude), matching the existing `components/ui/*` files.
+- Inline SVG `<text>` elements (the calendar heatmap) should set `fontFamily="GeistSans, system-ui, sans-serif"`, not a bare `"sans-serif"`, so labels match the rest of the app's typeface.
+- Responsive layout decisions (heatmap orientation, root layout class) live in `lib/layout.ts` as pure, tested functions - extend those rather than re-deriving the logic inline in `app/page.tsx`.
+- A UI section that collapses in cramped contexts and stays expanded in spacious ones must key off real layout capability (fold state, or a `compact` prop computed from it), not raw container width - a narrow desktop-split sidebar and a narrow mobile stack can measure the same width but behave completely differently (the sidebar never hides content behind scroll; the stack does).
+- Dev-only pages/routes (e.g. `dev/test.html`, the synthetic test-data generator) must never go in `public/` - anything there ships as-is in `vite build` output. Instead, keep the source file outside `public/` and serve it via a Vite plugin's `configureServer` hook (see `vite.config.ts`), which only runs under `vite dev` and is absent from both `vite build` and `vite preview`.
