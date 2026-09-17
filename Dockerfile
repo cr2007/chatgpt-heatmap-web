@@ -14,7 +14,7 @@ RUN bun --bun run build
 # Production Build
 FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
-COPY --from=builder /app/dist/client ./
+COPY --from=builder /app/dist ./
 
 # Optional: change default port to 3000
 RUN sed -i 's/80/3000/' /etc/nginx/conf.d/default.conf

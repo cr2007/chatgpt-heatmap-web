@@ -35,22 +35,19 @@ jobs:
         with:
           bun-version: "latest"
 
-      - name: Setup @antfu/ni
-        run: bun i -g @antfu/ni
-
       - name: Setup Pages
         uses: actions/configure-pages@v6
 
       - name: Install dependencies
-        run: nci
+        run: bun install --frozen-lockfile
 
-      - name: Build with vinext
-        run: nlx vinext build
+      - name: Build
+        run: bun --bun run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./dist/client
+          path: ./dist
 
   # Deployment job
   deploy:
