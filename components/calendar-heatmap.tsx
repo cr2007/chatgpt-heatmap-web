@@ -2,12 +2,18 @@
 import React, { useId, useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
+import { shade, dayOfYear } from "@/lib/calendar-geometry";
 
+/** Cell edge length in SVG units, before panel-fit scaling. */
 const CELL = 11;
+/** Gap between adjacent cells in SVG units. */
 const GAP  = 2;
+/** Cell edge length plus its gap - the repeat distance between cells. */
 const STEP = CELL + GAP;
 
+/** Low/medium/high intensity shades for ChatGPT activity cells. */
 const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
+/** Low/medium/high intensity shades for Claude activity cells. */
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -21,15 +27,11 @@ export interface CalendarHeatmapProps {
   vertical?: boolean;
 }
 
-function shade(n: number, max: number, p: readonly [string, string, string]): string {
-  const r = n / max;
-  return r < 0.34 ? p[0] : r < 0.67 ? p[1] : p[2];
-}
-
-function doy(d: Date): number {
-  return Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 864e5);
-}
-
+/**
+ * Renders one or more years of ChatGPT/Claude activity as an inline SVG
+ * calendar grid, scaled to fill its container while preserving aspect
+ * ratio, with a hover tooltip breaking down each day's conversation titles.
+ */
 export function CalendarHeatmap({
   data, dayTitles, maxChatgpt, maxClaude, from, to, vertical = false,
 }: CalendarHeatmapProps) {
@@ -62,9 +64,16 @@ export function CalendarHeatmap({
     return () => obs.disconnect();
   }, []);
 
-  const emptyFill = isDark ? "#2a2a2a" : "#eee";
-  const textFill  = isDark ? "#888"    : "#666";
+  const emptyFill  = isDark ? "#2a2a2a" : "#eee";
+  const textFill   = isDark ? "#888"    : "#666";
+  // A faint edge on every cell keeps the palest greens (e.g. #CCFFCC) from
+  // blending into the empty-cell grey in light mode, without darkening the
+  // grey itself or touching the colour scale.
+  const cellStroke = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
 
+  // Step 1: derive the pixel geometry for the requested year range and
+  // orientation, then compute a single scale factor that fits it to the
+  // panel while preserving aspect ratio.
   const startYear = from.getFullYear();
   const endYear   = to.getFullYear();
   const numYears  = endYear - startYear + 1;
@@ -109,7 +118,8 @@ export function CalendarHeatmap({
   const renderedW = Math.round(svgW * scale) || svgW;
   const renderedH = Math.round(svgH * scale) || svgH;
 
-  // Gradient defs (mixed days only)
+  // Step 2: build a per-day linear gradient for any day with both ChatGPT
+  // and Claude activity, split at the point matching their share of the day.
   const gradDefs: React.ReactElement[] = [];
   Object.entries(data).forEach(([day, { chatgpt, claude }]) => {
     if (chatgpt <= 0 || claude <= 0 || maxChatgpt <= 0 || maxClaude <= 0) return;
@@ -132,6 +142,9 @@ export function CalendarHeatmap({
   }, []);
   const handleLeave = useCallback(() => setTip(null), []);
 
+  /** Renders one day's `<rect>`, filled solid, gradient-split (both
+   *  providers active), or the empty shade, with a hover handler only
+   *  wired up when the day actually has data. */
   function makeCell(day: string, x: number, y: number): React.ReactElement {
     const { chatgpt = 0, claude = 0 } = data[day] ?? {};
     const hasData = chatgpt + claude > 0;
@@ -143,13 +156,15 @@ export function CalendarHeatmap({
     return (
       <rect
         key={day} x={x} y={y} width={CELL} height={CELL} rx={2} fill={fill}
+        stroke={cellStroke} strokeWidth={1}
         onMouseEnter={hasData ? e => handleEnter(e, day) : undefined}
         onMouseLeave={hasData ? handleLeave : undefined}
       />
     );
   }
 
-  // SVG elements
+  // Step 3: lay out each year's labels and cells, one section per year,
+  // branching on orientation (weeks as columns vs. weeks as rows).
   const els: React.ReactElement[] = [];
 
   for (let yi = 0; yi < numYears; yi++) {
@@ -166,7 +181,7 @@ export function CalendarHeatmap({
       els.push(
         <text key={`yr${year}`}
           x={H.pad.l + H.dowW} y={yOff + H.yearH - 4}
-          fill={textFill} fontSize={12} fontWeight="600" fontFamily="sans-serif"
+          fill={textFill} fontSize={12} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
         >{year}</text>
       );
 
@@ -175,19 +190,19 @@ export function CalendarHeatmap({
         els.push(
           <text key={`dh${year}${row}`}
             x={H.pad.l + 2} y={gridY + row * STEP + CELL - 2}
-            fill={textFill} fontSize={9} fontFamily="sans-serif"
+            fill={textFill} fontSize={9} fontFamily="GeistSans, system-ui, sans-serif"
           >{lbl}</text>
         )
       );
 
       // Month labels
       for (let m = 0; m < 12; m++) {
-        const col = Math.floor((doy(new Date(year, m, 1)) + jan1wd) / 7);
+        const col = Math.floor((dayOfYear(new Date(year, m, 1)) + jan1wd) / 7);
         els.push(
           <text key={`mh${year}${m}`}
             x={H.pad.l + H.dowW + col * STEP}
             y={yOff + H.yearH + H.monthH - 4}
-            fill={textFill} fontSize={10} fontFamily="sans-serif"
+            fill={textFill} fontSize={10} fontFamily="GeistSans, system-ui, sans-serif"
           >{MONTHS[m]}</text>
         );
       }
@@ -196,7 +211,7 @@ export function CalendarHeatmap({
       const cur = new Date(year, 0, 1);
       while (cur.getFullYear() === year) {
         const day = cur.toLocaleDateString("sv-SE");
-        const col = Math.floor((doy(cur) + jan1wd) / 7);
+        const col = Math.floor((dayOfYear(cur) + jan1wd) / 7);
         const row = cur.getDay();
         els.push(makeCell(day, H.pad.l + H.dowW + col * STEP, gridY + row * STEP));
         cur.setDate(cur.getDate() + 1);
@@ -212,7 +227,7 @@ export function CalendarHeatmap({
       els.push(
         <text key={`yr${year}`}
           x={gridX} y={V.pad.t + V.yearH - 4}
-          fill={textFill} fontSize={11} fontWeight="600" fontFamily="sans-serif"
+          fill={textFill} fontSize={11} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
         >{year}</text>
       );
 
@@ -222,7 +237,7 @@ export function CalendarHeatmap({
           <text key={`dv${year}${col}`}
             x={gridX + col * STEP + CELL / 2}
             y={V.pad.t + V.yearH + V.dowH - 3}
-            fill={textFill} fontSize={8} fontFamily="sans-serif" textAnchor="middle"
+            fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="middle"
           >{lbl}</text>
         )
       );
@@ -235,12 +250,12 @@ export function CalendarHeatmap({
           const m = cur.getMonth();
           if (!seenM.has(m)) {
             seenM.add(m);
-            const weekIdx = Math.floor((doy(cur) + jan1wd) / 7);
+            const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
             els.push(
               <text key={`mv${year}${m}`}
                 x={xOff + V.monthW - 3}
                 y={gridY + weekIdx * STEP + CELL - 2}
-                fill={textFill} fontSize={8} fontFamily="sans-serif" textAnchor="end"
+                fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="end"
               >{MONTHS[m]}</text>
             );
           }
@@ -252,7 +267,7 @@ export function CalendarHeatmap({
       const cur = new Date(year, 0, 1);
       while (cur.getFullYear() === year) {
         const day     = cur.toLocaleDateString("sv-SE");
-        const weekIdx = Math.floor((doy(cur) + jan1wd) / 7);
+        const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
         const col     = cur.getDay();
         els.push(makeCell(day, gridX + col * STEP, gridY + weekIdx * STEP));
         cur.setDate(cur.getDate() + 1);
@@ -260,7 +275,8 @@ export function CalendarHeatmap({
     }
   }
 
-  // Tooltip
+  // Step 4: position the hover tooltip next to the cursor, flipping to the
+  // left edge (clamped to the viewport) when it would overflow the right.
   const tipData  = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
   const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
   const TIP_W    = 260;
