@@ -21,18 +21,26 @@ type Exports = Record<Provider, LoadedExport | null>;
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
 
-/** Loads the `sessionStorage` test-data hooks used by the CDP verification
- *  scripts (`test-chatgpt`/`test-claude`), if present. No-op otherwise. */
-function loadTestData(setExports: (e: Exports) => void) {
+/** Nothing loaded. */
+const NO_EXPORTS: Exports = { chatgpt: null, claude: null };
+
+/**
+ * Dev only: reads the exports that `dev/test.html` (or a browser check)
+ * left in `sessionStorage` as `test-chatgpt` and `test-claude`. The
+ * production build replaces `process.env.NODE_ENV`, so the bundler drops
+ * this code and the keys from the shipped bundle.
+ */
+function loadTestData(): Exports {
+  if (process.env.NODE_ENV === "production") return NO_EXPORTS;
   try {
     const read = (key: string): LoadedExport | null => {
       const json = sessionStorage.getItem(key);
       return json ? { name: "Test data", data: JSON.parse(json) } : null;
     };
-    const chatgpt = read("test-chatgpt");
-    const claude = read("test-claude");
-    if (chatgpt || claude) setExports({ chatgpt, claude });
-  } catch {}
+    return { chatgpt: read("test-chatgpt"), claude: read("test-claude") };
+  } catch {
+    return NO_EXPORTS;
+  }
 }
 
 /**
@@ -41,10 +49,7 @@ function loadTestData(setExports: (e: Exports) => void) {
  * stack / desktop split / book / tent) and the year picker.
  */
 export default function Home() {
-  const [exports, setExports] = useState<Exports>({
-    chatgpt: null,
-    claude: null,
-  });
+  const [exports, setExports] = useState<Exports>(loadTestData);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
@@ -73,10 +78,6 @@ export default function Home() {
     [exports, timeZone],
   );
   const dataYears = agg?.years ?? NO_YEARS;
-
-  useEffect(() => {
-    loadTestData(setExports);
-  }, []);
 
   // Persist the book-mode panel-swap preference.
   useEffect(() => {
