@@ -104,6 +104,12 @@
 .lv-0 {
   fill: var(--cell-empty);
 }
+/* Outside the export: an outline, so it does not read as a day with no prompts. */
+.lv-out {
+  fill: transparent;
+  stroke: var(--cell-empty);
+  stroke-width: 1.5px;
+}
 .lv-g1 {
   fill: var(--g1);
 }
@@ -315,13 +321,16 @@
     scrollbar-width: thin;
   }
 
+  /* The figures, the year tabs and the calendar scroll here; the
+     calendar fits the width, never the height (see fitScale). */
   .layout-split .panel-heatmap {
     display: flex;
     justify-content: center;
-    align-items: stretch;
+    align-items: flex-start;
     padding: 2rem;
-    overflow: hidden;
+    overflow-y: auto;
     max-width: none;
+    scrollbar-width: thin;
   }
 
   .layout-split.split-reversed .panel-form {

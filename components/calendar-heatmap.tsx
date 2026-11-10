@@ -38,13 +38,18 @@ export interface CalendarHeatmapProps {
   dayTitles: Record<string, DayTitleBreakdown>;
   /** Shade level edges per provider. */
   edges: Record<Provider, Edges>;
+  /** First and last day of the export (`YYYY-MM-DD`); days outside are drawn hollow. */
+  firstDay?: string;
+  lastDay?: string;
   from: Date;
   to: Date;
   vertical?: boolean;
   /** Counts time zone changes; each new value runs the date-order sweep. 0 means none. */
   sweep?: number;
-  /** The panel has a fixed height (split and fold layouts), so the calendar fits it. */
+  /** The panel has a fixed height (the fold layouts), so the calendar fits it. */
   fixedHeight?: boolean;
+  /** Largest scale where the page scrolls (see `fitScale`). */
+  maxScale?: number;
 }
 
 /**
@@ -63,11 +68,14 @@ export function CalendarHeatmap({
   data,
   dayTitles,
   edges,
+  firstDay,
+  lastDay,
   from,
   to,
   vertical = false,
   sweep = 0,
   fixedHeight = false,
+  maxScale = 1,
 }: CalendarHeatmapProps) {
   const uid = useId().replace(/:/g, "");
   const [outerRef, panel] = useElementSize<HTMLDivElement>();
@@ -86,7 +94,7 @@ export function CalendarHeatmap({
     () => layoutCalendar(startYear, endYear, vertical),
     [startYear, endYear, vertical],
   );
-  const scale = fitScale(panel, layout, fixedHeight);
+  const scale = fitScale(panel, layout, fixedHeight, maxScale);
   const renderedW = Math.round(layout.width * scale) || layout.width;
   const renderedH = Math.round(layout.height * scale) || layout.height;
 
@@ -129,12 +137,19 @@ export function CalendarHeatmap({
     hideTimer.current = setTimeout(() => setTip(null), HIDE_DELAY);
   }, []);
 
-  /** The shade class of a day: one provider's level, or none for a day
-   *  with both (its gradient fill sets the colors) or with no prompts. */
-  function shadeClass(chatgpt: number, claude: number): string | undefined {
+  /** The shade class of a day: one provider's level, none for a day with
+   *  both (its gradient fill sets the colors), empty, or hollow when the day
+   *  is outside the export, so it does not read as a day with no prompts. */
+  function shadeClass(
+    day: string,
+    chatgpt: number,
+    claude: number,
+  ): string | undefined {
     if (chatgpt > 0 && claude > 0) return undefined;
     if (chatgpt > 0) return `lv-${GPT}${level(chatgpt, edges.chatgpt)}`;
     if (claude > 0) return `lv-${CLAUDE}${level(claude, edges.claude)}`;
+    if ((firstDay && day < firstDay) || (lastDay && day > lastDay))
+      return "lv-out";
     return "lv-0";
   }
 
@@ -189,7 +204,7 @@ export function CalendarHeatmap({
                   chatgpt > 0 && claude > 0 ? `url(#${uid}g${day})` : undefined
                 }
                 strokeWidth={1}
-                className={cn(cellClass, shadeClass(chatgpt, claude))}
+                className={cn(cellClass, shadeClass(day, chatgpt, claude))}
                 style={{ "--t": t.toFixed(3) } as React.CSSProperties}
                 onMouseEnter={hasData ? (e) => handleEnter(e, day) : undefined}
                 onMouseLeave={hasData ? handleLeave : undefined}

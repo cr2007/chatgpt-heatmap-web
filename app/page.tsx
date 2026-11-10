@@ -3,6 +3,10 @@ import { HeatMapForm } from "@/components/heatMapForm";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import { SiteLinks } from "@/components/site-links";
 import { Welcome } from "@/components/welcome";
+import { Summary } from "@/components/summary";
+import { YearTabs, type YearView } from "@/components/year-tabs";
+import { HeatLegend } from "@/components/heat-legend";
+import { summarize } from "@/lib/stats";
 import { YearNav } from "@/components/year-nav";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -21,6 +25,12 @@ import { loadTestData, type Exports } from "@/app/dev-data";
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
+
+/** The view in the address (#all or #2025), so a view can be shared and kept. */
+function readView(): YearView | null {
+  const h = location.hash.slice(1);
+  return h === "all" ? "all" : /^\d{4}$/.test(h) ? Number(h) : null;
+}
 
 /**
  * Root page: owns the loaded exports, an upload in progress, the time zone
@@ -56,6 +66,8 @@ export default function Home() {
   });
   /** Year the user picked in book/tent mode; null means the latest year. */
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  /** The view picked with the year tabs; null means the default for the layout. */
+  const [picked, setPicked] = useState<YearView | null>(readView);
 
   const isBookMode = useMediaQuery(FOLDED_PORTRAIT_QUERY);
   const isTentMode = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
@@ -71,6 +83,11 @@ export default function Home() {
     );
   }, [exports, streaming, timeZone]);
   const dataYears = agg?.years ?? NO_YEARS;
+  const allStats = useMemo(() => agg && summarize(agg.data), [agg]);
+  const yearTotals = useMemo(
+    () => dataYears.map((y) => (agg && summarize(agg.data, y)?.total) || 0),
+    [agg, dataYears],
+  );
 
   // Persist the book-mode panel-swap preference.
   useEffect(() => {
@@ -130,6 +147,29 @@ export default function Home() {
     if (activeYear == null) return;
     const next = dataYears[dataYears.indexOf(activeYear) + delta];
     if (next !== undefined) setSelectedYear(next);
+  }
+
+  // Year tabs (outside the fold layouts): the desktop split shows every
+  // year by default; the phone column shows the latest year, which reads
+  // better than narrow year columns side by side.
+  const view: YearView =
+    picked === "all"
+      ? dataYears.length > 1
+        ? "all"
+        : (dataYears[0] ?? "all")
+      : picked !== null && dataYears.includes(picked)
+        ? picked
+        : isDesktopSplit && dataYears.length > 1
+          ? "all"
+          : (dataYears[dataYears.length - 1] ?? "all");
+  const viewStats = useMemo(
+    () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
+    [agg, allStats, view],
+  );
+  /** Picks a view and keeps it in the address. */
+  function pickView(next: YearView) {
+    setPicked(next);
+    history.replaceState(null, "", `#${next}`);
   }
 
   const useVerticalHeatmap =
@@ -227,17 +267,56 @@ export default function Home() {
               className="panel-heatmap animate-fade-slide-up"
               aria-busy={streaming !== null}
             >
-              {agg ? (
+              {agg && isFolded ? (
                 <CalendarHeatmap
                   data={agg.data}
                   dayTitles={agg.dayTitles}
                   edges={agg.edges}
-                  from={(isFolded && activeViewFrom) || agg.from}
-                  to={(isFolded && activeViewTo) || agg.to}
+                  from={activeViewFrom || agg.from}
+                  to={activeViewTo || agg.to}
+                  firstDay={allStats?.span.from}
+                  lastDay={allStats?.span.to}
                   vertical={useVerticalHeatmap}
-                  fixedHeight={isDesktopSplit || isFolded}
+                  fixedHeight
                   sweep={sweep}
                 />
+              ) : agg && viewStats && allStats ? (
+                <div className="mx-auto flex w-full max-w-[60rem] flex-col gap-5">
+                  <Summary
+                    stats={viewStats}
+                    year={view === "all" ? null : view}
+                    timeZone={timeZone}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <YearTabs
+                      years={dataYears}
+                      totals={yearTotals}
+                      view={view}
+                      onView={pickView}
+                    />
+                    <HeatLegend
+                      edges={agg.edges}
+                      providers={[
+                        ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
+                        ...(allStats.claude ? (["claude"] as const) : []),
+                      ]}
+                    />
+                  </div>
+                  <CalendarHeatmap
+                    data={agg.data}
+                    dayTitles={agg.dayTitles}
+                    edges={agg.edges}
+                    from={view === "all" ? agg.from : new Date(view, 0, 1)}
+                    to={view === "all" ? agg.to : new Date(view, 11, 31)}
+                    firstDay={allStats.span.from}
+                    lastDay={allStats.span.to}
+                    vertical={useVerticalHeatmap}
+                    maxScale={
+                      useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3
+                    }
+                    sweep={sweep}
+                  />
+                </div>
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
                   <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">

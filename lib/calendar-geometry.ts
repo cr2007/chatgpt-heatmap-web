@@ -231,12 +231,14 @@ export function fitScale(
   panel: { width: number; height: number },
   layout: { width: number; height: number },
   fixedHeight: boolean,
+  /** Largest scale where the page scrolls; above 1 lets one narrow year grow. */
+  maxScale = 1,
 ): number {
   if (!panel.width) return 1;
   const byHeight = fixedHeight
     ? panel.height
       ? panel.height / layout.height
       : Infinity
-    : 1;
+    : maxScale;
   return Math.min(panel.width / layout.width, byHeight);
 }

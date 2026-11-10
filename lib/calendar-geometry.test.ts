@@ -96,6 +96,13 @@ describe("fitScale", () => {
     expect(fitScale({ width: 600, height: 372.5 }, layout, true)).toBe(0.5);
   });
 
+  it("lets one year grow up to maxScale where the page scrolls", () => {
+    expect(fitScale({ width: 342, height: 0 }, layout, false, 1.6)).toBe(1.6);
+    expect(fitScale({ width: 150, height: 0 }, layout, false, 1.6)).toBe(
+      150 / 131,
+    );
+  });
+
   it("is 1 before the panel is measured", () => {
     expect(fitScale({ width: 0, height: 0 }, layout, false)).toBe(1);
   });
