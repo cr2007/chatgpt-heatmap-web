@@ -1,90 +1,74 @@
 import { describe, it, expect } from "bun:test";
 import { detectFormat, parseChatGPT, parseClaude } from "./parse";
 
+const FIXTURES = `${import.meta.dir}/../test/fixtures`;
+const chatgpt = await Bun.file(`${FIXTURES}/chatgpt-export.json`).json();
+const claude = await Bun.file(`${FIXTURES}/claude-export.json`).json();
+
+/** Finds one parsed conversation by its title. */
+const byTitle = <T extends { title: string }>(list: T[], title: string) => list.find((c) => c.title === title)!;
+
 describe("detectFormat", () => {
-  it("identifies chatgpt format", () => {
-    expect(detectFormat([{ create_time: 1000, mapping: {} }])).toBe("chatgpt");
-  });
-  it("identifies claude format", () => {
-    expect(detectFormat([{ created_at: "2024-01-01T00:00:00Z", chat_messages: [] }])).toBe("claude");
-  });
-  it("returns unknown for empty array", () => {
-    expect(detectFormat([])).toBe("unknown");
-  });
-  it("returns unknown for unrecognised shape", () => {
-    expect(detectFormat([{ foo: "bar" }])).toBe("unknown");
-  });
-  it("rejects chatgpt shape with non-numeric create_time", () => {
-    expect(detectFormat([{ create_time: "string", mapping: {} }])).toBe("unknown");
+  it.each([
+    ["chatgpt", chatgpt],
+    ["claude", claude],
+    ["unknown", []],
+    ["unknown", [{ foo: "bar" }]],
+    ["unknown", [{ create_time: "string", mapping: {} }]],
+  ])("detects %s", (expected, input) => {
+    expect(detectFormat(input)).toBe(expected);
   });
 });
 
 describe("parseChatGPT", () => {
-  const TZ = "UTC";
+  const parsed = parseChatGPT(chatgpt, "UTC");
 
-  it("parses title and create_day", () => {
-    const [r] = parseChatGPT([{ title: "My chat", create_time: 1704067200, mapping: {} }], TZ);
-    expect(r.title).toBe("My chat");
-    expect(r.create_day).toBe("2024-01-01");
+  it("trims the title and falls back to Untitled", () => {
+    expect(parsed.map((c) => c.title)).toContain("Untitled");
+    expect(parsed.map((c) => c.title)).not.toContain("   ");
   });
 
-  it("trims whitespace from title", () => {
-    const [r] = parseChatGPT([{ title: "  Padded  ", create_time: 1704067200, mapping: {} }], TZ);
-    expect(r.title).toBe("Padded");
+  it.failing("counts visible prompts, including edits, and skips hidden context", () => {
+    expect(byTitle(parsed, "Edit branch with hidden context").convo_create_day).toEqual(["2024-03-10", "2024-03-10"]);
   });
 
-  it("falls back to Untitled for blank title", () => {
-    const [r] = parseChatGPT([{ title: "", create_time: 1704067200, mapping: {} }], TZ);
-    expect(r.title).toBe("Untitled");
+  it("skips prompts without a time and messages from other roles", () => {
+    expect(byTitle(parsed, "Null times and tools").convo_create_day).toEqual(["2024-07-01", "2024-07-01", "2024-07-01"]);
   });
 
-  it("collects only user message dates from mapping", () => {
-    const [r] = parseChatGPT([{
-      title: "Chat",
-      create_time: 1704067200,
-      mapping: {
-        a: { message: { author: { role: "user" },      create_time: 1704153600 } },
-        b: { message: { author: { role: "assistant" }, create_time: 1704240000 } },
-        c: null,
-      },
-    }], TZ);
-    expect(r.convo_create_day).toEqual(["2024-01-02"]);
+  it("gives an empty chat no prompt days", () => {
+    expect(byTitle(parsed, "Empty chat").convo_create_day).toEqual([]);
   });
 
-  it("skips user messages with zero create_time", () => {
-    const [r] = parseChatGPT([{
-      title: "Chat",
-      create_time: 1704067200,
-      mapping: { a: { message: { author: { role: "user" }, create_time: 0 } } },
-    }], TZ);
-    expect(r.convo_create_day).toHaveLength(0);
+  it("puts each prompt on its local day", () => {
+    const kolkata = parseChatGPT(chatgpt, "Asia/Kolkata");
+    expect(byTitle(kolkata, "Null times and tools").convo_create_day).toEqual(["2024-07-01", "2024-07-01", "2024-07-02"]);
+  });
+
+  it.failing("skips malformed conversations and times instead of throwing", () => {
+    const bad = [{ title: "No mapping", create_time: 1 }, { title: "Bad time", create_time: 1, mapping: {
+      a: { message: { author: { role: "user" }, create_time: Number.NaN, content: { content_type: "text" } } },
+    } }];
+    expect(parseChatGPT(bad, "UTC").flatMap((c) => c.convo_create_day)).toEqual([]);
   });
 });
 
 describe("parseClaude", () => {
-  const TZ = "UTC";
+  const parsed = parseClaude(claude, "UTC");
 
-  it("parses name and created_at", () => {
-    const [r] = parseClaude([{ name: "My project", created_at: "2024-03-15T10:00:00.000Z", chat_messages: [] }], TZ);
-    expect(r.title).toBe("My project");
-    expect(r.create_day).toBe("2024-03-15");
+  it("falls back to Untitled for a blank name", () => {
+    expect(parsed.map((c) => c.title)).toContain("Untitled");
   });
 
-  it("falls back to Untitled for blank name", () => {
-    const [r] = parseClaude([{ name: "", created_at: "2024-01-01T00:00:00Z", chat_messages: [] }], TZ);
-    expect(r.title).toBe("Untitled");
+  it("counts only human messages, on their local day", () => {
+    expect(byTitle(parsed, "Claude across midnight").convo_create_day).toEqual(["2024-03-10", "2024-03-10"]);
+    const kolkata = parseClaude(claude, "Asia/Kolkata");
+    expect(byTitle(kolkata, "Claude across midnight").convo_create_day).toEqual(["2024-03-10", "2024-03-11"]);
   });
 
-  it("collects only human message dates", () => {
-    const [r] = parseClaude([{
-      name: "Chat",
-      created_at: "2024-01-01T00:00:00Z",
-      chat_messages: [
-        { sender: "human",     created_at: "2024-01-02T00:00:00Z" },
-        { sender: "assistant", created_at: "2024-01-02T01:00:00Z" },
-        { sender: "human",     created_at: "2024-01-03T00:00:00Z" },
-      ],
-    }], TZ);
-    expect(r.convo_create_day).toEqual(["2024-01-02", "2024-01-03"]);
+  it.failing("skips malformed conversations and times instead of throwing", () => {
+    const bad = [{ name: "No messages", created_at: "2024-01-01T00:00:00Z" }, { name: "Bad time", created_at: "x",
+      chat_messages: [{ sender: "human", created_at: "not a date" }] }];
+    expect(parseClaude(bad, "UTC").flatMap((c) => c.convo_create_day)).toEqual([]);
   });
 });

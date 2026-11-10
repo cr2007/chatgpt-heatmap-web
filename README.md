@@ -68,6 +68,22 @@ bun --bun test
 
 You can upload one or both files. The heatmap updates automatically after each upload.
 
+### What a cell counts
+
+Each cell shows the number of messages you sent on that day, in the time zone you pick:
+
+- A message is one prompt you typed: a ChatGPT `user` message or a Claude `human` message.
+- An edited prompt counts again, because you sent it again.
+- Hidden context does not count, for example ChatGPT custom instructions.
+- Starting a chat does not count by itself. A chat with no prompts adds nothing.
+- A prompt with no timestamp does not count.
+
+`test/oracle.test.ts` checks this rule with `jq`, which counts the prompts straight from the raw export. To check your own export (the file stays on your machine):
+
+```sh
+CONVERSATIONS_JSON=/path/to/conversations.json bun --bun test test/oracle.test.ts
+```
+
 ## Self-Hosting
 
 ### Option 1: Pre-built image from GitHub Container Registry

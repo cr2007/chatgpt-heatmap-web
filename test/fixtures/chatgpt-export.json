@@ -1,0 +1,652 @@
+[
+  {
+    "title": "Edit branch with hidden context",
+    "create_time": 1710041280,
+    "update_time": 1710041880,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "sys"
+        ]
+      },
+      "sys": {
+        "id": "sys",
+        "message": {
+          "id": "sys",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "ctx"
+        ]
+      },
+      "ctx": {
+        "id": "ctx",
+        "message": {
+          "id": "ctx",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041340,
+          "update_time": null,
+          "content": {
+            "content_type": "user_editable_context",
+            "parts": [
+              "custom instructions"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all"
+        },
+        "parent": "sys",
+        "children": [
+          "u1",
+          "u1b"
+        ]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041400,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "first try"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "ctx",
+        "children": [
+          "a1"
+        ]
+      },
+      "a1": {
+        "id": "a1",
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041420,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u1",
+        "children": []
+      },
+      "u1b": {
+        "id": "u1b",
+        "message": {
+          "id": "u1b",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041700,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "edited prompt"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "ctx",
+        "children": [
+          "a1b"
+        ]
+      },
+      "a1b": {
+        "id": "a1b",
+        "message": {
+          "id": "a1b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041720,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u1b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "a1b",
+    "conversation_id": "fixture-edit-branch-with-hidden-context",
+    "is_archived": false
+  },
+  {
+    "title": "Null times and tools",
+    "create_time": 1719835200,
+    "update_time": 1719835800,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "u0"
+        ]
+      },
+      "u0": {
+        "id": "u0",
+        "message": {
+          "id": "u0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "no timestamp"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "u1"
+        ]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719835200,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "noon"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u0",
+        "children": [
+          "tool"
+        ]
+      },
+      "tool": {
+        "id": "tool",
+        "message": {
+          "id": "tool",
+          "author": {
+            "role": "tool",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719835210,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u1",
+        "children": [
+          "a1"
+        ]
+      },
+      "a1": {
+        "id": "a1",
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719835230,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "tool",
+        "children": [
+          "u2"
+        ]
+      },
+      "u2": {
+        "id": "u2",
+        "message": {
+          "id": "u2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719856800,
+          "update_time": null,
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              "with image"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "a1",
+        "children": [
+          "a2"
+        ]
+      },
+      "a2": {
+        "id": "a2",
+        "message": {
+          "id": "a2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719856830,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u2",
+        "children": [
+          "u3"
+        ]
+      },
+      "u3": {
+        "id": "u3",
+        "message": {
+          "id": "u3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719860400,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "after Kolkata midnight"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "a2",
+        "children": [
+          "a3"
+        ]
+      },
+      "a3": {
+        "id": "a3",
+        "message": {
+          "id": "a3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719860430,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u3",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "a3",
+    "conversation_id": "fixture-null-times-and-tools",
+    "is_archived": false
+  },
+  {
+    "title": "Empty chat",
+    "create_time": 1723712400,
+    "update_time": 1723713000,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "sys"
+        ]
+      },
+      "sys": {
+        "id": "sys",
+        "message": {
+          "id": "sys",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "sys",
+    "conversation_id": "fixture-empty-chat",
+    "is_archived": false
+  },
+  {
+    "title": "Across the new year",
+    "create_time": 1735675140,
+    "update_time": 1735675740,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "u1"
+        ]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1735675200,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "last day"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "a1"
+        ]
+      },
+      "a1": {
+        "id": "a1",
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1735675230,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u1",
+        "children": [
+          "u2"
+        ]
+      },
+      "u2": {
+        "id": "u2",
+        "message": {
+          "id": "u2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1735693200,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "first day"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "a1",
+        "children": [
+          "a2"
+        ]
+      },
+      "a2": {
+        "id": "a2",
+        "message": {
+          "id": "a2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1735693230,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "u2",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "a2",
+    "conversation_id": "fixture-across-the-new-year",
+    "is_archived": false
+  },
+  {
+    "title": "   ",
+    "create_time": 1719820800,
+    "update_time": 1719821400,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "u1"
+        ]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719820800,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "blank title"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "u1",
+    "conversation_id": "fixture--",
+    "is_archived": false
+  }
+]
