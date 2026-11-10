@@ -104,8 +104,12 @@ function ChatList({ chats }: { chats: ChatCount[] }) {
   return (
     <ul className="mt-1 space-y-0.5">
       {chats.slice(0, MAX_ROWS).map((chat, i) => (
-        <li key={i} className="flex justify-between gap-3 text-xs">
-          <span className="truncate text-zinc-600 dark:text-zinc-300">
+        <li key={i} className="flex items-start justify-between gap-3 text-xs">
+          {/* dir="auto": an Arabic or Hebrew title reads right to left. */}
+          <span
+            dir="auto"
+            className="line-clamp-2 min-w-0 wrap-anywhere text-zinc-600 dark:text-zinc-300"
+          >
             {chat.title}
           </span>
           <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
