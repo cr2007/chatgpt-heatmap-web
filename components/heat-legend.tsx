@@ -1,12 +1,23 @@
 import type { Edges } from "@/lib/calendar-geometry";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
+import { count, plural } from "@/lib/utils";
 
-/** "1 to 3 prompts" for each of the 4 levels of a provider. */
-function ranges([a, b, c]: Edges): string[] {
+/** "1 to 3 prompts" for each of the 4 levels of a provider; a level that no
+ *  day can have (equal edges) says so. */
+export function ranges([a, b, c]: Edges): string[] {
   const span = (lo: number, hi: number) =>
-    lo >= hi ? `${hi} prompts` : `${lo} to ${hi} prompts`;
-  return [span(1, a), span(a + 1, b), span(b + 1, c), `${c + 1} or more`];
+    lo > hi
+      ? "no days"
+      : lo === hi
+        ? plural(hi, "prompt")
+        : `${count(lo)} to ${plural(hi, "prompt")}`;
+  return [
+    span(1, a),
+    span(a + 1, b),
+    span(b + 1, c),
+    `${count(c + 1)} or more`,
+  ];
 }
 
 /** A small square in the calendar's own shade classes. */
