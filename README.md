@@ -12,8 +12,6 @@
     <br>
     <!-- TypeScript -->
     <img alt="TypeScript" title="TypeScript" src="https://img.shields.io/badge/TypeScript-informational?style=flat&logo=typescript&logoColor=white&color=3178C6">
-    <!-- Shadcn/ui -->
-    <img alt="Shadcn UI Library" title="Component Library" src="https://img.shields.io/badge/shadcn/ui-informational?style=flat&logo=shadcn/ui&logoColor=white&color=000000">
     <!-- Bun -->
     <img alt="Bun" title="Fast JavaScript Runtime" src="https://img.shields.io/badge/Bun-informational?style=flat&logo=bun&logoColor=white&color=000000">
 </div>
@@ -25,14 +23,14 @@ A web application to visualize your ChatGPT and Claude conversation activity as 
 - Upload ChatGPT and/or Claude conversation exports (`conversations.json`)
 - Side-by-side color-coded heatmap: green for ChatGPT, orange for Claude, gradient for days with both
 - Select your preferred time zone for accurate date mapping
-- Light/Dark mode toggle
+- Light and dark theme: follows your computer until you flip it with the theme button or the D key
 - Responsive layout tuned for desktop, mobile, and foldable devices (book/tent posture)
-- Modern UI built with [shadcn/ui](https://ui.shadcn.com/) and [Tailwind CSS](https://tailwindcss.com/)
-- Fully client-side: no data leaves your browser
+- Built with React and [Tailwind CSS](https://tailwindcss.com/), with no UI component library
+- Fully client-side: no data leaves your browser. The built page has a Content-Security-Policy that blocks every network request from the page.
 
 ## Getting Started
 
-**Prerequisites:** [Bun](https://bun.sh/)
+**Prerequisites:** [Bun](https://bun.sh/) 1.4.4 (the version in `packageManager` in `package.json`)
 
 ```sh
 git clone https://github.com/cr2007/chatgpt-heatmap-web.git
@@ -55,6 +53,7 @@ bun check                # Type check
 bun fmt --check          # Format check (bun fmt to fix)
 bun audit --prod         # Vulnerabilities in runtime dependencies
 bun --bun run build      # Production build into dist/
+bun run size             # Gzip size budget for dist/ (after the build)
 ```
 
 ## Usage
@@ -108,3 +107,5 @@ docker run -d -p 3000:3000 chatgpt-heatmap
 ```
 
 The application is available at [http://localhost:3000](http://localhost:3000).
+
+The image is about 2 MB: BusyBox httpd serves the built files, with gzip, as a non-root user. It needs no writable files, so `docker run --read-only` works.
