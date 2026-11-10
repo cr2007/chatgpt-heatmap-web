@@ -15,7 +15,7 @@ describe("detectFormat", () => {
     ["unknown", []],
     ["unknown", [{ foo: "bar" }]],
     ["unknown", [{ create_time: "string", mapping: {} }]],
-  ])("detects %s", (expected, input) => {
+  ] as [ReturnType<typeof detectFormat>, unknown[]][])("detects %s", (expected, input) => {
     expect(detectFormat(input)).toBe(expected);
   });
 });
