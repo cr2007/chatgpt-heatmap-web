@@ -167,7 +167,7 @@ export default function Home() {
                 {isBookMode && hasData && (
                   <button
                     onClick={() => setFormOnRight((v) => !v)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
                     title={formOnRight ? "Move panel left" : "Move panel right"}
                     aria-label={
                       formOnRight ? "Move panel left" : "Move panel right"
@@ -186,7 +186,7 @@ export default function Home() {
                   rel="noopener noreferrer"
                   title="Open in GitHub"
                   aria-label="Open in GitHub"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white shadow-sm text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white shadow-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
                 >
                   {/* The theme class on <html> picks the mark, so the first render is right. */}
                   <img
@@ -213,7 +213,7 @@ export default function Home() {
             <main
               id="main-content"
               tabIndex={-1}
-              className="outline-none rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
+              className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
             >
               <HeatMapForm
                 {...formProps}

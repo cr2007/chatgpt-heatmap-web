@@ -29,7 +29,7 @@ export class ErrorBoundary extends React.Component<
               {this.state.message}
             </p>
             <button
-              className="rounded text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400"
+              className="rounded text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400"
               onClick={this.reset}
             >
               Try again

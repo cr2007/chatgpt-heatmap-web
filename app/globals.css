@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+
+/* Scan only the app source, not fixtures, docs or dev pages. */
+@source "../app";
+@source "../components";
+@source "../src";
+
+/* next-themes puts the "dark" class on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Archivo (Omnibus-Type, OFL, see fonts/OFL.txt): variable 100-900, Latin subset. */
 @font-face {
@@ -10,50 +17,68 @@
   font-display: swap;
 }
 
-body {
-  font-family: "Archivo", system-ui, sans-serif;
-  /* Equal-width digits, so dates and counts line up in labels and tooltips. */
-  font-variant-numeric: tabular-nums;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  :root {
+    --panel-border: rgb(228 228 231);
+    --accent: 139 92 246;
+  }
+  .dark {
+    --panel-border: rgb(39 39 42);
+  }
 
-abbr[title] {
-  cursor: help;
-}
-
-::selection {
-  background-color: rgba(147, 130, 255, 0.25);
-  color: inherit;
-}
-
-.dark ::selection {
-  background-color: rgba(147, 130, 255, 0.35);
-  color: inherit;
-}
-
-@media (prefers-reduced-motion: reduce) {
+  /* Tailwind v4 borders default to currentcolor; keep the v3 grey. */
   *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  body {
+    font-family: "Archivo", system-ui, sans-serif;
+    /* Equal-width digits, so dates and counts line up in labels and tooltips. */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tailwind v4 gives buttons the default cursor; keep the v3 pointer. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  abbr[title] {
+    cursor: help;
+  }
+
+  ::selection {
+    background-color: rgba(147, 130, 255, 0.25);
+    color: inherit;
+  }
+  .dark ::selection {
+    background-color: rgba(147, 130, 255, 0.35);
+    color: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+@utility animate-shake {
+  animation: shake 0.35s ease;
+}
 
-  .animate-shake {
-    animation: shake 0.35s ease;
-  }
-
-  .animate-fade-slide-up {
-    animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  }
+@utility animate-fade-slide-up {
+  animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 @keyframes shake {
@@ -79,17 +104,6 @@ abbr[title] {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@layer base {
-  :root {
-    --radius: 0.5rem;
-    --panel-border: rgb(228 228 231);
-    --accent: 139 92 246;
-  }
-  .dark {
-    --panel-border: rgb(39 39 42);
   }
 }
 

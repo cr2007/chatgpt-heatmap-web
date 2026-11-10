@@ -236,11 +236,11 @@ export function HeatMapForm({
                     <span className="flex items-center gap-2 min-w-0">
                       <span
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                          "h-1.5 w-1.5 rounded-full shrink-0",
                           p.dot,
                         )}
                       />
-                      <span className={cn("font-medium flex-shrink-0", p.text)}>
+                      <span className={cn("font-medium shrink-0", p.text)}>
                         {p.label}
                       </span>
                       <span className="text-zinc-600 dark:text-zinc-400 truncate">
@@ -249,7 +249,7 @@ export function HeatMapForm({
                     </span>
                     <button
                       onClick={() => onClear(p.key)}
-                      className="ml-2 flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                      className="ml-2 shrink-0 h-6 w-6 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-700 transition-colors"
                       aria-label={`Remove ${p.label} file`}
                     >
                       <X size={14} />
@@ -286,16 +286,13 @@ export function HeatMapForm({
                 >
                   <span className="flex items-center gap-2">
                     <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                        p.dot,
-                      )}
+                      className={cn("h-1.5 w-1.5 rounded-full shrink-0", p.dot)}
                     />
                     {p.label}
                   </span>
                   <ChevronDown
                     aria-hidden="true"
-                    className="h-3.5 w-3.5 flex-shrink-0 transition-transform group-open:rotate-180"
+                    className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180"
                   />
                 </summary>
                 <p className="mt-1.5 text-zinc-600 dark:text-zinc-400">
@@ -320,10 +317,7 @@ export function HeatMapForm({
                   className={cn("flex items-center gap-2 font-medium", p.text)}
                 >
                   <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                      p.dot,
-                    )}
+                    className={cn("h-1.5 w-1.5 rounded-full shrink-0", p.dot)}
                   />
                   {p.label}
                 </p>
@@ -357,7 +351,7 @@ export function HeatMapForm({
                 </span>
                 <ChevronsUpDown
                   aria-hidden="true"
-                  className="opacity-50 ml-1 flex-shrink-0"
+                  className="opacity-50 ml-1 shrink-0"
                 />
               </Button>
             </PopoverTrigger>
@@ -422,12 +416,12 @@ export function HeatMapForm({
               ),
           )}
         </div>
-        <span className="flex-shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+        <span className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
           Manage
         </span>
         <ChevronDown
           aria-hidden="true"
-          className="h-4 w-4 flex-shrink-0 text-zinc-500 transition-transform group-open/collapse:rotate-180 dark:text-zinc-400"
+          className="h-4 w-4 shrink-0 text-zinc-500 transition-transform group-open/collapse:rotate-180 dark:text-zinc-400"
         />
       </summary>
       <div className="mt-3">{renderFormGrid("jsonFile-collapsed")}</div>
