@@ -201,6 +201,48 @@
   }
 }
 
+/* Drop zone (components/drop-zone.tsx). While files are over the zone, a
+   soft accent well follows the pointer (--px, --py) and the content leans
+   toward it (--lx, --ly, at most 6 px). On drop the well collapses into the
+   drop point. Only opacity, scale and translate move. */
+.drop-well {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--px, 50%) var(--py, 50%),
+    rgb(var(--accent) / 0.16),
+    transparent 60%
+  );
+  transform-origin: var(--px, 50%) var(--py, 50%);
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-drag="over"] > .drop-well {
+  opacity: 1;
+}
+[data-drag="absorb"] > .drop-well {
+  opacity: 1;
+  animation: well-absorb 220ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@keyframes well-absorb {
+  to {
+    opacity: 0;
+    scale: 0.2;
+  }
+}
+.drop-content {
+  transition: translate 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-drag="over"] > .drop-content {
+  translate: var(--lx, 0) var(--ly, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-drag] > .drop-content {
+    translate: none;
+  }
+}
+
 @utility animate-shake {
   animation: shake 0.35s ease;
 }

@@ -10,8 +10,10 @@
 /** Gzip budgets in bytes, a little above the sizes on 2026-11-10 (JS 80.4 kB,
  *  CSS 8.6 kB). Raised on purpose since: CSS to 10.5 kB for the welcome
  *  screen; JS to 88 kB for the figures and year tabs (84.6 kB) plus the
- *  planned keyboard day details and zone search (about 3 kB). */
-const BUDGET = { js: 88_000, css: 10_500 } as const;
+ *  planned keyboard day details and zone search (about 3 kB); JS to 90 kB
+ *  and CSS to 11 kB for the drop zone motion and drag guard (88.0 and
+ *  10.6 kB). */
+const BUDGET = { js: 90_000, css: 11_000 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

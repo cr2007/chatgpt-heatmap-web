@@ -1,10 +1,23 @@
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { LoaderCircle, Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
+import { getFileDrag, subscribeFileDrag } from "@/lib/file-drag";
+
+/** How far (px) the content leans toward the dragged files. */
+const LEAN = 6;
+/** Length (ms) of the collapse into the drop point (app/globals.css). */
+const ABSORB = 220;
 
 /**
  * The drop target and file picker, with a spinner and a progress line while
  * reading. `hero` is the large form on the welcome screen, with a button.
+ *
+ * Step 1: Files over the page: the zone says it is ready and how many files
+ *         there are (lib/file-drag.ts).
+ * Step 2: Files over the zone: a soft accent well follows the pointer and
+ *         the content leans toward it. The pointer writes CSS variables once
+ *         a frame, so the effect needs no React render.
+ * Step 3: On drop the well collapses into the drop point, then reading starts.
  */
 export function DropZone({
   inputId,
@@ -24,29 +37,62 @@ export function DropZone({
   hero?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [absorbing, setAbsorbing] = useState(false);
+  const drag = useSyncExternalStore(subscribeFileDrag, getFileDrag);
+  const frame = useRef(0);
   const isReading = progress !== null;
+  const phase = absorbing
+    ? "absorb"
+    : isDragging
+      ? "over"
+      : drag.active
+        ? "ready"
+        : "idle";
+  const files = drag.count ? plural(drag.count, "file") : "the files";
+
+  /** Step 2: moves the well and the lean to the pointer, once a frame. */
+  function follow(el: HTMLElement, x: number, y: number) {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const b = el.getBoundingClientRect();
+      const lean = (d: number, size: number) =>
+        Math.max(-LEAN, Math.min(LEAN, (d / size) * LEAN * 2)).toFixed(1);
+      el.style.setProperty("--px", `${x - b.left}px`);
+      el.style.setProperty("--py", `${y - b.top}px`);
+      el.style.setProperty(
+        "--lx",
+        `${lean(x - b.left - b.width / 2, b.width)}px`,
+      );
+      el.style.setProperty(
+        "--ly",
+        `${lean(y - b.top - b.height / 2, b.height)}px`,
+      );
+    });
+  }
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drop target; keyboard users reach the linked file input
     <label
       htmlFor={inputId}
+      data-drag={phase}
       className={cn(
-        "group/drop relative flex flex-col gap-2 overflow-hidden rounded-xl border-2 border-dashed",
-        hero
-          ? "items-start px-6 py-7 text-left"
-          : "h-full items-center justify-center px-4 py-4 text-center",
+        "drop-zone group/drop relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed",
+        hero ? "px-6 py-7" : "h-full justify-center px-4 py-4",
         "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
         // The file input is hidden, so the zone shows its keyboard focus.
         "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet-500 dark:has-[input:focus-visible]:ring-violet-400",
-        isDragging
-          ? "border-violet-500/60 bg-violet-500/5 scale-[1.01] dark:border-violet-400/60 dark:bg-violet-400/5"
-          : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
-        error && !isDragging && "border-red-500/60 dark:border-red-400/60",
+        phase === "over" || phase === "absorb"
+          ? "border-violet-500/70 scale-[1.01] dark:border-violet-400/70"
+          : phase === "ready"
+            ? "border-violet-500/60 bg-violet-500/[0.03] dark:border-violet-400/60 dark:bg-violet-400/[0.03]"
+            : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
+        error && phase === "idle" && "border-red-500/60 dark:border-red-400/60",
       )}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
         setIsDragging(true);
+        follow(e.currentTarget, e.clientX, e.clientY);
       }}
       onDragLeave={(e) => {
         // Moving onto a child (the icon, the text) also fires dragleave; ignore it.
@@ -56,62 +102,85 @@ export function DropZone({
       onDrop={async (e) => {
         e.preventDefault();
         setIsDragging(false);
+        // Step 3
+        setAbsorbing(true);
+        setTimeout(() => setAbsorbing(false), ABSORB);
         await onFiles(e.dataTransfer.files);
       }}
     >
-      {isReading ? (
-        <LoaderCircle
-          aria-hidden="true"
-          className="h-5 w-5 animate-spin text-violet-500 dark:text-violet-400"
-          strokeWidth={1.5}
-        />
-      ) : (
-        <Upload
-          aria-hidden="true"
-          className={cn(
-            "h-5 w-5 transition-[translate,color] duration-200",
-            isDragging
-              ? "-translate-y-0.5 text-violet-500 dark:text-violet-400"
-              : "text-zinc-500 dark:text-zinc-400",
-          )}
-          strokeWidth={1.5}
-        />
-      )}
-      {hero ? (
-        <>
-          <p aria-live="polite" className="text-base font-semibold">
-            {isReading ? "Reading files..." : "Drop conversations.json here"}
-          </p>
-          {!isReading && (
-            <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-[color-mix(in_srgb,rgb(var(--accent))_85%,black)] px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale] duration-150 group-hover/drop:bg-[color-mix(in_srgb,rgb(var(--accent))_75%,black)] group-active/drop:scale-[0.97]">
-              Choose export files
-            </span>
-          )}
-          <p
-            aria-hidden={isReading}
-            className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
-          >
-            {isReading
-              ? `${Math.round(progress * 100)}%`
-              : "Add one export or both. More than one ChatGPT file is fine."}
-          </p>
-        </>
-      ) : (
-        <div>
-          <p aria-live="polite" className="text-xs font-medium leading-tight">
-            {isReading ? "Reading files..." : "Drop export files here"}
-          </p>
-          {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
-          <p
-            aria-hidden={isReading}
-            className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
-          >
-            {isReading
-              ? `${Math.round(progress * 100)}%`
-              : "or click to browse"}
-          </p>
-        </div>
-      )}
+      <span aria-hidden="true" className="drop-well" />
+      <span
+        className={cn(
+          "drop-content relative flex flex-col gap-2",
+          hero ? "items-start text-left" : "items-center text-center",
+        )}
+      >
+        {isReading ? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="h-5 w-5 animate-spin text-violet-500 dark:text-violet-400"
+            strokeWidth={1.5}
+          />
+        ) : (
+          <Upload
+            aria-hidden="true"
+            className={cn(
+              "h-5 w-5 transition-[translate,color] duration-200",
+              phase === "over" || phase === "ready"
+                ? "-translate-y-0.5 text-violet-500 dark:text-violet-400"
+                : "text-zinc-500 dark:text-zinc-400",
+            )}
+            strokeWidth={1.5}
+          />
+        )}
+        {hero ? (
+          <>
+            <p aria-live="polite" className="text-base font-semibold">
+              {isReading
+                ? "Reading files..."
+                : phase === "over"
+                  ? `Release to read ${files}`
+                  : phase === "ready"
+                    ? `Drop ${files} here`
+                    : "Drop conversations.json here"}
+            </p>
+            {!isReading && (
+              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-[color-mix(in_srgb,rgb(var(--accent))_85%,black)] px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_srgb,rgb(var(--accent))_75%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
+                Choose export files
+              </span>
+            )}
+            <p
+              aria-hidden={isReading}
+              className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+            >
+              {isReading
+                ? `${Math.round(progress * 100)}%`
+                : "Add one export or both. More than one ChatGPT file is fine."}
+            </p>
+          </>
+        ) : (
+          <div>
+            <p aria-live="polite" className="text-xs font-medium leading-tight">
+              {isReading
+                ? "Reading files..."
+                : phase === "over"
+                  ? `Release to read ${files}`
+                  : phase === "ready"
+                    ? `Drop ${files} here`
+                    : "Drop export files here"}
+            </p>
+            {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
+            <p
+              aria-hidden={isReading}
+              className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
+            >
+              {isReading
+                ? `${Math.round(progress * 100)}%`
+                : "or click to browse"}
+            </p>
+          </div>
+        )}
+      </span>
       {/* Thin line on the bottom edge. A new key per upload starts it empty;
           at the end it stays full and fades out. */}
       <span
