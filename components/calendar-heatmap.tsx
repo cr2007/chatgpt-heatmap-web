@@ -15,6 +15,8 @@ const STEP = CELL + GAP;
 const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
 /** Low/medium/high intensity shades for Claude activity cells. */
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
+/** Tooltip width in px, used to flip it before it overflows the viewport. */
+const TIP_W = 260;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /** "1 message", "3 messages". */
@@ -50,7 +52,7 @@ export function CalendarHeatmap({
   const uid = useId().replace(/:/g, "");
   const outerRef    = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tip,   setTip]   = useState<{ day: string; cx: number; cy: number } | null>(null);
+  const [tip,   setTip]   = useState<{ day: string; left: number; top: number } | null>(null);
   const [avail, setAvail] = useState({ w: 0, h: 0 });
 
   // Measure on first paint (synchronous) to avoid a visible flash.
@@ -144,10 +146,16 @@ export function CalendarHeatmap({
   });
 
   // Cell renderer
+  // Step 4: place the tooltip next to the cursor when a cell is entered,
+  // flipping it left (clamped to the viewport) when it would overflow the right.
   const handleEnter = useCallback((e: React.MouseEvent, day: string) => {
     if (!containerRef.current) return;
     const b = containerRef.current.getBoundingClientRect();
-    setTip({ day, cx: e.clientX - b.left, cy: e.clientY - b.top });
+    const cx = e.clientX - b.left;
+    const left = b.left + cx + 14 + TIP_W > window.innerWidth
+      ? Math.max(-b.left + 4, cx - TIP_W - 6)
+      : cx + 14;
+    setTip({ day, left, top: e.clientY - b.top - 10 });
   }, []);
   const handleLeave = useCallback(() => setTip(null), []);
 
@@ -286,24 +294,8 @@ export function CalendarHeatmap({
     }
   }
 
-  // Step 4: position the hover tooltip next to the cursor, flipping to the
-  // left edge (clamped to the viewport) when it would overflow the right.
   const tipData  = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
   const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
-  const TIP_W    = 260;
-
-  let tipLeft = 0;
-  if (tip && containerRef.current) {
-    const b = containerRef.current.getBoundingClientRect();
-    const wouldOverflowRight = b.left + tip.cx + 14 + TIP_W > window.innerWidth;
-    if (wouldOverflowRight) {
-      // Flip left, but clamp so it never exits the viewport's left edge
-      tipLeft = Math.max(-b.left + 4, tip.cx - TIP_W - 6);
-    } else {
-      tipLeft = tip.cx + 14;
-    }
-  }
-
   return (
     <div
       ref={outerRef}
@@ -311,6 +303,7 @@ export function CalendarHeatmap({
     >
     <div ref={containerRef} style={{ position: "relative" }}>
       <svg
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
         role="group"
         aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
         viewBox={`0 0 ${svgW} ${svgH}`}
@@ -334,8 +327,8 @@ export function CalendarHeatmap({
         return (
           <div style={{
             position: "absolute",
-            left: tipLeft,
-            top: tip.cy - 10,
+            left: tip.left,
+            top: tip.top,
             pointerEvents: "none",
             zIndex: 20,
             background: isDark ? "#1f2937" : "#fff",

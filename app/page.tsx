@@ -3,7 +3,6 @@ import { HeatMapForm } from "@/components/heatMapForm";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 import { YearNav } from "@/components/year-nav";
-import { useTheme } from "next-themes";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -42,15 +41,13 @@ function loadTestData(setExports: (e: Exports) => void) {
  * stack / desktop split / book / tent) and the year picker.
  */
 export default function Home() {
-  const { theme, resolvedTheme } = useTheme();
-  const effectiveTheme = theme === "system" ? resolvedTheme : theme;
-
   const [exports, setExports]         = useState<Exports>({ chatgpt: null, claude: null });
   const [timeZone, setTimeZone]       = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [mounted, setMounted]         = useState(false);
   /** Book mode only: swaps which side the form sits on. Persisted. */
-  const [formOnRight, setFormOnRight] = useState(false);
-  /** Year currently shown on the heatmap in book/tent mode; null until data loads. */
+  const [formOnRight, setFormOnRight] = useState(() => {
+    try { return localStorage.getItem("form-on-right") === "true"; } catch { return false; }
+  });
+  /** Year the user picked in book/tent mode; null means the latest year. */
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const isBookMode     = useMediaQuery(FOLDED_PORTRAIT_QUERY);
@@ -64,26 +61,12 @@ export default function Home() {
   ), [exports, timeZone]);
   const dataYears = agg?.years ?? NO_YEARS;
 
-  useEffect(() => { setMounted(true); }, []);
   useEffect(() => { loadTestData(setExports); }, []);
 
-  // Step 1: restore/persist the book-mode panel-swap preference.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("form-on-right");
-      if (saved !== null) setFormOnRight(saved === "true");
-    } catch {}
-  }, []);
+  // Persist the book-mode panel-swap preference.
   useEffect(() => {
     try { localStorage.setItem("form-on-right", String(formOnRight)); } catch {}
   }, [formOnRight]);
-
-  // Step 2: keep the selected year valid as data loads/changes, defaulting
-  // to the most recent year.
-  useEffect(() => {
-    if (!dataYears.length) { setSelectedYear(null); return; }
-    setSelectedYear(prev => (prev !== null && dataYears.includes(prev) ? prev : dataYears[dataYears.length - 1]));
-  }, [dataYears]);
 
   const hasData = exports.chatgpt !== null || exports.claude !== null;
   const isFolded = isBookMode || isTentMode;
@@ -104,7 +87,10 @@ export default function Home() {
     setTimeZone,
   };
 
-  const activeYear     = selectedYear ?? dataYears[dataYears.length - 1] ?? null;
+  // A picked year that the data no longer has falls back to the latest year.
+  const activeYear = selectedYear !== null && dataYears.includes(selectedYear)
+    ? selectedYear
+    : dataYears[dataYears.length - 1] ?? null;
   const activeViewFrom  = activeYear != null ? new Date(activeYear, 0, 1)  : undefined;
   const activeViewTo    = activeYear != null ? new Date(activeYear, 11, 31) : undefined;
 
@@ -155,7 +141,6 @@ export default function Home() {
                   {formOnRight ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                 </button>
               )}
-              {mounted && (
                 <a
                   href="https://github.com/cr2007/chatgpt-heatmap-web"
                   target="_blank"
@@ -164,16 +149,10 @@ export default function Home() {
                   aria-label="Open in GitHub"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white shadow-sm text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
                 >
-                  <img
-                    aria-hidden
-                    src={effectiveTheme === "dark" ? "/github-mark-white.svg" : "/github-mark.svg"}
-                    alt=""
-                    width={16}
-                    height={16}
-                    style={{ width: "16px", height: "16px" }}
-                  />
+                  {/* The theme class on <html> picks the mark, so the first render is right. */}
+                  <img aria-hidden src="/github-mark.svg" alt="" width={16} height={16} className="size-4 dark:hidden" />
+                  <img aria-hidden src="/github-mark-white.svg" alt="" width={16} height={16} className="hidden size-4 dark:block" />
                 </a>
-              )}
               <ModeToggle />
             </div>
           </header>

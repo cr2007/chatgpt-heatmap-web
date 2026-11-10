@@ -142,6 +142,7 @@ export function HeatMapForm({
 
         {/* Upload drop zone + conditional file states */}
         <div className="form-grid__upload flex flex-col gap-2">
+          {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drop target; keyboard users reach the linked file input */}
           <label
             htmlFor={inputId}
             className={cn(
@@ -268,7 +269,7 @@ export function HeatMapForm({
               <Button
                 id={`${inputId}-tz`}
                 variant="outline"
-                role="combobox"
+                aria-haspopup="listbox"
                 aria-expanded={open}
                 className="w-full justify-between"
               >
