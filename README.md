@@ -12,8 +12,6 @@
     <br>
     <!-- TypeScript -->
     <img alt="TypeScript" title="TypeScript" src="https://img.shields.io/badge/TypeScript-informational?style=flat&logo=typescript&logoColor=white&color=3178C6">
-    <!-- Vite -->
-    <img alt="Vite" title="Vite" src="https://img.shields.io/badge/Vite-informational?style=flat&logo=vite&logoColor=white&color=9135FF">
     <!-- Shadcn/ui -->
     <img alt="Shadcn UI Library" title="Component Library" src="https://img.shields.io/badge/shadcn/ui-informational?style=flat&logo=shadcn/ui&logoColor=white&color=000000">
     <!-- Bun -->
@@ -46,10 +44,17 @@ bun --bun dev # Start the dev server
 
 The app is available at [http://localhost:3000](http://localhost:3000).
 
-To run the test suite:
+The dev server listens on localhost only. To reach it from another device on your network, start it with `HOST=0.0.0.0 bun --bun dev`. The synthetic test-data page is at [http://localhost:3000/test.html](http://localhost:3000/test.html) (dev server only).
+
+Checks (CI runs all of them before a deploy):
 
 ```sh
-bun --bun test
+bun --bun test           # Tests (add TZ=America/New_York to test another time zone)
+bun run lint             # oxlint
+bun check                # Type check
+bun fmt --check          # Format check (bun fmt to fix)
+bun audit --prod         # Vulnerabilities in runtime dependencies
+bun --bun run build      # Production build into dist/
 ```
 
 ## Usage
