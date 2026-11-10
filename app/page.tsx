@@ -59,6 +59,8 @@ export default function Home() {
   const [exports, setExports] = useState<Exports>(loadTestData);
   /** What an upload in progress has read so far; null when idle. */
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
+  /** Counts time zone changes since the last upload; each one runs the heatmap sweep. */
+  const [sweep, setSweep] = useState(0);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
@@ -119,10 +121,17 @@ export default function Home() {
       },
     },
     onLoad: loadExports,
-    onStream: setStreaming,
+    onStream: (partial: PartialExports | null) => {
+      setStreaming(partial);
+      if (partial) setSweep(0); // new data fades in, without the sweep
+    },
     onClear: clearExport,
     timeZone,
-    setTimeZone,
+    setTimeZone: (tz: string) => {
+      if (tz === timeZone) return;
+      setTimeZone(tz);
+      setSweep((n) => n + 1);
+    },
   };
 
   // A picked year that the data no longer has falls back to the latest year.
@@ -263,6 +272,7 @@ export default function Home() {
                 from={(isFolded && activeViewFrom) || agg.from}
                 to={(isFolded && activeViewTo) || agg.to}
                 vertical={useVerticalHeatmap}
+                sweep={sweep}
               />
             ) : (
               <div className="h-full w-full flex items-center justify-center">

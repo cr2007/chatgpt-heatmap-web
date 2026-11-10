@@ -57,6 +57,8 @@ export interface CalendarHeatmapProps {
   from: Date;
   to: Date;
   vertical?: boolean;
+  /** Counts time zone changes; each new value runs the date-order sweep. 0 means none. */
+  sweep?: number;
 }
 
 /**
@@ -72,6 +74,7 @@ export function CalendarHeatmap({
   from,
   to,
   vertical = false,
+  sweep = 0,
 }: CalendarHeatmapProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -203,6 +206,17 @@ export function CalendarHeatmap({
     hideTimer.current = setTimeout(() => setTip(null), HIDE_DELAY);
   }, []);
 
+  // Each cell's place in the date range, 0 to 1. The CSS times its color
+  // change and its part of the sweep from it (`--t`, see app/globals.css).
+  const rangeStart = Date.UTC(startYear, 0, 1);
+  const rangeDays = Date.UTC(endYear, 11, 31) - rangeStart || 1;
+  const placeInRange = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return ((Date.UTC(y, m - 1, d) - rangeStart) / rangeDays).toFixed(3);
+  };
+  // Two names, so that each new sweep restarts the CSS animation.
+  const sweepClass = sweep === 0 ? "" : sweep % 2 ? " sweep-a" : " sweep-b";
+
   /** Renders one day's `<rect>`, filled solid, gradient-split (both
    *  providers active), or the empty shade. A day with data gets a hover
    *  handler and an accessible name, so screen readers can read the counts. */
@@ -228,6 +242,8 @@ export function CalendarHeatmap({
         fill={fill}
         stroke={cellStroke}
         strokeWidth={1}
+        className={`heat-cell${sweepClass}`}
+        style={{ "--t": placeInRange(day) } as React.CSSProperties}
         onMouseEnter={hasData ? (e) => handleEnter(e, day) : undefined}
         onMouseLeave={hasData ? handleLeave : undefined}
         role={hasData ? "img" : undefined}

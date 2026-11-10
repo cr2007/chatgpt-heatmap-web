@@ -84,7 +84,7 @@ export function HeatMapForm({
   onStream: (partial: Exports | null) => void;
   onClear: (provider: Provider) => void;
   timeZone: string;
-  setTimeZone: React.Dispatch<React.SetStateAction<string>>;
+  setTimeZone: (timeZone: string) => void;
   /** Collapse the form behind a tap-to-expand summary once data is loaded.
    *  Only worth it where the form and heatmap share one scrolling column
    *  (the plain mobile/narrow stack) - everywhere else (desktop split,
