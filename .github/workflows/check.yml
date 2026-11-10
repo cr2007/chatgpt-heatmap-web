@@ -1,5 +1,6 @@
-# Tests, lint, types, format and audit. Pull requests run it directly;
-# the Pages and Docker workflows call it and deploy only when it passes.
+# Tests, lint, types, format, audit and the size budget. Pull requests run
+# it directly; the Pages and Docker workflows call it and deploy only when
+# it passes.
 name: Check
 
 on:
@@ -42,3 +43,7 @@ jobs:
         run: bun fmt --check
       - name: Audit runtime dependencies
         run: bun audit --prod
+      - name: Build
+        run: bun --bun run build
+      - name: Size budget
+        run: bun run size

@@ -8,7 +8,8 @@
     "dev": "bun scripts/dev.ts",
     "build": "bun scripts/build.ts",
     "test": "bun test",
-    "lint": "oxlint --deny-warnings"
+    "lint": "oxlint --deny-warnings",
+    "size": "bun scripts/check-size.ts"
   },
   "author": {
     "name": "CSK",
