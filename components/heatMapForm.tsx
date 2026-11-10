@@ -6,8 +6,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import React, { useCallback, useState } from "react";
-import { cn } from "@/lib/utils";
+import React, { useCallback, useRef, useState } from "react";
+import { cn, plural } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,8 +24,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { toast } from "sonner";
-import { readExports } from "@/lib/upload";
-import type { LoadedExport, Provider } from "@/lib/types";
+import { loadExports, type Exports } from "@/lib/upload";
+import type { Provider } from "@/lib/types";
 
 interface LoadedInfo {
   name: string;
@@ -70,6 +70,7 @@ const PROVIDERS: ProviderTheme[] = [
 export function HeatMapForm({
   loaded,
   onLoad,
+  onStream,
   onClear,
   timeZone,
   setTimeZone,
@@ -78,7 +79,9 @@ export function HeatMapForm({
   /** What each provider has loaded, or null. Owned by the page, so every form instance agrees. */
   loaded: Record<Provider, LoadedInfo | null>;
   /** Hands new exports to the page; providers left out keep their data. */
-  onLoad: (exports: Partial<Record<Provider, LoadedExport>>) => void;
+  onLoad: (exports: Exports) => void;
+  /** The partial result while an upload streams, then null. */
+  onStream: (partial: Exports | null) => void;
   onClear: (provider: Provider) => void;
   timeZone: string;
   setTimeZone: React.Dispatch<React.SetStateAction<string>>;
@@ -94,8 +97,13 @@ export function HeatMapForm({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
   const [isShaking, setIsShaking] = useState(false);
-  /** True while picked files are read and checked; big exports take a moment. */
-  const [isReading, setIsReading] = useState(false);
+  /** Share of bytes read (0 to 1) while files stream in; null when idle. */
+  const [progress, setProgress] = useState<number | null>(null);
+  const isReading = progress !== null;
+  /** Counts uploads, so each one gets a fresh progress line. */
+  const [uploads, setUploads] = useState(0);
+  /** Cancels the upload in progress when a newer one starts. */
+  const uploadRef = useRef<AbortController | null>(null);
 
   const timeZones = Intl.supportedValuesOf("timeZone");
 
@@ -105,45 +113,55 @@ export function HeatMapForm({
   }, []);
 
   /**
-   * Reads every dropped or picked file and hands the checked exports to the page.
+   * Streams every dropped or picked file and hands the result to the page.
    *
-   * Step 1: read the files as text; a read error is shown, never thrown.
-   * Step 2: check and group them (`readExports`), or show why not.
-   * Step 3: hand the raw exports to the page and toast each provider.
+   * Step 1: cancel an older upload that is still running.
+   * Step 2: stream the files; each progress step shows the partial result.
+   * Step 3: on success, keep the exports and toast each provider; on an
+   *         error, drop the partial result and show why.
    */
   const processFiles = useCallback(
     async (fileList: FileList) => {
+      // Step 1
+      uploadRef.current?.abort(
+        new DOMException("A newer upload started", "AbortError"),
+      );
+      const upload = new AbortController();
+      uploadRef.current = upload;
       setError("");
-      setIsReading(true);
+      setProgress(0);
+      setUploads((n) => n + 1);
       try {
-        // Step 1
-        const files = await Promise.all(
-          Array.from(fileList, async (f) => ({
-            name: f.name,
-            text: await f.text(),
-          })),
-        );
         // Step 2
-        const result = readExports(files);
-        if (!result.ok) return showError(result.error);
+        const result = await loadExports(Array.from(fileList), {
+          signal: upload.signal,
+          onProgress: (fraction, partial) => {
+            setProgress(fraction);
+            onStream(partial);
+          },
+        });
         // Step 3
+        onStream(null);
+        if (!result.ok) return showError(result.error);
         onLoad(result.exports);
         for (const p of PROVIDERS) {
-          const count = result.exports[p.key]?.data.length;
+          const count = result.exports[p.key]?.chats.length;
           if (count)
             toast.success(
-              `${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`,
+              `${p.label} export loaded - ${plural(count, "conversation")}`,
             );
         }
       } catch (e) {
+        if (upload.signal.aborted) return; // the newer upload owns the state now
+        onStream(null);
         showError(
           `Could not read the file: ${e instanceof Error ? e.message : String(e)}`,
         );
       } finally {
-        setIsReading(false);
+        if (uploadRef.current === upload) setProgress(null);
       }
     },
-    [onLoad, showError],
+    [onLoad, onStream, showError],
   );
 
   const hasAnyLoaded = PROVIDERS.some((p) => loaded[p.key] !== null);
@@ -164,7 +182,7 @@ export function HeatMapForm({
           <label
             htmlFor={inputId}
             className={cn(
-              "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-4 text-center h-full",
+              "relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed px-4 py-4 text-center h-full",
               "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
               isDragging
                 ? "border-violet-500/60 bg-violet-500/5 scale-[1.01] dark:border-violet-400/60 dark:bg-violet-400/5"
@@ -207,16 +225,38 @@ export function HeatMapForm({
                 strokeWidth={1.5}
               />
             )}
-            <div aria-live="polite">
-              <p className="text-xs font-medium leading-tight">
+            <div>
+              <p
+                aria-live="polite"
+                className="text-xs font-medium leading-tight"
+              >
                 {isReading ? "Reading files..." : "Drop export files here"}
               </p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight">
+              {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
+              <p
+                aria-hidden={isReading}
+                className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
+              >
                 {isReading
-                  ? "Large exports take a few seconds"
+                  ? `${Math.round(progress * 100)}%`
                   : "or click to browse"}
               </p>
             </div>
+            {/* Thin line on the bottom edge. A new key per upload starts it empty;
+                at the end it stays full and fades out. */}
+            <span
+              key={uploads}
+              role={isReading ? "progressbar" : undefined}
+              aria-label={isReading ? "Reading files" : undefined}
+              aria-valuenow={isReading ? Math.round(progress * 100) : undefined}
+              aria-valuemin={isReading ? 0 : undefined}
+              aria-valuemax={isReading ? 100 : undefined}
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-violet-500 transition-[scale,opacity] duration-200 ease-out dark:bg-violet-400"
+              style={{
+                scale: `${progress ?? 1} 1`,
+                opacity: isReading ? 1 : 0,
+              }}
+            />
             <input
               id={inputId}
               type="file"

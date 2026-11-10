@@ -5,6 +5,7 @@ import type {
   DayTitleBreakdown,
   Provider,
 } from "./types";
+import { dayFormatter } from "./parse";
 
 export interface AggregatedData {
   data: Record<string, CalHeatmapDay>;
@@ -19,16 +20,18 @@ export interface AggregatedData {
 }
 
 /**
- * Counts prompts per day and per chat for both providers.
+ * Counts prompts per local day in `timeZone` and per chat, for both providers.
  *
- * Step 1: Add one to the day and to the day's chat for each prompt day, then
+ * Step 1: Add one to the day and to the day's chat for each prompt, then
  *         list each day's chats, busiest first.
  * Step 2: Derive the busiest day per provider, the date range and the years.
  */
 export function aggregateDateData(
   chatgptSummary: ConversationSummary[] | null,
   claudeSummary: ConversationSummary[] | null,
+  timeZone: string,
 ): AggregatedData | null {
+  const toDay = dayFormatter(timeZone);
   const data: Record<string, CalHeatmapDay> = {};
   const dayTitles: Record<string, DayTitleBreakdown> = {};
 
@@ -41,8 +44,9 @@ export function aggregateDateData(
   // title stay apart.
   const byChat: Record<string, Record<Provider, Map<number, ChatCount>>> = {};
   for (const [source, summaries] of sources) {
-    summaries?.forEach(({ title, days }, chat) => {
-      for (const day of days) {
+    summaries?.forEach(({ title, times }, chat) => {
+      for (const time of times) {
+        const day = toDay(time);
         data[day] ??= { chatgpt: 0, claude: 0 };
         data[day][source]++;
         const chats = (byChat[day] ??= {

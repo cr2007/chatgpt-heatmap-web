@@ -1,17 +1,17 @@
 export type Provider = "chatgpt" | "claude";
 
-/** One uploaded export, kept raw so it can be parsed again in a new time zone. */
+/** One uploaded export, reduced to what the heatmap needs. */
 export interface LoadedExport {
   /** File name, or "N files" for a merged ChatGPT upload. */
   name: string;
-  /** The conversations array from the JSON file. */
-  data: unknown[];
+  /** One summary per conversation, in export order. */
+  chats: ConversationSummary[];
 }
 
 export interface ConversationSummary {
   title: string;
-  /** One local `YYYY-MM-DD` day per visible user prompt (see the README count rule). */
-  days: string[];
+  /** The time (ms since 1970) of each visible user prompt (see the README count rule). */
+  times: number[];
 }
 
 export interface CalHeatmapDay {

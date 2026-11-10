@@ -4,37 +4,42 @@ import { parseChatGPT, parseClaude } from "./parse";
 import type { ConversationSummary } from "./types";
 
 const gpt: ConversationSummary[] = [
-  { title: "Chat 1", days: ["2024-01-10", "2024-01-10", "2024-01-11"] },
-  { title: "Chat 2", days: ["2024-01-15"] },
+  { title: "Chat 1", times: at("2024-01-10", "2024-01-10", "2024-01-11") },
+  { title: "Chat 2", times: at("2024-01-15") },
 ];
 
 const claude: ConversationSummary[] = [
-  { title: "Claude A", days: ["2024-01-11", "2024-01-12"] },
+  { title: "Claude A", times: at("2024-01-11", "2024-01-12") },
 ];
+
+/** Prompt times at noon UTC on the given days. */
+function at(...days: string[]): number[] {
+  return days.map((d) => Date.parse(`${d}T12:00:00Z`));
+}
 
 const FIXTURES = `${import.meta.dir}/../test/fixtures`;
 
 describe("aggregateDateData", () => {
   it("returns null when nothing is loaded", () => {
-    expect(aggregateDateData(null, null)).toBeNull();
-    expect(aggregateDateData([], [])).toBeNull();
+    expect(aggregateDateData(null, null, "UTC")).toBeNull();
+    expect(aggregateDateData([], [], "UTC")).toBeNull();
   });
 
   it("counts one per prompt day", () => {
-    const r = aggregateDateData(gpt, null)!;
+    const r = aggregateDateData(gpt, null, "UTC")!;
     expect(r.data["2024-01-10"]).toEqual({ chatgpt: 2, claude: 0 });
     expect(r.data["2024-01-15"]).toEqual({ chatgpt: 1, claude: 0 });
   });
 
   it("merges both providers on a shared day", () => {
-    const r = aggregateDateData(gpt, claude)!;
+    const r = aggregateDateData(gpt, claude, "UTC")!;
     expect(r.data["2024-01-11"]).toEqual({ chatgpt: 1, claude: 1 });
     expect(r.maxChatgpt).toBe(2);
     expect(r.maxClaude).toBe(1);
   });
 
   it("breaks each day down by provider and chat", () => {
-    const r = aggregateDateData(gpt, claude)!;
+    const r = aggregateDateData(gpt, claude, "UTC")!;
     expect(r.dayTitles["2024-01-10"]).toEqual({
       chatgpt: [{ title: "Chat 1", count: 2 }],
       claude: [],
@@ -48,11 +53,15 @@ describe("aggregateDateData", () => {
   it("keeps chats with the same title apart, busiest first", () => {
     const r = aggregateDateData(
       [
-        { title: "New chat", days: ["2024-02-01"] },
-        { title: "Other", days: ["2024-02-01", "2024-02-01"] },
-        { title: "New chat", days: ["2024-02-01", "2024-02-01", "2024-02-01"] },
+        { title: "New chat", times: at("2024-02-01") },
+        { title: "Other", times: at("2024-02-01", "2024-02-01") },
+        {
+          title: "New chat",
+          times: at("2024-02-01", "2024-02-01", "2024-02-01"),
+        },
       ],
       null,
+      "UTC",
     )!;
     expect(r.dayTitles["2024-02-01"].chatgpt).toEqual([
       { title: "New chat", count: 3 },
@@ -62,7 +71,7 @@ describe("aggregateDateData", () => {
   });
 
   it("spans from the first to the last prompt day, as local dates", () => {
-    const r = aggregateDateData(gpt, claude)!;
+    const r = aggregateDateData(gpt, claude, "UTC")!;
     const local = (d: Date) => [d.getFullYear(), d.getMonth() + 1, d.getDate()];
     expect(local(r.from)).toEqual([2024, 1, 10]);
     expect(local(r.to)).toEqual([2024, 1, 15]);
@@ -70,7 +79,7 @@ describe("aggregateDateData", () => {
 
   it("lists a year that has prompts but no chat starts", async () => {
     const raw = await Bun.file(`${FIXTURES}/chatgpt-export.json`).json();
-    const r = aggregateDateData(parseChatGPT(raw, "UTC"), null)!;
+    const r = aggregateDateData(parseChatGPT(raw), null, "UTC")!;
     expect(r.years).toEqual([2024, 2025]);
   });
 
@@ -83,8 +92,9 @@ describe("aggregateDateData", () => {
       ].map((f) => Bun.file(`${FIXTURES}/${f}`).json()),
     );
     const r = aggregateDateData(
-      parseChatGPT([...a, ...b], "UTC"),
-      parseClaude(c, "UTC"),
+      parseChatGPT([...a, ...b]),
+      parseClaude(c),
+      "UTC",
     )!;
     expect(r.data["2024-03-10"]).toEqual({ chatgpt: 3, claude: 2 });
   });

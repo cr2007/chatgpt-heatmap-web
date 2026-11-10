@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { $ } from "bun";
 import { aggregateDateData } from "@/lib/aggregate";
-import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
+import { detectFormat } from "@/lib/parse";
+import { loadExports } from "@/lib/upload";
 
 /**
  * Independent check of the counting rule in the README: `jq` counts the
@@ -35,18 +36,23 @@ async function jqCounts(
   return $`jq -c ${program} ${file}`.env({ ...process.env, TZ: tz }).json();
 }
 
-/** Counts per day for one provider from the app pipeline, zero days left out. */
+/**
+ * Counts per day for one provider from the app pipeline (the streamed upload,
+ * then aggregation), zero days left out.
+ */
 async function appCounts(
   file: string,
   tz: string,
 ): Promise<Record<string, number>> {
-  const raw = await Bun.file(file).json();
-  const format = detectFormat(raw);
-  const agg =
-    format === "chatgpt"
-      ? aggregateDateData(parseChatGPT(raw, tz), null)
-      : aggregateDateData(null, parseClaude(raw, tz));
-  if (!agg || format === "unknown") return {};
+  const r = await loadExports([Bun.file(file)]);
+  if (!r.ok) throw new Error(r.error);
+  const format = r.exports.chatgpt ? "chatgpt" : "claude";
+  const agg = aggregateDateData(
+    r.exports.chatgpt?.chats ?? null,
+    r.exports.claude?.chats ?? null,
+    tz,
+  );
+  if (!agg) return {};
   return Object.fromEntries(
     Object.entries(agg.data)
       .map(([day, c]) => [day, c[format]] as const)

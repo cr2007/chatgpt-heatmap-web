@@ -19,20 +19,39 @@ interface RawClaudeConversation {
   chat_messages?: { sender?: string; created_at?: string }[];
 }
 
+/** Width of the cached time blocks: 15 minutes in ms. */
+const BLOCK = 15 * 60 * 1000;
+/** One day function per time zone, kept for the session. */
+const dayFns = new Map<string, (ms: number) => string>();
+
 /**
  * Returns a function that maps a timestamp (ms) to its `YYYY-MM-DD` day in
- * `timeZone`, or null for an invalid time. One formatter serves the whole
- * export, because building one per message is slow.
+ * `timeZone`. It caches the day of each 15-minute UTC block: every UTC
+ * offset in use is a whole number of 15-minute steps, so local midnight
+ * falls on a block edge and a block never spans two days. Formatting with
+ * Intl is the slow part, so the cache makes a time zone change cheap.
  */
-function dayFormatter(timeZone: string): (ms: number) => string | null {
-  // sv-SE formats dates as YYYY-MM-DD.
-  const fmt = new Intl.DateTimeFormat("sv-SE", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  return (ms) => (Number.isFinite(ms) ? fmt.format(ms) : null);
+export function dayFormatter(timeZone: string): (ms: number) => string {
+  let fn = dayFns.get(timeZone);
+  if (!fn) {
+    // sv-SE formats dates as YYYY-MM-DD.
+    const fmt = new Intl.DateTimeFormat("sv-SE", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const cache = new Map<number, string>();
+    fn = (ms) => {
+      const block = Math.floor(ms / BLOCK);
+      let day = cache.get(block);
+      if (day === undefined)
+        cache.set(block, (day = fmt.format(block * BLOCK)));
+      return day;
+    };
+    dayFns.set(timeZone, fn);
+  }
+  return fn;
 }
 
 /** True for a ChatGPT message the user typed and can see in the chat. */
@@ -64,34 +83,34 @@ export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
 }
 
 /**
- * Turns a ChatGPT export into one summary per conversation. Every node in
- * `mapping` counts, so edited prompts on other branches count too.
- * Malformed conversations and times are skipped, never thrown.
+ * Keeps the title and the prompt times (ms) of one ChatGPT conversation.
+ * Every node in `mapping` counts, so edited prompts on other branches count
+ * too. Malformed data and invalid times are skipped, never thrown.
  */
-export function parseChatGPT(
-  raw: unknown[],
-  timeZone: string,
-): ConversationSummary[] {
-  const toDay = dayFormatter(timeZone);
-  return (raw as RawGPTConversation[]).map((c) => ({
-    title: c?.title?.trim() || "Untitled",
-    days: Object.values(c?.mapping ?? {})
-      .map((node) => node?.message)
-      .filter(isVisiblePrompt)
-      .flatMap((m) => toDay(m.create_time * 1000) ?? []),
-  }));
+export function summarizeChatGPT(conversation: unknown): ConversationSummary {
+  const c = conversation as RawGPTConversation | null;
+  const times: number[] = [];
+  for (const node of Object.values(c?.mapping ?? {})) {
+    const m = node?.message;
+    if (isVisiblePrompt(m) && Number.isFinite(m.create_time))
+      times.push(m.create_time * 1000);
+  }
+  return { title: c?.title?.trim() || "Untitled", times };
 }
 
-/** Turns a Claude export into one summary per conversation, counting human messages. */
-export function parseClaude(
-  raw: unknown[],
-  timeZone: string,
-): ConversationSummary[] {
-  const toDay = dayFormatter(timeZone);
-  return (raw as RawClaudeConversation[]).map((c) => ({
-    title: c?.name?.trim() || "Untitled",
-    days: (c?.chat_messages ?? [])
-      .filter((m) => m?.sender === "human")
-      .flatMap((m) => toDay(Date.parse(m.created_at ?? "")) ?? []),
-  }));
+/** Keeps the title and the human message times (ms) of one Claude conversation. */
+export function summarizeClaude(conversation: unknown): ConversationSummary {
+  const c = conversation as RawClaudeConversation | null;
+  const times: number[] = [];
+  for (const m of c?.chat_messages ?? []) {
+    const t = m?.sender === "human" ? Date.parse(m.created_at ?? "") : NaN;
+    if (Number.isFinite(t)) times.push(t);
+  }
+  return { title: c?.name?.trim() || "Untitled", times };
 }
+
+/** Summarizes a whole parsed ChatGPT export. */
+export const parseChatGPT = (raw: unknown[]) => raw.map(summarizeChatGPT);
+
+/** Summarizes a whole parsed Claude export. */
+export const parseClaude = (raw: unknown[]) => raw.map(summarizeClaude);

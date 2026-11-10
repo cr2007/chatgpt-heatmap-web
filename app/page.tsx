@@ -13,7 +13,8 @@ import {
   getLayoutClassName,
 } from "@/lib/layout";
 import { aggregateDateData } from "@/lib/aggregate";
-import { parseChatGPT, parseClaude } from "@/lib/parse";
+import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
+import type { Exports as PartialExports } from "@/lib/upload";
 import type { LoadedExport, Provider } from "@/lib/types";
 import githubMark from "@/app/assets/github-mark.svg";
 import githubMarkWhite from "@/app/assets/github-mark-white.svg";
@@ -37,7 +38,10 @@ function loadTestData(): Exports {
   try {
     const read = (key: string): LoadedExport | null => {
       const json = sessionStorage.getItem(key);
-      return json ? { name: "Test data", data: JSON.parse(json) } : null;
+      if (!json) return null;
+      const raw = JSON.parse(json) as unknown[];
+      const parse = detectFormat(raw) === "claude" ? parseClaude : parseChatGPT;
+      return { name: "Test data", chats: parse(raw) };
     };
     return { chatgpt: read("test-chatgpt"), claude: read("test-claude") };
   } catch {
@@ -46,12 +50,15 @@ function loadTestData(): Exports {
 }
 
 /**
- * Root page: owns the raw uploaded exports and the time zone, parses and
- * aggregates them once, and owns the responsive layout decision (plain
+ * Root page: owns the loaded exports (title and prompt times per chat), the
+ * partial result of an upload in progress and the time zone, aggregates
+ * them, and owns the responsive layout decision (plain
  * stack / desktop split / book / tent) and the year picker.
  */
 export default function Home() {
   const [exports, setExports] = useState<Exports>(loadTestData);
+  /** What an upload in progress has read so far; null when idle. */
+  const [streaming, setStreaming] = useState<PartialExports | null>(null);
   const [timeZone, setTimeZone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
@@ -70,15 +77,16 @@ export default function Home() {
   const isTentMode = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
   const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
 
-  /** Prompt counts per day. Parsed again only when an export or the time zone changes. */
-  const agg = useMemo(
-    () =>
-      aggregateDateData(
-        exports.chatgpt ? parseChatGPT(exports.chatgpt.data, timeZone) : null,
-        exports.claude ? parseClaude(exports.claude.data, timeZone) : null,
-      ),
-    [exports, timeZone],
-  );
+  /** Prompt counts per day. While an upload streams, its partial result
+   *  stands in for the provider it loads, so the heatmap fills in. */
+  const agg = useMemo(() => {
+    const shown = { ...exports, ...streaming };
+    return aggregateDateData(
+      shown.chatgpt?.chats ?? null,
+      shown.claude?.chats ?? null,
+      timeZone,
+    );
+  }, [exports, streaming, timeZone]);
   const dataYears = agg?.years ?? NO_YEARS;
 
   // Persist the book-mode panel-swap preference.
@@ -88,7 +96,8 @@ export default function Home() {
     } catch {}
   }, [formOnRight]);
 
-  const hasData = exports.chatgpt !== null || exports.claude !== null;
+  const hasData =
+    exports.chatgpt !== null || exports.claude !== null || agg !== null;
   const isFolded = isBookMode || isTentMode;
 
   /** Adds new exports, keeping a provider the upload did not include. */
@@ -102,14 +111,15 @@ export default function Home() {
     loaded: {
       chatgpt: exports.chatgpt && {
         name: exports.chatgpt.name,
-        count: exports.chatgpt.data.length,
+        count: exports.chatgpt.chats.length,
       },
       claude: exports.claude && {
         name: exports.claude.name,
-        count: exports.claude.data.length,
+        count: exports.claude.chats.length,
       },
     },
     onLoad: loadExports,
+    onStream: setStreaming,
     onClear: clearExport,
     timeZone,
     setTimeZone,
@@ -240,7 +250,10 @@ export default function Home() {
 
         {/* Heatmap panel */}
         {hasData && (
-          <div className="panel-heatmap animate-fade-slide-up">
+          <div
+            className="panel-heatmap animate-fade-slide-up"
+            aria-busy={streaming !== null}
+          >
             {agg ? (
               <CalendarHeatmap
                 data={agg.data}

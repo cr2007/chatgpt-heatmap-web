@@ -1,9 +1,13 @@
 import { describe, it, expect } from "bun:test";
-import { detectFormat, parseChatGPT, parseClaude } from "./parse";
+import { dayFormatter, detectFormat, parseChatGPT, parseClaude } from "./parse";
 
 const FIXTURES = `${import.meta.dir}/../test/fixtures`;
 const chatgpt = await Bun.file(`${FIXTURES}/chatgpt-export.json`).json();
 const claude = await Bun.file(`${FIXTURES}/claude-export.json`).json();
+
+/** The local days of one summary's prompt times. */
+const daysIn = (s: { times: number[] }, tz: string) =>
+  s.times.map(dayFormatter(tz));
 
 /** Finds one parsed conversation by its title. */
 const byTitle = <T extends { title: string }>(list: T[], title: string) =>
@@ -25,7 +29,7 @@ describe("detectFormat", () => {
 });
 
 describe("parseChatGPT", () => {
-  const parsed = parseChatGPT(chatgpt, "UTC");
+  const parsed = parseChatGPT(chatgpt);
 
   it("trims the title and falls back to Untitled", () => {
     expect(parsed.map((c) => c.title)).toContain("Untitled");
@@ -33,14 +37,13 @@ describe("parseChatGPT", () => {
   });
 
   it("counts visible prompts, including edits, and skips hidden context", () => {
-    expect(byTitle(parsed, "Edit branch with hidden context").days).toEqual([
-      "2024-03-10",
-      "2024-03-10",
-    ]);
+    expect(
+      daysIn(byTitle(parsed, "Edit branch with hidden context"), "UTC"),
+    ).toEqual(["2024-03-10", "2024-03-10"]);
   });
 
   it("skips prompts without a time and messages from other roles", () => {
-    expect(byTitle(parsed, "Null times and tools").days).toEqual([
+    expect(daysIn(byTitle(parsed, "Null times and tools"), "UTC")).toEqual([
       "2024-07-01",
       "2024-07-01",
       "2024-07-01",
@@ -48,16 +51,13 @@ describe("parseChatGPT", () => {
   });
 
   it("gives an empty chat no prompt days", () => {
-    expect(byTitle(parsed, "Empty chat").days).toEqual([]);
+    expect(daysIn(byTitle(parsed, "Empty chat"), "UTC")).toEqual([]);
   });
 
   it("puts each prompt on its local day", () => {
-    const kolkata = parseChatGPT(chatgpt, "Asia/Kolkata");
-    expect(byTitle(kolkata, "Null times and tools").days).toEqual([
-      "2024-07-01",
-      "2024-07-01",
-      "2024-07-02",
-    ]);
+    expect(
+      daysIn(byTitle(parsed, "Null times and tools"), "Asia/Kolkata"),
+    ).toEqual(["2024-07-01", "2024-07-01", "2024-07-02"]);
   });
 
   it("skips malformed conversations and times instead of throwing", () => {
@@ -77,27 +77,25 @@ describe("parseChatGPT", () => {
         },
       },
     ];
-    expect(parseChatGPT(bad, "UTC").flatMap((c) => c.days)).toEqual([]);
+    expect(parseChatGPT(bad).flatMap((c) => c.times)).toEqual([]);
   });
 });
 
 describe("parseClaude", () => {
-  const parsed = parseClaude(claude, "UTC");
+  const parsed = parseClaude(claude);
 
   it("falls back to Untitled for a blank name", () => {
     expect(parsed.map((c) => c.title)).toContain("Untitled");
   });
 
   it("counts only human messages, on their local day", () => {
-    expect(byTitle(parsed, "Claude across midnight").days).toEqual([
+    expect(daysIn(byTitle(parsed, "Claude across midnight"), "UTC")).toEqual([
       "2024-03-10",
       "2024-03-10",
     ]);
-    const kolkata = parseClaude(claude, "Asia/Kolkata");
-    expect(byTitle(kolkata, "Claude across midnight").days).toEqual([
-      "2024-03-10",
-      "2024-03-11",
-    ]);
+    expect(
+      daysIn(byTitle(parsed, "Claude across midnight"), "Asia/Kolkata"),
+    ).toEqual(["2024-03-10", "2024-03-11"]);
   });
 
   it("skips malformed conversations and times instead of throwing", () => {
@@ -109,6 +107,40 @@ describe("parseClaude", () => {
         chat_messages: [{ sender: "human", created_at: "not a date" }],
       },
     ];
-    expect(parseClaude(bad, "UTC").flatMap((c) => c.days)).toEqual([]);
+    expect(parseClaude(bad).flatMap((c) => c.times)).toEqual([]);
+  });
+});
+
+describe("dayFormatter", () => {
+  // Offsets of +5:30, +5:45 and +12:45, and zones with daylight saving time.
+  const zones = [
+    "UTC",
+    "Asia/Kolkata",
+    "Asia/Kathmandu",
+    "Pacific/Chatham",
+    "America/New_York",
+    "Europe/London",
+    "Australia/Lord_Howe",
+  ];
+
+  it("matches Intl for any time, although it caches 15-minute blocks", () => {
+    let seed = 7;
+    const random = () =>
+      (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
+    for (const timeZone of zones) {
+      const plain = new Intl.DateTimeFormat("sv-SE", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const cached = dayFormatter(timeZone);
+      for (let i = 0; i < 20_000; i++) {
+        const ms =
+          Date.UTC(2020, 0, 1) + Math.floor(random() * 7 * 365 * 864e5);
+        if (cached(ms) !== plain.format(ms))
+          throw new Error(`${timeZone} at ${new Date(ms).toISOString()}`);
+      }
+    }
   });
 });
