@@ -11,13 +11,11 @@
                 "ambar.bundle-size",
                 "EditorConfig.EditorConfig",
                 "dsznajder.es7-react-js-snippets",
-                "dbaeumer.vscode-eslint",
+                "oxc.oxc-vscode",
                 "capaj.vscode-exports-autocomplete",
                 "mhutchie.git-graph",
                 "github.vscode-github-actions",
                 "eamodio.gitlens",
-                "PulkitGangwar.nextjs-snippets",
-                "esbenp.prettier-vscode",
                 "mikaelkristiansson87.react-theme-vscode",
                 "bradlc.vscode-tailwindcss",
                 "meganrogge.template-string-converter",
@@ -31,7 +29,7 @@
     "forwardPorts": [3000],
     "portsAttributes": {
         "3000": {
-            "label": "Next.js Application",
+            "label": "AI Chat Heatmap",
             "onAutoForward": "notify"
         }
     },

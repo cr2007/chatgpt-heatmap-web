@@ -4,7 +4,6 @@
 # Ignore build directories
 build
 dist
-next/
 out/
 
 # Ignore other files irrelevant to the Docker build
@@ -27,7 +26,5 @@ Thumbs.db
 .git
 .gitignore
 .gitattributes
-.next/
-.vinext/
 
 *conversations*.json
