@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS builder
+FROM oven/bun:1.4.4 AS builder
 
 WORKDIR /app
 
@@ -11,13 +11,25 @@ COPY . .
 # Builds the app (outputs to '/app/dist')
 RUN bun --bun run build
 
-# Production Build
-FROM nginx:alpine AS runner
-WORKDIR /usr/share/nginx/html
-COPY --from=builder /app/dist ./
+# BusyBox httpd sends "file.gz" when the browser accepts gzip, so the JS goes
+# over the network as 79 kB, not 249 kB. Image only: GitHub Pages does its own gzip.
+RUN bun -e 'for (const f of new Bun.Glob("dist/{*.js,*.css,index.html}").scanSync()) await Bun.write(`${f}.gz`, Bun.gzipSync(await Bun.file(f).bytes(), { level: 9 }))'
 
-# Optional: change default port to 3000
-RUN sed -i 's/80/3000/' /etc/nginx/conf.d/default.conf
+# Production image: BusyBox httpd serves the static files (2 MB; nginx:alpine is 63 MB).
+FROM busybox:musl AS runner
+COPY --from=builder /app/dist /www
 
+# Types that BusyBox httpd does not know; without them it sends no Content-Type.
+# Syntax (busybox networking/httpd.c): ".ext:mime/type", one per line.
+COPY <<EOF /etc/httpd.conf
+.woff2:font/woff2
+.ico:image/x-icon
+EOF
+
+# 65534 is "nobody" in the busybox image. Port 3000 needs no privileges.
+USER 65534:65534
 EXPOSE 3000
-CMD ["nginx", "-g", "daemon off;"]
+
+# httpd as PID 1 ignores SIGTERM, so "docker stop" would wait 10 s for SIGKILL.
+# The shell traps TERM and INT and stops httpd, so the container stops at once.
+CMD ["sh", "-c", "trap 'kill $!' TERM INT; httpd -f -v -p 3000 -h /www -c /etc/httpd.conf & wait $!"]
