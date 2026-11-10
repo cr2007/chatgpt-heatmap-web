@@ -192,7 +192,7 @@ export function CalendarHeatmap({
       els.push(
         <text key={`yr${year}`}
           x={H.pad.l + H.dowW} y={yOff + H.yearH - 4}
-          fill={textFill} fontSize={12} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
+          fill={textFill} fontSize={12} fontWeight="600"
         >{year}</text>
       );
 
@@ -201,7 +201,7 @@ export function CalendarHeatmap({
         els.push(
           <text key={`dh${year}${row}`}
             x={H.pad.l + 2} y={gridY + row * STEP + CELL - 2}
-            fill={textFill} fontSize={9} fontFamily="GeistSans, system-ui, sans-serif"
+            fill={textFill} fontSize={9}
           >{lbl}</text>
         )
       );
@@ -213,7 +213,7 @@ export function CalendarHeatmap({
           <text key={`mh${year}${m}`}
             x={H.pad.l + H.dowW + col * STEP}
             y={yOff + H.yearH + H.monthH - 4}
-            fill={textFill} fontSize={10} fontFamily="GeistSans, system-ui, sans-serif"
+            fill={textFill} fontSize={10}
           >{MONTHS[m]}</text>
         );
       }
@@ -238,7 +238,7 @@ export function CalendarHeatmap({
       els.push(
         <text key={`yr${year}`}
           x={gridX} y={V.pad.t + V.yearH - 4}
-          fill={textFill} fontSize={11} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
+          fill={textFill} fontSize={11} fontWeight="600"
         >{year}</text>
       );
 
@@ -248,7 +248,7 @@ export function CalendarHeatmap({
           <text key={`dv${year}${col}`}
             x={gridX + col * STEP + CELL / 2}
             y={V.pad.t + V.yearH + V.dowH - 3}
-            fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="middle"
+            fill={textFill} fontSize={8} textAnchor="middle"
           >{lbl}</text>
         )
       );
@@ -266,7 +266,7 @@ export function CalendarHeatmap({
               <text key={`mv${year}${m}`}
                 x={xOff + V.monthW - 3}
                 y={gridY + weekIdx * STEP + CELL - 2}
-                fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="end"
+                fill={textFill} fontSize={8} textAnchor="end"
               >{MONTHS[m]}</text>
             );
           }

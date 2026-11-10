@@ -2,22 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Archivo (Omnibus-Type, OFL, see fonts/OFL.txt): variable 100-900, Latin subset. */
 @font-face {
-  font-family: "GeistSans";
-  src: url("/GeistVF.woff") format("woff");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "GeistMono";
-  src: url("/GeistMonoVF.woff") format("woff");
+  font-family: "Archivo";
+  src: url("./fonts/Archivo.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
 }
 
 body {
-  font-family: "GeistSans", system-ui, sans-serif;
+  font-family: "Archivo", system-ui, sans-serif;
+  /* Equal-width digits, so dates and counts line up in labels and tooltips. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
