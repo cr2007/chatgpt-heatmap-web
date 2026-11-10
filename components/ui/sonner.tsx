@@ -10,6 +10,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Sonner sets its own system font stack; use the app font.
+      style={{ fontFamily: "inherit" }}
       toastOptions={{
         classNames: {
           toast:
