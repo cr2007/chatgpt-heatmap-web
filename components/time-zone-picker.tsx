@@ -1,23 +1,19 @@
-import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { useMemo, useRef, useState } from "react";
+import { matchZone, zoneList } from "@/lib/time-zones";
 
-/** A labelled combobox that picks a time zone. The button id is `${id}-tz`. */
+/**
+ * A labelled text field with the browser's own suggestion list (`<datalist>`)
+ * for picking a time zone. The input id is `${id}-tz`.
+ *
+ * Step 1: On focus, empty the field and show the current zone as its
+ *         placeholder, so typing starts fresh and the list shows every zone.
+ *         (Selecting the text instead fails in Safari: its mouseup moves the
+ *         caret to the click point.)
+ * Step 2: While typing, apply a name the moment it matches a zone exactly
+ *         (picking a suggestion does the same).
+ * Step 3: Enter on unknown text shows an error. Blur or Escape puts the
+ *         current zone back; unknown text leaves a note that says so.
+ */
 export function TimeZonePicker({
   id,
   timeZone,
@@ -27,62 +23,84 @@ export function TimeZonePicker({
   timeZone: string;
   setTimeZone: (timeZone: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const timeZones = Intl.supportedValuesOf("timeZone");
+  const zones = useMemo(() => zoneList(), []);
+  /** The text while the field is being edited; null shows the current zone. */
+  const [draft, setDraft] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  /** Set by Escape, so the blur that follows reverts without a note. */
+  const cancelled = useRef(false);
+  const inputId = `${id}-tz`;
+
+  /** Ends editing: the field shows the current zone again. */
+  function finish(text: string) {
+    if (cancelled.current) {
+      cancelled.current = false;
+      setError("");
+    } else if (text.trim() && !matchZone(text, zones))
+      setError(`"${text.trim()}" is not a time zone, so ${timeZone} stays.`);
+    setDraft(null);
+  }
 
   return (
     <div className="form-grid__tz flex flex-col gap-2">
-      <Label
-        htmlFor={`${id}-tz`}
-        className="text-xs text-zinc-600 dark:text-zinc-400 uppercase tracking-wide font-medium"
+      <label
+        htmlFor={inputId}
+        className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
       >
         Time Zone
-      </Label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            id={`${id}-tz`}
-            variant="outline"
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            className="w-full justify-between"
-          >
-            <span className="truncate">{timeZone || "Select timezone"}</span>
-            <ChevronsUpDown
-              aria-hidden="true"
-              className="opacity-50 ml-1 shrink-0"
-            />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
-          <Command>
-            <CommandInput placeholder="Search timezone..." className="h-9" />
-            <CommandList>
-              <CommandEmpty>No timezone found.</CommandEmpty>
-              <CommandGroup>
-                {timeZones.map((tz) => (
-                  <CommandItem
-                    key={tz}
-                    value={tz}
-                    onSelect={() => {
-                      setTimeZone(tz);
-                      setOpen(false);
-                    }}
-                  >
-                    {tz}
-                    <Check
-                      className={cn(
-                        "ml-auto",
-                        timeZone === tz ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      </label>
+      <input
+        id={inputId}
+        list={`${inputId}-list`}
+        value={draft ?? timeZone}
+        placeholder={timeZone}
+        autoComplete="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        className="h-9 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 aria-invalid:border-red-500/60 dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400 dark:aria-invalid:border-red-400/60"
+        // Step 1
+        onFocus={() => {
+          setError("");
+          setDraft("");
+        }}
+        // Step 2
+        onChange={(e) => {
+          const text = e.currentTarget.value;
+          setDraft(text);
+          setError("");
+          const zone = matchZone(text, zones);
+          if (zone && zone !== timeZone) setTimeZone(zone);
+        }}
+        // Step 3
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            cancelled.current = true;
+            e.currentTarget.blur();
+          } else if (e.key === "Enter" && draft !== null) {
+            if (!draft.trim() || matchZone(draft, zones))
+              e.currentTarget.blur();
+            else setError("Pick a time zone from the list.");
+          }
+        }}
+        onBlur={(e) => finish(e.currentTarget.value)}
+      />
+      <datalist id={`${inputId}-list`}>
+        {zones.map((zone) => (
+          // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- a datalist option is a suggestion, labelled by its value
+          <option key={zone} value={zone} />
+        ))}
+      </datalist>
+      {error && (
+        <p
+          id={`${inputId}-error`}
+          aria-live="polite"
+          className="text-xs text-red-600 dark:text-red-400"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

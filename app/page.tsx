@@ -15,6 +15,7 @@ import {
 import { aggregateDateData } from "@/lib/aggregate";
 import type { Exports as PartialExports } from "@/lib/upload";
 import type { Provider } from "@/lib/types";
+import { SYSTEM_ZONE } from "@/lib/time-zones";
 import { loadTestData, type Exports } from "@/app/dev-data";
 import githubMark from "@/app/assets/github-mark.svg";
 import githubMarkWhite from "@/app/assets/github-mark-white.svg";
@@ -43,9 +44,7 @@ export default function Home() {
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
   /** Counts time zone changes since the last upload; each one runs the heatmap sweep. */
   const [sweep, setSweep] = useState(0);
-  const [timeZone, setTimeZone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
+  const [timeZone, setTimeZone] = useState(SYSTEM_ZONE);
   /** Book mode only: swaps which side the form sits on. Persisted. */
   const [formOnRight, setFormOnRight] = useState(() => {
     try {
