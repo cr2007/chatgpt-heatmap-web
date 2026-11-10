@@ -1,6 +1,5 @@
 # Tests, lint, types, format, audit and the size budget. Pull requests run
-# it directly; the Pages and Docker workflows call it and deploy only when
-# it passes.
+# it directly; deploy.yml calls it and deploys only when it passes.
 name: Check
 
 on:
