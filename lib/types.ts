@@ -19,7 +19,14 @@ export interface CalHeatmapDay {
   claude: number;
 }
 
+/** One chat on one day: its title and how many prompts it got that day. */
+export interface ChatCount {
+  title: string;
+  count: number;
+}
+
+/** The chats of one day per provider, busiest first. */
 export interface DayTitleBreakdown {
-  chatgpt: Record<string, number>;
-  claude: Record<string, number>;
+  chatgpt: ChatCount[];
+  claude: ChatCount[];
 }

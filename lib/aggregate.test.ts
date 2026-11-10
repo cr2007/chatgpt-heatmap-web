@@ -33,16 +33,32 @@ describe("aggregateDateData", () => {
     expect(r.maxClaude).toBe(1);
   });
 
-  it("breaks each day down by provider and title", () => {
+  it("breaks each day down by provider and chat", () => {
     const r = aggregateDateData(gpt, claude)!;
     expect(r.dayTitles["2024-01-10"]).toEqual({
-      chatgpt: { "Chat 1": 2 },
-      claude: {},
+      chatgpt: [{ title: "Chat 1", count: 2 }],
+      claude: [],
     });
     expect(r.dayTitles["2024-01-11"]).toEqual({
-      chatgpt: { "Chat 1": 1 },
-      claude: { "Claude A": 1 },
+      chatgpt: [{ title: "Chat 1", count: 1 }],
+      claude: [{ title: "Claude A", count: 1 }],
     });
+  });
+
+  it("keeps chats with the same title apart, busiest first", () => {
+    const r = aggregateDateData(
+      [
+        { title: "New chat", days: ["2024-02-01"] },
+        { title: "Other", days: ["2024-02-01", "2024-02-01"] },
+        { title: "New chat", days: ["2024-02-01", "2024-02-01", "2024-02-01"] },
+      ],
+      null,
+    )!;
+    expect(r.dayTitles["2024-02-01"].chatgpt).toEqual([
+      { title: "New chat", count: 3 },
+      { title: "Other", count: 2 },
+      { title: "New chat", count: 1 },
+    ]);
   });
 
   it("spans from the first to the last prompt day, as local dates", () => {

@@ -1,6 +1,7 @@
 import type {
   ConversationSummary,
   CalHeatmapDay,
+  ChatCount,
   DayTitleBreakdown,
   Provider,
 } from "./types";
@@ -18,9 +19,10 @@ export interface AggregatedData {
 }
 
 /**
- * Counts prompts per day and per title for both providers.
+ * Counts prompts per day and per chat for both providers.
  *
- * Step 1: Add one to the day and to the day's title for each prompt day.
+ * Step 1: Add one to the day and to the day's chat for each prompt day, then
+ *         list each day's chats, busiest first.
  * Step 2: Derive the busiest day per provider, the date range and the years.
  */
 export function aggregateDateData(
@@ -35,16 +37,29 @@ export function aggregateDateData(
     ["chatgpt", chatgptSummary],
     ["claude", claudeSummary],
   ];
+  // Chats are keyed by their place in the export, so two chats with the same
+  // title stay apart.
+  const byChat: Record<string, Record<Provider, Map<number, ChatCount>>> = {};
   for (const [source, summaries] of sources) {
-    for (const { title, days } of summaries ?? []) {
+    summaries?.forEach(({ title, days }, chat) => {
       for (const day of days) {
         data[day] ??= { chatgpt: 0, claude: 0 };
         data[day][source]++;
-        dayTitles[day] ??= { chatgpt: {}, claude: {} };
-        dayTitles[day][source][title] =
-          (dayTitles[day][source][title] ?? 0) + 1;
+        const chats = (byChat[day] ??= {
+          chatgpt: new Map(),
+          claude: new Map(),
+        })[source];
+        const entry = chats.get(chat) ?? { title, count: 0 };
+        entry.count++;
+        chats.set(chat, entry);
       }
-    }
+    });
+  }
+  // Busiest chat first; a tie keeps export order (Array.sort is stable).
+  const byCount = (m: Map<number, ChatCount>) =>
+    [...m.values()].sort((a, b) => b.count - a.count);
+  for (const [day, { chatgpt, claude }] of Object.entries(byChat)) {
+    dayTitles[day] = { chatgpt: byCount(chatgpt), claude: byCount(claude) };
   }
 
   // Step 2

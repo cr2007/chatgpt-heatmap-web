@@ -9,6 +9,8 @@
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
 import { shade, dayOfYear } from "@/lib/calendar-geometry";
+import { plural } from "@/lib/utils";
+import { DayTooltip } from "@/components/day-tooltip";
 
 /** Cell edge length in SVG units, before panel-fit scaling. */
 const CELL = 11;
@@ -21,8 +23,8 @@ const STEP = CELL + GAP;
 const GPT_COLORS = ["#CCFFCC", "#5CE65C", "#008000"] as const;
 /** Low/medium/high intensity shades for Claude activity cells. */
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
-/** Tooltip width in px, used to flip it before it overflows the viewport. */
-const TIP_W = 260;
+/** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
+const HIDE_DELAY = 80;
 const MONTHS = [
   "Jan",
   "Feb",
@@ -37,9 +39,6 @@ const MONTHS = [
   "Nov",
   "Dec",
 ];
-
-/** "1 message", "3 messages". */
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Accessible name of a day cell, for example "2024-03-10: 3 messages (ChatGPT 2, Claude 1)". */
 function describeDay(day: string, chatgpt: number, claude: number): string {
@@ -74,17 +73,18 @@ export function CalendarHeatmap({
   to,
   vertical = false,
 }: CalendarHeatmapProps) {
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const uid = useId().replace(/:/g, "");
   const outerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tip, setTip] = useState<{
-    day: string;
-    left: number;
-    top: number;
-  } | null>(null);
+  /** The hovered day and the cursor position relative to the grid. */
+  const [tip, setTip] = useState<{ day: string; x: number; y: number } | null>(
+    null,
+  );
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
   const [avail, setAvail] = useState({ w: 0, h: 0 });
 
   // Measure on first paint (synchronous) to avoid a visible flash.
@@ -191,20 +191,17 @@ export function CalendarHeatmap({
     );
   });
 
-  // Cell renderer
-  // Step 4: place the tooltip next to the cursor when a cell is entered,
-  // flipping it left (clamped to the viewport) when it would overflow the right.
+  // Step 4: show the tooltip for the entered cell. Leaving waits a moment, so
+  // moving to the next cell updates the open tooltip instead of reopening it.
   const handleEnter = useCallback((e: React.MouseEvent, day: string) => {
     if (!containerRef.current) return;
+    clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
-    const cx = e.clientX - b.left;
-    const left =
-      b.left + cx + 14 + TIP_W > window.innerWidth
-        ? Math.max(-b.left + 4, cx - TIP_W - 6)
-        : cx + 14;
-    setTip({ day, left, top: e.clientY - b.top - 10 });
+    setTip({ day, x: e.clientX - b.left, y: e.clientY - b.top });
   }, []);
-  const handleLeave = useCallback(() => setTip(null), []);
+  const handleLeave = useCallback(() => {
+    hideTimer.current = setTimeout(() => setTip(null), HIDE_DELAY);
+  }, []);
 
   /** Renders one day's `<rect>`, filled solid, gradient-split (both
    *  providers active), or the empty shade. A day with data gets a hover
@@ -389,8 +386,6 @@ export function CalendarHeatmap({
     }
   }
 
-  const tipData = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
-  const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
   return (
     <div
       ref={outerRef}
@@ -416,143 +411,15 @@ export function CalendarHeatmap({
           {els}
         </svg>
 
-        {tip &&
-          tipData &&
-          tipTotal > 0 &&
-          (() => {
-            const titles = dayTitles[tip.day];
-            const gptT = titles?.chatgpt ?? {};
-            const claudeT = titles?.claude ?? {};
-            const hasBoth = tipData.chatgpt > 0 && tipData.claude > 0;
-            const fg = isDark ? "#f9fafb" : "#111827";
-            const sub = isDark ? "#d1d5db" : "#374151";
-            const muted = isDark ? "#9ca3af" : "#6b7280";
-
-            return (
-              <div
-                style={{
-                  position: "absolute",
-                  left: tip.left,
-                  top: tip.top,
-                  pointerEvents: "none",
-                  zIndex: 20,
-                  background: isDark ? "#1f2937" : "#fff",
-                  border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
-                  borderRadius: 8,
-                  boxShadow: "0 4px 12px rgba(0,0,0,.12)",
-                  padding: "8px 10px",
-                  minWidth: 140,
-                  maxWidth: TIP_W,
-                }}
-              >
-                <p
-                  style={{
-                    fontWeight: 600,
-                    color: fg,
-                    fontSize: 13,
-                    marginBottom: 6,
-                  }}
-                >
-                  {tip.day}:{" "}
-                  <span style={{ fontWeight: 400 }}>
-                    {plural(tipTotal, "message")}
-                  </span>
-                </p>
-
-                {tipData.chatgpt > 0 && (
-                  <div style={{ marginBottom: hasBoth ? 6 : 0 }}>
-                    {hasBoth && (
-                      <p
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: "#16a34a",
-                          marginBottom: 3,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        ChatGPT
-                      </p>
-                    )}
-                    {Object.entries(gptT).map(([title, count]) => (
-                      <p
-                        key={title}
-                        style={{
-                          color: sub,
-                          fontSize: 11,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          marginBottom: 1,
-                        }}
-                      >
-                        <span
-                          style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            maxWidth: 190,
-                          }}
-                        >
-                          {title}
-                        </span>
-                        <span style={{ color: muted, flexShrink: 0 }}>
-                          {count}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-
-                {tipData.claude > 0 && (
-                  <div>
-                    {hasBoth && (
-                      <p
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: "#ea580c",
-                          marginBottom: 3,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        Claude
-                      </p>
-                    )}
-                    {Object.entries(claudeT).map(([title, count]) => (
-                      <p
-                        key={title}
-                        style={{
-                          color: sub,
-                          fontSize: 11,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          marginBottom: 1,
-                        }}
-                      >
-                        <span
-                          style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            maxWidth: 190,
-                          }}
-                        >
-                          {title}
-                        </span>
-                        <span style={{ color: muted, flexShrink: 0 }}>
-                          {count}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+        {tip && data[tip.day] && (
+          <DayTooltip
+            day={tip.day}
+            counts={data[tip.day]}
+            chats={dayTitles[tip.day]}
+            x={tip.x}
+            y={tip.y}
+          />
+        )}
       </div>
     </div>
   );
