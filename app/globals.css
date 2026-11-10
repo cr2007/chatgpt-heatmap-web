@@ -1,5 +1,4 @@
 @import "tailwindcss" source(none);
-@import "tw-animate-css";
 
 /* Scan only the app source, not fixtures, docs or dev pages. */
 @source "../app";
@@ -118,6 +117,18 @@
 
 @utility animate-fade-slide-up {
   animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* The day tooltip fades and grows in. Same frames as tw-animate-css's
+   `animate-in fade-in-0 zoom-in-95 duration-100`, which this replaces. */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@utility animate-tooltip-in {
+  animation: tooltip-in 100ms ease;
 }
 
 /* A toast rises 8 px and fades in. */

@@ -68,7 +68,7 @@ export function DayTooltip({
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none absolute z-20 w-max max-w-[260px] rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-100 dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
+      className="pointer-events-none absolute z-20 w-max max-w-[260px] rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-tooltip-in dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
     >
       <div className="flex items-baseline justify-between gap-4">
         <span className="text-[13px] font-semibold">
