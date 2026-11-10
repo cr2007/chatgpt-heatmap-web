@@ -12,6 +12,9 @@ export interface ProviderInfo {
   text: string;
   dot: string;
   /** Heatmap cell fills for low, medium and high activity. */
+  /** Numbered export steps for the welcome screen. `code` and **bold** spans
+   *  are styled (see components/welcome.tsx). */
+  guide: readonly string[];
   /** Prefix of the heatmap shade classes in app/globals.css (`lv-g1` to `lv-g4`). */
   ramp: "g" | "o";
 }
@@ -27,6 +30,12 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     bg: "bg-green-50 dark:bg-green-950/20",
     text: "text-green-700 dark:text-green-400",
     dot: "bg-green-500",
+    guide: [
+      "Open **Settings** → **Data Controls**.",
+      "Choose **Export data** and confirm.",
+      "Open the link in the email and download the zip.",
+      "Unzip it and drop `conversations.json` here. More than one file is fine.",
+    ],
     ramp: "g",
   },
   {
@@ -38,6 +47,13 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     bg: "bg-orange-50 dark:bg-orange-950/20",
     text: "text-orange-700 dark:text-orange-400",
     dot: "bg-orange-500",
+    guide: [
+      "Open **Settings** → **Privacy**.",
+      "Choose **Export data**.",
+      "Open the link in the email. It shows a list of files.",
+      "Download the `conversations` zip. Each link works for 24 hours.",
+      "Unzip it and drop `conversations.json` here.",
+    ],
     ramp: "o",
   },
 ];

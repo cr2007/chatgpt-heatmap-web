@@ -2,13 +2,17 @@ import { useState } from "react";
 import { LoaderCircle, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** The drop target and file picker, with a spinner and a progress line while reading. */
+/**
+ * The drop target and file picker, with a spinner and a progress line while
+ * reading. `hero` is the large form on the welcome screen, with a button.
+ */
 export function DropZone({
   inputId,
   progress,
   uploads,
   error,
   onFiles,
+  hero = false,
 }: {
   inputId: string;
   /** Share of bytes read (0 to 1), or null when idle. */
@@ -17,6 +21,7 @@ export function DropZone({
   uploads: number;
   error: string;
   onFiles: (files: FileList) => Promise<void>;
+  hero?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const isReading = progress !== null;
@@ -26,8 +31,13 @@ export function DropZone({
     <label
       htmlFor={inputId}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed px-4 py-4 text-center h-full",
+        "group/drop relative flex flex-col gap-2 overflow-hidden rounded-xl border-2 border-dashed",
+        hero
+          ? "items-start px-6 py-7 text-left"
+          : "h-full items-center justify-center px-4 py-4 text-center",
         "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
+        // The file input is hidden, so the zone shows its keyboard focus.
+        "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet-500 dark:has-[input:focus-visible]:ring-violet-400",
         isDragging
           ? "border-violet-500/60 bg-violet-500/5 scale-[1.01] dark:border-violet-400/60 dark:bg-violet-400/5"
           : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
@@ -67,18 +77,41 @@ export function DropZone({
           strokeWidth={1.5}
         />
       )}
-      <div>
-        <p aria-live="polite" className="text-xs font-medium leading-tight">
-          {isReading ? "Reading files..." : "Drop export files here"}
-        </p>
-        {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
-        <p
-          aria-hidden={isReading}
-          className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
-        >
-          {isReading ? `${Math.round(progress * 100)}%` : "or click to browse"}
-        </p>
-      </div>
+      {hero ? (
+        <>
+          <p aria-live="polite" className="text-base font-semibold">
+            {isReading ? "Reading files..." : "Drop conversations.json here"}
+          </p>
+          {!isReading && (
+            <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-[color-mix(in_srgb,rgb(var(--accent))_85%,black)] px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale] duration-150 group-hover/drop:bg-[color-mix(in_srgb,rgb(var(--accent))_75%,black)] group-active/drop:scale-[0.97]">
+              Choose export files
+            </span>
+          )}
+          <p
+            aria-hidden={isReading}
+            className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+          >
+            {isReading
+              ? `${Math.round(progress * 100)}%`
+              : "Add one export or both. More than one ChatGPT file is fine."}
+          </p>
+        </>
+      ) : (
+        <div>
+          <p aria-live="polite" className="text-xs font-medium leading-tight">
+            {isReading ? "Reading files..." : "Drop export files here"}
+          </p>
+          {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
+          <p
+            aria-hidden={isReading}
+            className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
+          >
+            {isReading
+              ? `${Math.round(progress * 100)}%`
+              : "or click to browse"}
+          </p>
+        </div>
+      )}
       {/* Thin line on the bottom edge. A new key per upload starts it empty;
           at the end it stays full and fades out. */}
       <span

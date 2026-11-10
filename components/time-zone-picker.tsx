@@ -18,10 +18,13 @@ export function TimeZonePicker({
   id,
   timeZone,
   setTimeZone,
+  inline = false,
 }: {
   id: string;
   timeZone: string;
   setTimeZone: (timeZone: string) => void;
+  /** Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen. */
+  inline?: boolean;
 }) {
   const zones = useMemo(() => zoneList(), []);
   /** The text while the field is being edited; null shows the current zone. */
@@ -42,12 +45,22 @@ export function TimeZonePicker({
   }
 
   return (
-    <div className="form-grid__tz flex flex-col gap-2">
+    <div
+      className={
+        inline
+          ? "flex flex-wrap items-center gap-x-2 gap-y-1"
+          : "form-grid__tz flex flex-col gap-2"
+      }
+    >
       <label
         htmlFor={inputId}
-        className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
+        className={
+          inline
+            ? "text-sm text-zinc-600 dark:text-zinc-400"
+            : "text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
+        }
       >
-        Time Zone
+        {inline ? "Days start at midnight in" : "Time Zone"}
       </label>
       <input
         id={inputId}
@@ -59,7 +72,7 @@ export function TimeZonePicker({
         spellCheck={false}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${inputId}-error` : undefined}
-        className="h-9 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 aria-invalid:border-red-500/60 dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400 dark:aria-invalid:border-red-400/60"
+        className={`h-9 ${inline ? "w-56" : "w-full"} rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 aria-invalid:border-red-500/60 dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400 dark:aria-invalid:border-red-400/60`}
         // Step 1
         onFocus={() => {
           setError("");
@@ -96,7 +109,7 @@ export function TimeZonePicker({
         <p
           id={`${inputId}-error`}
           aria-live="polite"
-          className="text-xs text-red-600 dark:text-red-400"
+          className="basis-full text-xs text-red-600 dark:text-red-400"
         >
           {error}
         </p>

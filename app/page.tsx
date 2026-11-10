@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SiteLinks } from "@/components/site-links";
+import { Welcome } from "@/components/welcome";
 import { YearNav } from "@/components/year-nav";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -17,8 +18,6 @@ import type { Exports as PartialExports } from "@/lib/upload";
 import type { Provider } from "@/lib/types";
 import { SYSTEM_ZONE } from "@/lib/time-zones";
 import { loadTestData, type Exports } from "@/app/dev-data";
-import githubMark from "@/app/assets/github-mark.svg";
-import githubMarkWhite from "@/app/assets/github-mark-white.svg";
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
@@ -35,7 +34,9 @@ const NO_YEARS: number[] = [];
  * Step 3: Wire the form: a new upload clears the sweep, a time zone change
  *         starts one.
  * Step 4: Pick the year to show, the heatmap orientation and the layout class.
- * Step 5: Render the form panel, the heatmap panel and the fold navigation.
+ * Step 5: Render the welcome screen while nothing is loaded (outside the
+ *         fold layouts), else the form panel, the heatmap panel and the
+ *         fold navigation.
  */
 export default function Home() {
   // Step 1
@@ -153,126 +154,113 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 -z-10 bg-zinc-50 dark:bg-zinc-950" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.18),transparent)]" />
 
-      <div className={layoutClass}>
-        {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
-        {(!isTentMode || !hasData) && (
-          <div className="panel-form">
-            <header className="flex items-center justify-between mb-6 pt-2">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                AI Chat Heatmap
-              </h1>
-              <div className="flex items-center gap-2">
-                {isBookMode && hasData && (
-                  <button
-                    onClick={() => setFormOnRight((v) => !v)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
-                    title={formOnRight ? "Move panel left" : "Move panel right"}
-                    aria-label={
-                      formOnRight ? "Move panel left" : "Move panel right"
-                    }
-                  >
-                    {formOnRight ? (
-                      <ChevronLeft size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
-                  </button>
-                )}
-                <a
-                  href="https://github.com/cr2007/chatgpt-heatmap-web"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Open in GitHub"
-                  aria-label="Open in GitHub"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white shadow-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
-                >
-                  {/* The theme class on <html> picks the mark, so the first render is right. */}
-                  <img
-                    aria-hidden
-                    src={githubMark}
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="size-4 dark:hidden"
-                  />
-                  <img
-                    aria-hidden
-                    src={githubMarkWhite}
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="hidden size-4 dark:block"
-                  />
-                </a>
-                <ThemeToggle />
-              </div>
-            </header>
+      {!hasData && !isFolded ? (
+        <Welcome
+          onLoad={formProps.onLoad}
+          onStream={formProps.onStream}
+          timeZone={timeZone}
+          setTimeZone={formProps.setTimeZone}
+        />
+      ) : (
+        <div className={layoutClass}>
+          {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
+          {(!isTentMode || !hasData) && (
+            <div className="panel-form">
+              <header className="flex items-center justify-between mb-6 pt-2">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  AI Chat Heatmap
+                </h1>
+                <div className="flex items-center gap-2">
+                  {isBookMode && hasData && (
+                    <button
+                      onClick={() => setFormOnRight((v) => !v)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
+                      title={
+                        formOnRight ? "Move panel left" : "Move panel right"
+                      }
+                      aria-label={
+                        formOnRight ? "Move panel left" : "Move panel right"
+                      }
+                    >
+                      {formOnRight ? (
+                        <ChevronLeft size={16} />
+                      ) : (
+                        <ChevronRight size={16} />
+                      )}
+                    </button>
+                  )}
+                  <SiteLinks />
+                </div>
+              </header>
 
-            <main
-              id="main-content"
-              tabIndex={-1}
-              className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
-            >
-              <HeatMapForm
-                {...formProps}
-                compact={!isDesktopSplit && !isFolded}
-              />
-            </main>
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
+              >
+                <HeatMapForm
+                  {...formProps}
+                  compact={!isDesktopSplit && !isFolded}
+                />
+              </main>
 
-            {isBookMode && hasData && <div className="book-nav">{yearNav}</div>}
-          </div>
-        )}
-
-        {/* Heatmap panel empty state: visible when folded but no data loaded */}
-        {isFolded && !hasData && (
-          <div className="panel-heatmap">
-            <div className="h-full w-full flex items-center justify-center">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                Upload an export to see your heatmap
-              </p>
+              {isBookMode && hasData && (
+                <div className="book-nav">{yearNav}</div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Heatmap panel */}
-        {hasData && (
-          <div
-            className="panel-heatmap animate-fade-slide-up"
-            aria-busy={streaming !== null}
-          >
-            {agg ? (
-              <CalendarHeatmap
-                data={agg.data}
-                dayTitles={agg.dayTitles}
-                edges={agg.edges}
-                from={(isFolded && activeViewFrom) || agg.from}
-                to={(isFolded && activeViewTo) || agg.to}
-                vertical={useVerticalHeatmap}
-                fixedHeight={isDesktopSplit || isFolded}
-                sweep={sweep}
-              />
-            ) : (
+          {/* Heatmap panel empty state: visible when folded but no data loaded */}
+          {isFolded && !hasData && (
+            <div className="panel-heatmap">
               <div className="h-full w-full flex items-center justify-center">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                  No prompts found in this export
+                  Upload an export to see your heatmap
                 </p>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
-        {isTentMode && hasData && (
-          <div className="panel-form">
-            <div className="tent-bottom">
-              <div className="tent-bottom__form">
-                <HeatMapForm {...formProps} compact={false} />
-              </div>
-              <div className="tent-bottom__nav">{yearNav}</div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Heatmap panel */}
+          {hasData && (
+            <div
+              className="panel-heatmap animate-fade-slide-up"
+              aria-busy={streaming !== null}
+            >
+              {agg ? (
+                <CalendarHeatmap
+                  data={agg.data}
+                  dayTitles={agg.dayTitles}
+                  edges={agg.edges}
+                  from={(isFolded && activeViewFrom) || agg.from}
+                  to={(isFolded && activeViewTo) || agg.to}
+                  vertical={useVerticalHeatmap}
+                  fixedHeight={isDesktopSplit || isFolded}
+                  sweep={sweep}
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
+                    No prompts found in this export
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
+          {isTentMode && hasData && (
+            <div className="panel-form">
+              <div className="tent-bottom">
+                <div className="tent-bottom__form">
+                  <HeatMapForm {...formProps} compact={false} />
+                </div>
+                <div className="tent-bottom__nav">{yearNav}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -7,8 +7,9 @@
  * Step 2: Compare each total with its budget; exit 1 if one is over.
  */
 
-/** Gzip budgets in bytes, a little above the sizes on 2026-11-10 (JS 80.4 kB, CSS 8.6 kB). */
-const BUDGET = { js: 84_000, css: 9_500 } as const;
+/** Gzip budgets in bytes, a little above the sizes on 2026-11-10 (JS 80.4 kB,
+ *  CSS 8.6 kB). CSS raised to 10.5 kB for the welcome screen (9.9 kB). */
+const BUDGET = { js: 84_000, css: 10_500 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

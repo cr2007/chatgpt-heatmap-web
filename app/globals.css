@@ -467,7 +467,7 @@
 
 /* Fill whatever vertical room .panel-form has (header + book-nav permitting)
    instead of sitting at natural content height with dead space below. */
-#main-content {
+.panel-form #main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
