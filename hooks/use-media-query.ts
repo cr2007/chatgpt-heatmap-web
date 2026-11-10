@@ -1,4 +1,4 @@
-﻿import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 /** True while `query` matches; re-renders when the match changes. */
 export function useMediaQuery(query: string): boolean {

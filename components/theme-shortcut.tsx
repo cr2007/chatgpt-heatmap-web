@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useTheme } from "next-themes";
 
 /** True when the key press belongs to a field or control, not to the page. */
