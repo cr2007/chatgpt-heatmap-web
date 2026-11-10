@@ -35,8 +35,14 @@ describe("aggregateDateData", () => {
 
   it("breaks each day down by provider and title", () => {
     const r = aggregateDateData(gpt, claude)!;
-    expect(r.dayTitles["2024-01-10"]).toEqual({ chatgpt: { "Chat 1": 2 }, claude: {} });
-    expect(r.dayTitles["2024-01-11"]).toEqual({ chatgpt: { "Chat 1": 1 }, claude: { "Claude A": 1 } });
+    expect(r.dayTitles["2024-01-10"]).toEqual({
+      chatgpt: { "Chat 1": 2 },
+      claude: {},
+    });
+    expect(r.dayTitles["2024-01-11"]).toEqual({
+      chatgpt: { "Chat 1": 1 },
+      claude: { "Claude A": 1 },
+    });
   });
 
   it("spans from the first to the last prompt day, as local dates", () => {
@@ -54,9 +60,16 @@ describe("aggregateDateData", () => {
 
   it("merges two ChatGPT files with a Claude file", async () => {
     const [a, b, c] = await Promise.all(
-      ["chatgpt-export.json", "chatgpt-export-2.json", "claude-export.json"].map((f) => Bun.file(`${FIXTURES}/${f}`).json()),
+      [
+        "chatgpt-export.json",
+        "chatgpt-export-2.json",
+        "claude-export.json",
+      ].map((f) => Bun.file(`${FIXTURES}/${f}`).json()),
     );
-    const r = aggregateDateData(parseChatGPT([...a, ...b], "UTC"), parseClaude(c, "UTC"))!;
+    const r = aggregateDateData(
+      parseChatGPT([...a, ...b], "UTC"),
+      parseClaude(c, "UTC"),
+    )!;
     expect(r.data["2024-03-10"]).toEqual({ chatgpt: 3, claude: 2 });
   });
 });

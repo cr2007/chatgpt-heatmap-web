@@ -8,9 +8,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "u1"
-        ]
+        "children": ["u1"]
       },
       "u1": {
         "id": "u1",
@@ -25,9 +23,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "from another export"
-            ]
+            "parts": ["from another export"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -36,9 +32,7 @@
           "recipient": "all"
         },
         "parent": "root",
-        "children": [
-          "a1"
-        ]
+        "children": ["a1"]
       },
       "a1": {
         "id": "a1",
@@ -53,9 +47,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,

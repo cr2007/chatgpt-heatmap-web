@@ -1,10 +1,13 @@
-
 import { Check, ChevronDown, ChevronsUpDown, Upload, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -39,7 +42,8 @@ const PROVIDERS: ProviderTheme[] = [
   {
     key: "chatgpt",
     label: "ChatGPT",
-    steps: "Settings → Data Controls → Export data. Multiple files are supported.",
+    steps:
+      "Settings → Data Controls → Export data. Multiple files are supported.",
     border: "border-green-300 dark:border-green-900/40",
     bg: "bg-green-50 dark:bg-green-950/20",
     text: "text-green-700 dark:text-green-400",
@@ -107,7 +111,10 @@ export function HeatMapForm({
       try {
         // Step 1
         const files = await Promise.all(
-          Array.from(fileList, async (f) => ({ name: f.name, text: await f.text() })),
+          Array.from(fileList, async (f) => ({
+            name: f.name,
+            text: await f.text(),
+          })),
         );
         // Step 2
         const result = readExports(files);
@@ -116,15 +123,20 @@ export function HeatMapForm({
         onLoad(result.exports);
         for (const p of PROVIDERS) {
           const count = result.exports[p.key]?.data.length;
-          if (count) toast.success(`${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`);
+          if (count)
+            toast.success(
+              `${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`,
+            );
         }
       } catch (e) {
-        showError(`Could not read the file: ${e instanceof Error ? e.message : String(e)}`);
+        showError(
+          `Could not read the file: ${e instanceof Error ? e.message : String(e)}`,
+        );
       } finally {
         setIsReading(false);
       }
     },
-    [onLoad, showError]
+    [onLoad, showError],
   );
 
   const hasAnyLoaded = PROVIDERS.some((p) => loaded[p.key] !== null);
@@ -139,7 +151,6 @@ export function HeatMapForm({
   function renderFormGrid(inputId: string) {
     return (
       <div className="form-grid">
-
         {/* Upload drop zone + conditional file states */}
         <div className="form-grid__upload flex flex-col gap-2">
           {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drop target; keyboard users reach the linked file input */}
@@ -151,9 +162,14 @@ export function HeatMapForm({
               isDragging
                 ? "border-violet-500/60 bg-violet-500/5 scale-[1.01] dark:border-violet-400/60 dark:bg-violet-400/5"
                 : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
-              error && !isDragging && "border-red-500/60 dark:border-red-400/60"
+              error &&
+                !isDragging &&
+                "border-red-500/60 dark:border-red-400/60",
             )}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={async (e) => {
               e.preventDefault();
@@ -161,11 +177,19 @@ export function HeatMapForm({
               await processFiles(e.dataTransfer.files);
             }}
           >
-            <Upload aria-hidden="true" className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
+            <Upload
+              aria-hidden="true"
+              className="h-5 w-5 text-zinc-500 dark:text-zinc-400"
+              strokeWidth={1.5}
+            />
             <div aria-live="polite">
-              <p className="text-xs font-medium leading-tight">{isReading ? "Reading files..." : "Drop export files here"}</p>
+              <p className="text-xs font-medium leading-tight">
+                {isReading ? "Reading files..." : "Drop export files here"}
+              </p>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight">
-                {isReading ? "Large exports take a few seconds" : "or click to browse"}
+                {isReading
+                  ? "Large exports take a few seconds"
+                  : "or click to browse"}
               </p>
             </div>
             <input
@@ -185,7 +209,10 @@ export function HeatMapForm({
           {error && (
             <p
               role="alert"
-              className={cn("text-xs text-red-600 dark:text-red-400", isShaking && "animate-shake")}
+              className={cn(
+                "text-xs text-red-600 dark:text-red-400",
+                isShaking && "animate-shake",
+              )}
               onAnimationEnd={() => setIsShaking(false)}
             >
               {error}
@@ -200,11 +227,22 @@ export function HeatMapForm({
                 return (
                   <div
                     key={p.key}
-                    className={cn("flex items-center justify-between rounded-lg border px-3 py-2 text-xs", p.border, p.bg)}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border px-3 py-2 text-xs",
+                      p.border,
+                      p.bg,
+                    )}
                   >
                     <span className="flex items-center gap-2 min-w-0">
-                      <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", p.dot)} />
-                      <span className={cn("font-medium flex-shrink-0", p.text)}>{p.label}</span>
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                          p.dot,
+                        )}
+                      />
+                      <span className={cn("font-medium flex-shrink-0", p.text)}>
+                        {p.label}
+                      </span>
                       <span className="text-zinc-600 dark:text-zinc-400 truncate">
                         {info.name} ({info.count} conversations)
                       </span>
@@ -232,15 +270,37 @@ export function HeatMapForm({
           {/* Cramped panels (book mode, narrow windows): tap a card to reveal its steps. */}
           <div className="form-grid__info-compact flex flex-col gap-2">
             {PROVIDERS.map((p) => (
-              <details key={p.key} className={cn("group rounded-lg border px-3 py-2 text-xs", p.border, p.bg)}>
-                <summary className={cn("flex cursor-pointer list-none items-center justify-between font-medium [&::-webkit-details-marker]:hidden", p.text)}>
+              <details
+                key={p.key}
+                className={cn(
+                  "group rounded-lg border px-3 py-2 text-xs",
+                  p.border,
+                  p.bg,
+                )}
+              >
+                <summary
+                  className={cn(
+                    "flex cursor-pointer list-none items-center justify-between font-medium [&::-webkit-details-marker]:hidden",
+                    p.text,
+                  )}
+                >
                   <span className="flex items-center gap-2">
-                    <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", p.dot)} />
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                        p.dot,
+                      )}
+                    />
                     {p.label}
                   </span>
-                  <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0 transition-transform group-open:rotate-180" />
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 flex-shrink-0 transition-transform group-open:rotate-180"
+                  />
                 </summary>
-                <p className="mt-1.5 text-zinc-600 dark:text-zinc-400">{p.steps}</p>
+                <p className="mt-1.5 text-zinc-600 dark:text-zinc-400">
+                  {p.steps}
+                </p>
               </details>
             ))}
           </div>
@@ -248,12 +308,28 @@ export function HeatMapForm({
           {/* Room to spare (normal desktop): show the steps plainly, same colours. */}
           <div className="form-grid__info-expanded flex flex-col gap-2">
             {PROVIDERS.map((p) => (
-              <div key={p.key} className={cn("rounded-lg border px-3 py-2 text-xs", p.border, p.bg)}>
-                <p className={cn("flex items-center gap-2 font-medium", p.text)}>
-                  <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", p.dot)} />
+              <div
+                key={p.key}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-xs",
+                  p.border,
+                  p.bg,
+                )}
+              >
+                <p
+                  className={cn("flex items-center gap-2 font-medium", p.text)}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                      p.dot,
+                    )}
+                  />
                   {p.label}
                 </p>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">{p.steps}</p>
+                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                  {p.steps}
+                </p>
               </div>
             ))}
           </div>
@@ -261,7 +337,10 @@ export function HeatMapForm({
 
         {/* Timezone */}
         <div className="form-grid__tz flex flex-col gap-2">
-          <Label htmlFor={`${inputId}-tz`} className="text-xs text-zinc-600 dark:text-zinc-400 uppercase tracking-wide font-medium">
+          <Label
+            htmlFor={`${inputId}-tz`}
+            className="text-xs text-zinc-600 dark:text-zinc-400 uppercase tracking-wide font-medium"
+          >
             Time Zone
           </Label>
           <Popover open={open} onOpenChange={setOpen}>
@@ -273,13 +352,21 @@ export function HeatMapForm({
                 aria-expanded={open}
                 className="w-full justify-between"
               >
-                <span className="truncate">{timeZone || "Select timezone"}</span>
-                <ChevronsUpDown aria-hidden="true" className="opacity-50 ml-1 flex-shrink-0" />
+                <span className="truncate">
+                  {timeZone || "Select timezone"}
+                </span>
+                <ChevronsUpDown
+                  aria-hidden="true"
+                  className="opacity-50 ml-1 flex-shrink-0"
+                />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
-                <CommandInput placeholder="Search timezone..." className="h-9" />
+                <CommandInput
+                  placeholder="Search timezone..."
+                  className="h-9"
+                />
                 <CommandList>
                   <CommandEmpty>No timezone found.</CommandEmpty>
                   <CommandGroup>
@@ -296,7 +383,7 @@ export function HeatMapForm({
                         <Check
                           className={cn(
                             "ml-auto",
-                            timeZone === tz ? "opacity-100" : "opacity-0"
+                            timeZone === tz ? "opacity-100" : "opacity-0",
                           )}
                         />
                       </CommandItem>
@@ -307,7 +394,6 @@ export function HeatMapForm({
             </PopoverContent>
           </Popover>
         </div>
-
       </div>
     );
   }
@@ -318,17 +404,27 @@ export function HeatMapForm({
     <details className="group/collapse">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40 [&::-webkit-details-marker]:hidden">
         <div className="flex flex-1 min-w-0 flex-wrap items-center gap-2">
-          {PROVIDERS.map((p) => loaded[p.key] && (
-            <span
-              key={p.key}
-              className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", p.border, p.bg, p.text)}
-            >
-              <span className={cn("h-1.5 w-1.5 rounded-full", p.dot)} />
-              {p.label}
-            </span>
-          ))}
+          {PROVIDERS.map(
+            (p) =>
+              loaded[p.key] && (
+                <span
+                  key={p.key}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+                    p.border,
+                    p.bg,
+                    p.text,
+                  )}
+                >
+                  <span className={cn("h-1.5 w-1.5 rounded-full", p.dot)} />
+                  {p.label}
+                </span>
+              ),
+          )}
         </div>
-        <span className="flex-shrink-0 text-xs text-zinc-500 dark:text-zinc-400">Manage</span>
+        <span className="flex-shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+          Manage
+        </span>
         <ChevronDown
           aria-hidden="true"
           className="h-4 w-4 flex-shrink-0 text-zinc-500 transition-transform group-open/collapse:rotate-180 dark:text-zinc-400"

@@ -27,17 +27,25 @@ const FIXTURES = `${import.meta.dir}/fixtures`;
 const hasJq = Bun.which("jq") !== null;
 
 /** Runs a jq program on a file with the given TZ and returns its day map. */
-async function jqCounts(program: string, file: string, tz: string): Promise<Record<string, number>> {
+async function jqCounts(
+  program: string,
+  file: string,
+  tz: string,
+): Promise<Record<string, number>> {
   return $`jq -c ${program} ${file}`.env({ ...process.env, TZ: tz }).json();
 }
 
 /** Counts per day for one provider from the app pipeline, zero days left out. */
-async function appCounts(file: string, tz: string): Promise<Record<string, number>> {
+async function appCounts(
+  file: string,
+  tz: string,
+): Promise<Record<string, number>> {
   const raw = await Bun.file(file).json();
   const format = detectFormat(raw);
-  const agg = format === "chatgpt"
-    ? aggregateDateData(parseChatGPT(raw, tz), null)
-    : aggregateDateData(null, parseClaude(raw, tz));
+  const agg =
+    format === "chatgpt"
+      ? aggregateDateData(parseChatGPT(raw, tz), null)
+      : aggregateDateData(null, parseClaude(raw, tz));
   if (!agg || format === "unknown") return {};
   return Object.fromEntries(
     Object.entries(agg.data)
@@ -60,7 +68,9 @@ describe.skipIf(!hasJq)("app counts match jq", () => {
       test(`${file.split("/").pop()} in ${tz}`, async () => {
         const raw = await Bun.file(file).json();
         const program = detectFormat(raw) === "claude" ? JQ_CLAUDE : JQ_CHATGPT;
-        expect(await appCounts(file, tz)).toEqual(await jqCounts(program, file, tz));
+        expect(await appCounts(file, tz)).toEqual(
+          await jqCounts(program, file, tz),
+        );
       });
     }
   }

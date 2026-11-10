@@ -1,5 +1,11 @@
-﻿
-import React, { useId, useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
+﻿import React, {
+  useId,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
 import { shade, dayOfYear } from "@/lib/calendar-geometry";
@@ -7,24 +13,40 @@ import { shade, dayOfYear } from "@/lib/calendar-geometry";
 /** Cell edge length in SVG units, before panel-fit scaling. */
 const CELL = 11;
 /** Gap between adjacent cells in SVG units. */
-const GAP  = 2;
+const GAP = 2;
 /** Cell edge length plus its gap - the repeat distance between cells. */
 const STEP = CELL + GAP;
 
 /** Low/medium/high intensity shades for ChatGPT activity cells. */
-const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
+const GPT_COLORS = ["#CCFFCC", "#5CE65C", "#008000"] as const;
 /** Low/medium/high intensity shades for Claude activity cells. */
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
 /** Tooltip width in px, used to flip it before it overflows the viewport. */
 const TIP_W = 260;
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 /** "1 message", "3 messages". */
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Accessible name of a day cell, for example "2024-03-10: 3 messages (ChatGPT 2, Claude 1)". */
 function describeDay(day: string, chatgpt: number, claude: number): string {
-  const parts = [chatgpt > 0 && `ChatGPT ${chatgpt}`, claude > 0 && `Claude ${claude}`].filter(Boolean);
+  const parts = [
+    chatgpt > 0 && `ChatGPT ${chatgpt}`,
+    claude > 0 && `Claude ${claude}`,
+  ].filter(Boolean);
   return `${day}: ${plural(chatgpt + claude, "message")} (${parts.join(", ")})`;
 }
 
@@ -44,15 +66,25 @@ export interface CalendarHeatmapProps {
  * ratio, with a hover tooltip breaking down each day's conversation titles.
  */
 export function CalendarHeatmap({
-  data, dayTitles, maxChatgpt, maxClaude, from, to, vertical = false,
+  data,
+  dayTitles,
+  maxChatgpt,
+  maxClaude,
+  from,
+  to,
+  vertical = false,
 }: CalendarHeatmapProps) {
   const { theme, resolvedTheme } = useTheme();
   const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
 
   const uid = useId().replace(/:/g, "");
-  const outerRef    = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tip,   setTip]   = useState<{ day: string; left: number; top: number } | null>(null);
+  const [tip, setTip] = useState<{
+    day: string;
+    left: number;
+    top: number;
+  } | null>(null);
   const [avail, setAvail] = useState({ w: 0, h: 0 });
 
   // Measure on first paint (synchronous) to avoid a visible flash.
@@ -75,8 +107,8 @@ export function CalendarHeatmap({
     return () => obs.disconnect();
   }, []);
 
-  const emptyFill  = isDark ? "#2a2a2a" : "#eee";
-  const textFill   = isDark ? "#888"    : "#666";
+  const emptyFill = isDark ? "#2a2a2a" : "#eee";
+  const textFill = isDark ? "#888" : "#666";
   // A faint edge on every cell keeps the palest greens (e.g. #CCFFCC) from
   // blending into the empty-cell grey in light mode, without darkening the
   // grey itself or touching the colour scale.
@@ -86,15 +118,15 @@ export function CalendarHeatmap({
   // orientation, then compute a single scale factor that fits it to the
   // panel while preserving aspect ratio.
   const startYear = from.getFullYear();
-  const endYear   = to.getFullYear();
-  const numYears  = endYear - startYear + 1;
+  const endYear = to.getFullYear();
+  const numYears = endYear - startYear + 1;
 
   // Layout constants
   // Horizontal: years stack top-to-bottom, weeks -> columns, dow -> rows
   const H = {
-    dowW:   27,           // day-of-week label column
-    monthH: 18,           // month label row
-    yearH:  20,           // year label row
+    dowW: 27, // day-of-week label column
+    monthH: 18, // month label row
+    yearH: 20, // year label row
     yearGap: 22,
     pad: { t: 6, r: 8, b: 8, l: 8 },
   } as const;
@@ -102,9 +134,9 @@ export function CalendarHeatmap({
 
   // Vertical: years stack left-to-right, dow -> columns, weeks -> rows
   const V = {
-    monthW:  28,          // month label column (left side)
-    dowH:    15,          // day-of-week label row
-    yearH:   16,          // year label row
+    monthW: 28, // month label column (left side)
+    dowH: 15, // day-of-week label row
+    yearH: 16, // year label row
     yearGap: 18,
     pad: { t: 6, r: 6, b: 6, l: 6 },
   } as const;
@@ -133,15 +165,29 @@ export function CalendarHeatmap({
   // and Claude activity, split at the point matching their share of the day.
   const gradDefs: React.ReactElement[] = [];
   Object.entries(data).forEach(([day, { chatgpt, claude }]) => {
-    if (chatgpt <= 0 || claude <= 0 || maxChatgpt <= 0 || maxClaude <= 0) return;
+    if (chatgpt <= 0 || claude <= 0 || maxChatgpt <= 0 || maxClaude <= 0)
+      return;
     const pct = Math.round((chatgpt / (chatgpt + claude)) * 100);
-    const s1  = Math.max(2,  pct - 12);
-    const s2  = Math.min(98, pct + 12);
+    const s1 = Math.max(2, pct - 12);
+    const s2 = Math.min(98, pct + 12);
     gradDefs.push(
-      <linearGradient key={day} id={`${uid}g${day}`} x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset={`${s1}%`} stopColor={shade(chatgpt, maxChatgpt, GPT_COLORS)} />
-        <stop offset={`${s2}%`} stopColor={shade(claude,  maxClaude,  CLAUDE_COLORS)} />
-      </linearGradient>
+      <linearGradient
+        key={day}
+        id={`${uid}g${day}`}
+        x1="0%"
+        y1="0%"
+        x2="100%"
+        y2="0%"
+      >
+        <stop
+          offset={`${s1}%`}
+          stopColor={shade(chatgpt, maxChatgpt, GPT_COLORS)}
+        />
+        <stop
+          offset={`${s2}%`}
+          stopColor={shade(claude, maxClaude, CLAUDE_COLORS)}
+        />
+      </linearGradient>,
     );
   });
 
@@ -152,9 +198,10 @@ export function CalendarHeatmap({
     if (!containerRef.current) return;
     const b = containerRef.current.getBoundingClientRect();
     const cx = e.clientX - b.left;
-    const left = b.left + cx + 14 + TIP_W > window.innerWidth
-      ? Math.max(-b.left + 4, cx - TIP_W - 6)
-      : cx + 14;
+    const left =
+      b.left + cx + 14 + TIP_W > window.innerWidth
+        ? Math.max(-b.left + 4, cx - TIP_W - 6)
+        : cx + 14;
     setTip({ day, left, top: e.clientY - b.top - 10 });
   }, []);
   const handleLeave = useCallback(() => setTip(null), []);
@@ -166,15 +213,25 @@ export function CalendarHeatmap({
     const { chatgpt = 0, claude = 0 } = data[day] ?? {};
     const hasData = chatgpt + claude > 0;
     let fill: string;
-    if      (chatgpt > 0 && claude  > 0 && maxChatgpt > 0 && maxClaude > 0) fill = `url(#${uid}g${day})`;
-    else if (chatgpt > 0 && maxChatgpt > 0) fill = shade(chatgpt, maxChatgpt, GPT_COLORS);
-    else if (claude  > 0 && maxClaude  > 0) fill = shade(claude,  maxClaude,  CLAUDE_COLORS);
+    if (chatgpt > 0 && claude > 0 && maxChatgpt > 0 && maxClaude > 0)
+      fill = `url(#${uid}g${day})`;
+    else if (chatgpt > 0 && maxChatgpt > 0)
+      fill = shade(chatgpt, maxChatgpt, GPT_COLORS);
+    else if (claude > 0 && maxClaude > 0)
+      fill = shade(claude, maxClaude, CLAUDE_COLORS);
     else fill = emptyFill;
     return (
       <rect
-        key={day} x={x} y={y} width={CELL} height={CELL} rx={2} fill={fill}
-        stroke={cellStroke} strokeWidth={1}
-        onMouseEnter={hasData ? e => handleEnter(e, day) : undefined}
+        key={day}
+        x={x}
+        y={y}
+        width={CELL}
+        height={CELL}
+        rx={2}
+        fill={fill}
+        stroke={cellStroke}
+        strokeWidth={1}
+        onMouseEnter={hasData ? (e) => handleEnter(e, day) : undefined}
         onMouseLeave={hasData ? handleLeave : undefined}
         role={hasData ? "img" : undefined}
         aria-label={hasData ? describeDay(day, chatgpt, claude) : undefined}
@@ -187,42 +244,63 @@ export function CalendarHeatmap({
   const els: React.ReactElement[] = [];
 
   for (let yi = 0; yi < numYears; yi++) {
-    const year   = startYear + yi;
-    const jan1   = new Date(year, 0, 1);
+    const year = startYear + yi;
+    const jan1 = new Date(year, 0, 1);
     const jan1wd = jan1.getDay();
 
     if (!vertical) {
       // Horizontal
-      const yOff  = H.pad.t + yi * (H_SEC_H + H.yearGap);
+      const yOff = H.pad.t + yi * (H_SEC_H + H.yearGap);
       const gridY = yOff + H.yearH + H.monthH;
 
       // Year label
       els.push(
-        <text key={`yr${year}`}
-          x={H.pad.l + H.dowW} y={yOff + H.yearH - 4}
-          fill={textFill} fontSize={12} fontWeight="600"
-        >{year}</text>
+        <text
+          key={`yr${year}`}
+          x={H.pad.l + H.dowW}
+          y={yOff + H.yearH - 4}
+          fill={textFill}
+          fontSize={12}
+          fontWeight="600"
+        >
+          {year}
+        </text>,
       );
 
       // Day-of-week labels (Mon / Wed / Fri)
-      ([[1, "Mon"], [3, "Wed"], [5, "Fri"]] as [number, string][]).forEach(([row, lbl]) =>
+      (
+        [
+          [1, "Mon"],
+          [3, "Wed"],
+          [5, "Fri"],
+        ] as [number, string][]
+      ).forEach(([row, lbl]) =>
         els.push(
-          <text key={`dh${year}${row}`}
-            x={H.pad.l + 2} y={gridY + row * STEP + CELL - 2}
-            fill={textFill} fontSize={9}
-          >{lbl}</text>
-        )
+          <text
+            key={`dh${year}${row}`}
+            x={H.pad.l + 2}
+            y={gridY + row * STEP + CELL - 2}
+            fill={textFill}
+            fontSize={9}
+          >
+            {lbl}
+          </text>,
+        ),
       );
 
       // Month labels
       for (let m = 0; m < 12; m++) {
         const col = Math.floor((dayOfYear(new Date(year, m, 1)) + jan1wd) / 7);
         els.push(
-          <text key={`mh${year}${m}`}
+          <text
+            key={`mh${year}${m}`}
             x={H.pad.l + H.dowW + col * STEP}
             y={yOff + H.yearH + H.monthH - 4}
-            fill={textFill} fontSize={10}
-          >{MONTHS[m]}</text>
+            fill={textFill}
+            fontSize={10}
+          >
+            {MONTHS[m]}
+          </text>,
         );
       }
 
@@ -232,33 +310,45 @@ export function CalendarHeatmap({
         const day = cur.toLocaleDateString("sv-SE");
         const col = Math.floor((dayOfYear(cur) + jan1wd) / 7);
         const row = cur.getDay();
-        els.push(makeCell(day, H.pad.l + H.dowW + col * STEP, gridY + row * STEP));
+        els.push(
+          makeCell(day, H.pad.l + H.dowW + col * STEP, gridY + row * STEP),
+        );
         cur.setDate(cur.getDate() + 1);
       }
-
     } else {
       // Vertical
-      const xOff  = V.pad.l + yi * (V_SEC_W + V.yearGap);
+      const xOff = V.pad.l + yi * (V_SEC_W + V.yearGap);
       const gridX = xOff + V.monthW;
       const gridY = V.pad.t + V.yearH + V.dowH;
 
       // Year label
       els.push(
-        <text key={`yr${year}`}
-          x={gridX} y={V.pad.t + V.yearH - 4}
-          fill={textFill} fontSize={11} fontWeight="600"
-        >{year}</text>
+        <text
+          key={`yr${year}`}
+          x={gridX}
+          y={V.pad.t + V.yearH - 4}
+          fill={textFill}
+          fontSize={11}
+          fontWeight="600"
+        >
+          {year}
+        </text>,
       );
 
       // Day-of-week labels (S M T W T F S)
       "SMTWTFS".split("").forEach((lbl, col) =>
         els.push(
-          <text key={`dv${year}${col}`}
+          <text
+            key={`dv${year}${col}`}
             x={gridX + col * STEP + CELL / 2}
             y={V.pad.t + V.yearH + V.dowH - 3}
-            fill={textFill} fontSize={8} textAnchor="middle"
-          >{lbl}</text>
-        )
+            fill={textFill}
+            fontSize={8}
+            textAnchor="middle"
+          >
+            {lbl}
+          </text>,
+        ),
       );
 
       // Month labels (left side, one per month at its first week row)
@@ -271,11 +361,16 @@ export function CalendarHeatmap({
             seenM.add(m);
             const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
             els.push(
-              <text key={`mv${year}${m}`}
+              <text
+                key={`mv${year}${m}`}
                 x={xOff + V.monthW - 3}
                 y={gridY + weekIdx * STEP + CELL - 2}
-                fill={textFill} fontSize={8} textAnchor="end"
-              >{MONTHS[m]}</text>
+                fill={textFill}
+                fontSize={8}
+                textAnchor="end"
+              >
+                {MONTHS[m]}
+              </text>,
             );
           }
           cur.setDate(cur.getDate() + 1);
@@ -285,100 +380,180 @@ export function CalendarHeatmap({
       // Cells
       const cur = new Date(year, 0, 1);
       while (cur.getFullYear() === year) {
-        const day     = cur.toLocaleDateString("sv-SE");
+        const day = cur.toLocaleDateString("sv-SE");
         const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
-        const col     = cur.getDay();
+        const col = cur.getDay();
         els.push(makeCell(day, gridX + col * STEP, gridY + weekIdx * STEP));
         cur.setDate(cur.getDate() + 1);
       }
     }
   }
 
-  const tipData  = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
+  const tipData = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
   const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
   return (
     <div
       ref={outerRef}
-      style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <svg
-        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
-        role="group"
-        aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        width={renderedW}
-        height={renderedH}
-        style={{ display: "block" }}
-      >
-        <defs>{gradDefs}</defs>
-        {els}
-      </svg>
+      <div ref={containerRef} style={{ position: "relative" }}>
+        <svg
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
+          role="group"
+          aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          width={renderedW}
+          height={renderedH}
+          style={{ display: "block" }}
+        >
+          <defs>{gradDefs}</defs>
+          {els}
+        </svg>
 
-      {tip && tipData && tipTotal > 0 && (() => {
-        const titles  = dayTitles[tip.day];
-        const gptT    = titles?.chatgpt ?? {};
-        const claudeT = titles?.claude  ?? {};
-        const hasBoth = tipData.chatgpt > 0 && tipData.claude > 0;
-        const fg      = isDark ? "#f9fafb" : "#111827";
-        const sub     = isDark ? "#d1d5db" : "#374151";
-        const muted   = isDark ? "#9ca3af" : "#6b7280";
+        {tip &&
+          tipData &&
+          tipTotal > 0 &&
+          (() => {
+            const titles = dayTitles[tip.day];
+            const gptT = titles?.chatgpt ?? {};
+            const claudeT = titles?.claude ?? {};
+            const hasBoth = tipData.chatgpt > 0 && tipData.claude > 0;
+            const fg = isDark ? "#f9fafb" : "#111827";
+            const sub = isDark ? "#d1d5db" : "#374151";
+            const muted = isDark ? "#9ca3af" : "#6b7280";
 
-        return (
-          <div style={{
-            position: "absolute",
-            left: tip.left,
-            top: tip.top,
-            pointerEvents: "none",
-            zIndex: 20,
-            background: isDark ? "#1f2937" : "#fff",
-            border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
-            borderRadius: 8,
-            boxShadow: "0 4px 12px rgba(0,0,0,.12)",
-            padding: "8px 10px",
-            minWidth: 140,
-            maxWidth: TIP_W,
-          }}>
-            <p style={{ fontWeight: 600, color: fg, fontSize: 13, marginBottom: 6 }}>
-              {tip.day}:{" "}
-              <span style={{ fontWeight: 400 }}>{plural(tipTotal, "message")}</span>
-            </p>
+            return (
+              <div
+                style={{
+                  position: "absolute",
+                  left: tip.left,
+                  top: tip.top,
+                  pointerEvents: "none",
+                  zIndex: 20,
+                  background: isDark ? "#1f2937" : "#fff",
+                  border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+                  borderRadius: 8,
+                  boxShadow: "0 4px 12px rgba(0,0,0,.12)",
+                  padding: "8px 10px",
+                  minWidth: 140,
+                  maxWidth: TIP_W,
+                }}
+              >
+                <p
+                  style={{
+                    fontWeight: 600,
+                    color: fg,
+                    fontSize: 13,
+                    marginBottom: 6,
+                  }}
+                >
+                  {tip.day}:{" "}
+                  <span style={{ fontWeight: 400 }}>
+                    {plural(tipTotal, "message")}
+                  </span>
+                </p>
 
-            {tipData.chatgpt > 0 && (
-              <div style={{ marginBottom: hasBoth ? 6 : 0 }}>
-                {hasBoth && (
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "#16a34a", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    ChatGPT
-                  </p>
+                {tipData.chatgpt > 0 && (
+                  <div style={{ marginBottom: hasBoth ? 6 : 0 }}>
+                    {hasBoth && (
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#16a34a",
+                          marginBottom: 3,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        ChatGPT
+                      </p>
+                    )}
+                    {Object.entries(gptT).map(([title, count]) => (
+                      <p
+                        key={title}
+                        style={{
+                          color: sub,
+                          fontSize: 11,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 1,
+                        }}
+                      >
+                        <span
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            maxWidth: 190,
+                          }}
+                        >
+                          {title}
+                        </span>
+                        <span style={{ color: muted, flexShrink: 0 }}>
+                          {count}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
                 )}
-                {Object.entries(gptT).map(([title, count]) => (
-                  <p key={title} style={{ color: sub, fontSize: 11, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 1 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{title}</span>
-                    <span style={{ color: muted, flexShrink: 0 }}>{count}</span>
-                  </p>
-                ))}
-              </div>
-            )}
 
-            {tipData.claude > 0 && (
-              <div>
-                {hasBoth && (
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "#ea580c", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Claude
-                  </p>
+                {tipData.claude > 0 && (
+                  <div>
+                    {hasBoth && (
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#ea580c",
+                          marginBottom: 3,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Claude
+                      </p>
+                    )}
+                    {Object.entries(claudeT).map(([title, count]) => (
+                      <p
+                        key={title}
+                        style={{
+                          color: sub,
+                          fontSize: 11,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 1,
+                        }}
+                      >
+                        <span
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            maxWidth: 190,
+                          }}
+                        >
+                          {title}
+                        </span>
+                        <span style={{ color: muted, flexShrink: 0 }}>
+                          {count}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
                 )}
-                {Object.entries(claudeT).map(([title, count]) => (
-                  <p key={title} style={{ color: sub, fontSize: 11, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 1 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{title}</span>
-                    <span style={{ color: muted, flexShrink: 0 }}>{count}</span>
-                  </p>
-                ))}
               </div>
-            )}
-          </div>
-        );
-      })()}
-    </div>
+            );
+          })()}
+      </div>
     </div>
   );
 }

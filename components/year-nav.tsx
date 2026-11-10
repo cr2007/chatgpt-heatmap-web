@@ -16,13 +16,19 @@ export interface YearNavProps {
  * (beside the form): a row of year buttons plus prev/next arrows for
  * stepping through `years` one at a time.
  */
-export function YearNav({ years, activeYear, onSelectYear, onPrevYear, onNextYear }: YearNavProps) {
+export function YearNav({
+  years,
+  activeYear,
+  onSelectYear,
+  onPrevYear,
+  onNextYear,
+}: YearNavProps) {
   const activeIndex = activeYear == null ? -1 : years.indexOf(activeYear);
 
   return (
     <>
       <div className="tent-years">
-        {years.map(year => (
+        {years.map((year) => (
           <button
             key={year}
             className={`tent-year-btn${year === activeYear ? " tent-year-active" : ""}`}

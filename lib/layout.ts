@@ -2,15 +2,18 @@
  *  side-by-side desktop grid (panel-form as a fixed sidebar, panel-heatmap
  *  filling the rest). Below this, layout falls back to a single scrolling
  *  column. */
-export const DESKTOP_SPLIT_QUERY = "(orientation: landscape) and (min-width: 640px) and (pointer: fine)";
+export const DESKTOP_SPLIT_QUERY =
+  "(orientation: landscape) and (min-width: 640px) and (pointer: fine)";
 
 /** Matches a folded device held upright (book mode): fold runs vertically,
  *  panels sit side by side as two grid columns. */
-export const FOLDED_PORTRAIT_QUERY = "(device-posture: folded) and (orientation: portrait)";
+export const FOLDED_PORTRAIT_QUERY =
+  "(device-posture: folded) and (orientation: portrait)";
 
 /** Matches a folded device propped up like a laptop (tent mode): fold runs
  *  horizontally, heatmap on top, form on the bottom bar. */
-export const FOLDED_LANDSCAPE_QUERY = "(device-posture: folded) and (orientation: landscape)";
+export const FOLDED_LANDSCAPE_QUERY =
+  "(device-posture: folded) and (orientation: landscape)";
 
 export interface HeatmapOrientationInput {
   /** Landscape-folded device (tent mode) - always renders horizontally. */
@@ -38,8 +41,8 @@ export function getHeatmapOrientation({
   isBookMode,
   isDesktopSplit,
 }: HeatmapOrientationInput): "vertical" | "horizontal" {
-  if (isTentMode) return "horizontal";       // Step 1a: tent's bottom bar is always wide.
-  if (isBookMode) return "vertical";         // Step 1b: book's column is always narrow.
+  if (isTentMode) return "horizontal"; // Step 1a: tent's bottom bar is always wide.
+  if (isBookMode) return "vertical"; // Step 1b: book's column is always narrow.
   return isDesktopSplit ? "horizontal" : "vertical"; // Step 2: width-dependent otherwise.
 }
 
@@ -63,10 +66,16 @@ export interface LayoutClassInput {
  * Step 3: `split-no-data` keeps a folded, empty panel-form below the fold
  *         instead of stretching across it.
  */
-export function getLayoutClassName({ hasData, isFolded, formOnRight }: LayoutClassInput): string {
+export function getLayoutClassName({
+  hasData,
+  isFolded,
+  formOnRight,
+}: LayoutClassInput): string {
   return [
     hasData || isFolded ? "layout-split" : "layout-stack", // Step 1
-    formOnRight && hasData ? "split-reversed" : "",         // Step 2
-    !hasData && isFolded ? "split-no-data" : "",             // Step 3
-  ].filter(Boolean).join(" ");
+    formOnRight && hasData ? "split-reversed" : "", // Step 2
+    !hasData && isFolded ? "split-no-data" : "", // Step 3
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

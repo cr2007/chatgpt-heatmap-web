@@ -1,5 +1,4 @@
-﻿
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useTheme } from "next-themes";
 
 export function ThemeShortcut() {
@@ -13,7 +12,8 @@ export function ThemeShortcut() {
         target.tagName === "TEXTAREA" ||
         target.tagName === "SELECT" ||
         target.isContentEditable
-      ) return;
+      )
+        return;
       if (e.key === "d") {
         setTheme(theme === "dark" ? "light" : "dark");
       }

@@ -27,8 +27,12 @@ describe("dayOfYear", () => {
   // A day with a daylight saving change is 23 or 25 hours long.
   describe("in a zone with daylight saving time", () => {
     const saved = process.env.TZ;
-    beforeAll(() => { process.env.TZ = "America/New_York"; });
-    afterAll(() => { process.env.TZ = saved; });
+    beforeAll(() => {
+      process.env.TZ = "America/New_York";
+    });
+    afterAll(() => {
+      process.env.TZ = saved;
+    });
 
     it("counts each day once across the March change", () => {
       expect(dayOfYear(new Date(2024, 2, 10))).toBe(69);

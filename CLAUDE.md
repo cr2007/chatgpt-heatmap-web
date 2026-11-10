@@ -4,7 +4,7 @@
 - Commits are signed via SSH (`gpg.format=ssh`), not GPG - running `git commit` in a shell command is fine.
 - Never add `Co-Authored-By` or `Claude-Session` footers to commit messages.
 - Import lucide icons from `"lucide-react"`, never from `"lucide-react/icons"`.
-- Use `bun --bun` for all script execution (`bun --bun dev`, `bun --bun test`). Use `bun add`/`bun remove` for package management. Never use Node or npm. Exception: `build` collides with Bun's own built-in bundler subcommand, so `bun --bun build` runs *that* instead of the `vite build` script and fails with "Missing entrypoints" - use `bun --bun run build` (and `bun --bun run start` for `vite preview`) to force package.json script resolution.
+- Use `bun --bun` for all script execution (`bun --bun dev`, `bun --bun test`). Use `bun add`/`bun remove` for package management. Never use Node or npm. Exception: `build` collides with Bun's own built-in bundler subcommand, so `bun --bun build` runs _that_ instead of the `vite build` script and fails with "Missing entrypoints" - use `bun --bun run build` (and `bun --bun run start` for `vite preview`) to force package.json script resolution.
 - Use `bunx --bun` instead of `npx` for any package runner invocation (e.g. `bunx --bun @shadscan/cli`, `bunx --bun shadcn@latest`).
 - Do not add `(horizontal-viewport-segments: N)` or `(vertical-viewport-segments: N)` media queries to CSS or JS. Foldable detection uses `device-posture: folded` with orientation conditions only (Galaxy Z Fold 5 target).
 - When the device is folded with no data loaded, use `layout-split split-no-data` (not `layout-stack`). In tent mode, add `grid-row: 2` on `.panel-form` inside the tent-mode `@media` block so the form stays below the fold.

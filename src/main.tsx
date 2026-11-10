@@ -27,5 +27,5 @@ createRoot(document.getElementById("root")!).render(
       </ErrorBoundary>
       <Toaster />
     </ThemeProvider>
-  </StrictMode>
+  </StrictMode>,
 );

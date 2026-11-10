@@ -8,9 +8,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "sys"
-        ]
+        "children": ["sys"]
       },
       "sys": {
         "id": "sys",
@@ -25,9 +23,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -38,9 +34,7 @@
           "recipient": "all"
         },
         "parent": "root",
-        "children": [
-          "ctx"
-        ]
+        "children": ["ctx"]
       },
       "ctx": {
         "id": "ctx",
@@ -55,9 +49,7 @@
           "update_time": null,
           "content": {
             "content_type": "user_editable_context",
-            "parts": [
-              "custom instructions"
-            ]
+            "parts": ["custom instructions"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -68,10 +60,7 @@
           "recipient": "all"
         },
         "parent": "sys",
-        "children": [
-          "u1",
-          "u1b"
-        ]
+        "children": ["u1", "u1b"]
       },
       "u1": {
         "id": "u1",
@@ -86,9 +75,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "first try"
-            ]
+            "parts": ["first try"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -97,9 +84,7 @@
           "recipient": "all"
         },
         "parent": "ctx",
-        "children": [
-          "a1"
-        ]
+        "children": ["a1"]
       },
       "a1": {
         "id": "a1",
@@ -114,9 +99,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -140,9 +123,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "edited prompt"
-            ]
+            "parts": ["edited prompt"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -151,9 +132,7 @@
           "recipient": "all"
         },
         "parent": "ctx",
-        "children": [
-          "a1b"
-        ]
+        "children": ["a1b"]
       },
       "a1b": {
         "id": "a1b",
@@ -168,9 +147,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -196,9 +173,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "u0"
-        ]
+        "children": ["u0"]
       },
       "u0": {
         "id": "u0",
@@ -213,9 +188,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "no timestamp"
-            ]
+            "parts": ["no timestamp"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -224,9 +197,7 @@
           "recipient": "all"
         },
         "parent": "root",
-        "children": [
-          "u1"
-        ]
+        "children": ["u1"]
       },
       "u1": {
         "id": "u1",
@@ -241,9 +212,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "noon"
-            ]
+            "parts": ["noon"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -252,9 +221,7 @@
           "recipient": "all"
         },
         "parent": "u0",
-        "children": [
-          "tool"
-        ]
+        "children": ["tool"]
       },
       "tool": {
         "id": "tool",
@@ -269,9 +236,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -280,9 +245,7 @@
           "recipient": "all"
         },
         "parent": "u1",
-        "children": [
-          "a1"
-        ]
+        "children": ["a1"]
       },
       "a1": {
         "id": "a1",
@@ -297,9 +260,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -308,9 +269,7 @@
           "recipient": "all"
         },
         "parent": "tool",
-        "children": [
-          "u2"
-        ]
+        "children": ["u2"]
       },
       "u2": {
         "id": "u2",
@@ -325,9 +284,7 @@
           "update_time": null,
           "content": {
             "content_type": "multimodal_text",
-            "parts": [
-              "with image"
-            ]
+            "parts": ["with image"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -336,9 +293,7 @@
           "recipient": "all"
         },
         "parent": "a1",
-        "children": [
-          "a2"
-        ]
+        "children": ["a2"]
       },
       "a2": {
         "id": "a2",
@@ -353,9 +308,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -364,9 +317,7 @@
           "recipient": "all"
         },
         "parent": "u2",
-        "children": [
-          "u3"
-        ]
+        "children": ["u3"]
       },
       "u3": {
         "id": "u3",
@@ -381,9 +332,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "after Kolkata midnight"
-            ]
+            "parts": ["after Kolkata midnight"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -392,9 +341,7 @@
           "recipient": "all"
         },
         "parent": "a2",
-        "children": [
-          "a3"
-        ]
+        "children": ["a3"]
       },
       "a3": {
         "id": "a3",
@@ -409,9 +356,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -437,9 +382,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "sys"
-        ]
+        "children": ["sys"]
       },
       "sys": {
         "id": "sys",
@@ -454,9 +397,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -484,9 +425,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "u1"
-        ]
+        "children": ["u1"]
       },
       "u1": {
         "id": "u1",
@@ -501,9 +440,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "last day"
-            ]
+            "parts": ["last day"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -512,9 +449,7 @@
           "recipient": "all"
         },
         "parent": "root",
-        "children": [
-          "a1"
-        ]
+        "children": ["a1"]
       },
       "a1": {
         "id": "a1",
@@ -529,9 +464,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -540,9 +473,7 @@
           "recipient": "all"
         },
         "parent": "u1",
-        "children": [
-          "u2"
-        ]
+        "children": ["u2"]
       },
       "u2": {
         "id": "u2",
@@ -557,9 +488,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "first day"
-            ]
+            "parts": ["first day"]
           },
           "status": "finished_successfully",
           "end_turn": null,
@@ -568,9 +497,7 @@
           "recipient": "all"
         },
         "parent": "a1",
-        "children": [
-          "a2"
-        ]
+        "children": ["a2"]
       },
       "a2": {
         "id": "a2",
@@ -585,9 +512,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              ""
-            ]
+            "parts": [""]
           },
           "status": "finished_successfully",
           "end_turn": true,
@@ -613,9 +538,7 @@
         "id": "root",
         "message": null,
         "parent": null,
-        "children": [
-          "u1"
-        ]
+        "children": ["u1"]
       },
       "u1": {
         "id": "u1",
@@ -630,9 +553,7 @@
           "update_time": null,
           "content": {
             "content_type": "text",
-            "parts": [
-              "blank title"
-            ]
+            "parts": ["blank title"]
           },
           "status": "finished_successfully",
           "end_turn": null,

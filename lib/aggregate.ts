@@ -1,4 +1,9 @@
-import type { ConversationSummary, CalHeatmapDay, DayTitleBreakdown, Provider } from "./types";
+import type {
+  ConversationSummary,
+  CalHeatmapDay,
+  DayTitleBreakdown,
+  Provider,
+} from "./types";
 
 export interface AggregatedData {
   data: Record<string, CalHeatmapDay>;
@@ -20,20 +25,24 @@ export interface AggregatedData {
  */
 export function aggregateDateData(
   chatgptSummary: ConversationSummary[] | null,
-  claudeSummary: ConversationSummary[] | null
+  claudeSummary: ConversationSummary[] | null,
 ): AggregatedData | null {
   const data: Record<string, CalHeatmapDay> = {};
   const dayTitles: Record<string, DayTitleBreakdown> = {};
 
   // Step 1
-  const sources: [Provider, ConversationSummary[] | null][] = [["chatgpt", chatgptSummary], ["claude", claudeSummary]];
+  const sources: [Provider, ConversationSummary[] | null][] = [
+    ["chatgpt", chatgptSummary],
+    ["claude", claudeSummary],
+  ];
   for (const [source, summaries] of sources) {
     for (const { title, days } of summaries ?? []) {
       for (const day of days) {
         data[day] ??= { chatgpt: 0, claude: 0 };
         data[day][source]++;
         dayTitles[day] ??= { chatgpt: {}, claude: {} };
-        dayTitles[day][source][title] = (dayTitles[day][source][title] ?? 0) + 1;
+        dayTitles[day][source][title] =
+          (dayTitles[day][source][title] ?? 0) + 1;
       }
     }
   }

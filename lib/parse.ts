@@ -26,12 +26,19 @@ interface RawClaudeConversation {
  */
 function dayFormatter(timeZone: string): (ms: number) => string | null {
   // sv-SE formats dates as YYYY-MM-DD.
-  const fmt = new Intl.DateTimeFormat("sv-SE", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const fmt = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
   return (ms) => (Number.isFinite(ms) ? fmt.format(ms) : null);
 }
 
 /** True for a ChatGPT message the user typed and can see in the chat. */
-function isVisiblePrompt(m: RawGPTMessage | null | undefined): m is RawGPTMessage & { create_time: number } {
+function isVisiblePrompt(
+  m: RawGPTMessage | null | undefined,
+): m is RawGPTMessage & { create_time: number } {
   return (
     m?.author?.role === "user" &&
     typeof m.create_time === "number" &&
@@ -44,7 +51,11 @@ export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
   if (!arr.length) return "unknown";
   const el = arr[0] as Record<string, unknown>;
 
-  if (typeof el.create_time === "number" && el.mapping && typeof el.mapping === "object")
+  if (
+    typeof el.create_time === "number" &&
+    el.mapping &&
+    typeof el.mapping === "object"
+  )
     return "chatgpt";
   if (typeof el.created_at === "string" && Array.isArray(el.chat_messages))
     return "claude";
@@ -57,7 +68,10 @@ export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
  * `mapping` counts, so edited prompts on other branches count too.
  * Malformed conversations and times are skipped, never thrown.
  */
-export function parseChatGPT(raw: unknown[], timeZone: string): ConversationSummary[] {
+export function parseChatGPT(
+  raw: unknown[],
+  timeZone: string,
+): ConversationSummary[] {
   const toDay = dayFormatter(timeZone);
   return (raw as RawGPTConversation[]).map((c) => ({
     title: c?.title?.trim() || "Untitled",
@@ -69,7 +83,10 @@ export function parseChatGPT(raw: unknown[], timeZone: string): ConversationSumm
 }
 
 /** Turns a Claude export into one summary per conversation, counting human messages. */
-export function parseClaude(raw: unknown[], timeZone: string): ConversationSummary[] {
+export function parseClaude(
+  raw: unknown[],
+  timeZone: string,
+): ConversationSummary[] {
   const toDay = dayFormatter(timeZone);
   return (raw as RawClaudeConversation[]).map((c) => ({
     title: c?.name?.trim() || "Untitled",

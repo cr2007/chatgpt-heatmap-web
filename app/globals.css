@@ -18,7 +18,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-abbr[title] { cursor: help; }
+abbr[title] {
+  cursor: help;
+}
 
 ::selection {
   background-color: rgba(147, 130, 255, 0.25);
@@ -31,10 +33,12 @@ abbr[title] { cursor: help; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration:        0.01ms !important;
-    animation-iteration-count: 1      !important;
-    transition-duration:       0.01ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -53,9 +57,18 @@ abbr[title] { cursor: help; }
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-3px); }
-  40%, 80% { transform: translateX(3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
 }
 
 @keyframes fadeSlideUp {
@@ -319,9 +332,19 @@ abbr[title] { cursor: help; }
     "tz";
 }
 
-.form-grid__upload { grid-area: upload; min-width: 0; min-height: 0; }
-.form-grid__info   { grid-area: info; min-width: 0; }
-.form-grid__tz     { grid-area: tz; min-width: 0; }
+.form-grid__upload {
+  grid-area: upload;
+  min-width: 0;
+  min-height: 0;
+}
+.form-grid__info {
+  grid-area: info;
+  min-width: 0;
+}
+.form-grid__tz {
+  grid-area: tz;
+  min-width: 0;
+}
 
 /* Give the dropzone real presence in the default vertical stack, where it
    has its own row and the card has vertical space to spare. A smaller
@@ -350,8 +373,12 @@ abbr[title] { cursor: help; }
 
 /* Default to the plain always-on export steps; swap to compact tap-to-expand
    cards only inside a folded, genuinely cramped panel. */
-.form-grid__info-compact  { display: none; }
-.form-grid__info-expanded { display: flex; }
+.form-grid__info-compact {
+  display: none;
+}
+.form-grid__info-expanded {
+  display: flex;
+}
 
 @media (device-posture: folded) {
   .form-grid {
@@ -369,16 +396,25 @@ abbr[title] { cursor: help; }
   /* Book mode's half-screen stays compact by default; only swap back to
      the expanded text once a folded panel is wide enough to spare it
      (tent mode's much wider bottom bar). */
-  .form-grid__info-expanded { display: none; }
+  .form-grid__info-expanded {
+    display: none;
+  }
 
   @container (min-width: 500px) {
-    .form-grid__info-compact  { display: none; }
-    .form-grid__info-expanded { display: flex; }
+    .form-grid__info-compact {
+      display: none;
+    }
+    .form-grid__info-expanded {
+      display: flex;
+    }
   }
 
   @container (min-width: 620px) {
     .form-grid {
-      grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.4fr) minmax(200px, 1fr);
+      grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.4fr) minmax(
+          200px,
+          1fr
+        );
       grid-template-areas: "upload info tz";
       column-gap: 2rem;
     }
@@ -431,7 +467,10 @@ abbr[title] { cursor: help; }
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
   white-space: nowrap;
 }
 
@@ -472,7 +511,9 @@ abbr[title] { cursor: help; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .tent-arrow-btn:hover:not(:disabled) {

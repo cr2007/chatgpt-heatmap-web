@@ -32,19 +32,26 @@ export function readExports(files: UploadedFile[]): ReadResult {
       return { ok: false, error: `${name}: could not parse JSON` };
     }
     if (!Array.isArray(json) || json.length === 0) {
-      return { ok: false, error: `${name}: expected a non-empty array of conversations` };
+      return {
+        ok: false,
+        error: `${name}: expected a non-empty array of conversations`,
+      };
     }
 
     // Step 2
     const format = detectFormat(json);
     if (format === "unknown") {
-      return { ok: false, error: `${name}: unrecognised format - expected a ChatGPT or Claude conversations.json` };
+      return {
+        ok: false,
+        error: `${name}: unrecognised format - expected a ChatGPT or Claude conversations.json`,
+      };
     }
     (format === "chatgpt" ? gpt : claude).push({ name, data: json });
   }
 
   // Step 3
-  if (claude.length > 1) return { ok: false, error: "Upload at most one Claude export" };
+  if (claude.length > 1)
+    return { ok: false, error: "Upload at most one Claude export" };
 
   // Step 4
   const exports: Partial<Record<Provider, LoadedExport>> = {};
