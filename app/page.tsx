@@ -15,6 +15,8 @@ import {
 import { aggregateDateData } from "@/lib/aggregate";
 import { parseChatGPT, parseClaude } from "@/lib/parse";
 import type { LoadedExport, Provider } from "@/lib/types";
+import githubMark from "@/app/assets/github-mark.svg";
+import githubMarkWhite from "@/app/assets/github-mark-white.svg";
 
 type Exports = Record<Provider, LoadedExport | null>;
 
@@ -191,7 +193,7 @@ export default function Home() {
                   {/* The theme class on <html> picks the mark, so the first render is right. */}
                   <img
                     aria-hidden
-                    src="/github-mark.svg"
+                    src={githubMark}
                     alt=""
                     width={16}
                     height={16}
@@ -199,7 +201,7 @@ export default function Home() {
                   />
                   <img
                     aria-hidden
-                    src="/github-mark-white.svg"
+                    src={githubMarkWhite}
                     alt=""
                     width={16}
                     height={16}

@@ -1,0 +1,3 @@
+# Tailwind for the dev server (scripts/dev.ts). scripts/build.ts passes the same plugin to Bun.build.
+[serve.static]
+plugins = ["bun-plugin-tailwind"]

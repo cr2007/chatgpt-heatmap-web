@@ -52,7 +52,18 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
     </script>
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="./app/assets/favicon.ico" />
+    <!-- Archivo (Omnibus-Type, OFL, see public/fonts/OFL.txt): variable 100-900, Latin subset.
+         Inline so the bundler leaves the URL alone: it would put a font under 128 kB
+         into the CSS as base64 (oven-sh/bun#24599). -->
+    <style>
+      @font-face {
+        font-family: "Archivo";
+        src: url("/fonts/Archivo.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: swap;
+      }
+    </style>
     <noscript>
       <style>
         #root {
@@ -90,6 +101,6 @@
       </p>
     </div>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
-# Workflow for building and deploying a Vite site to GitHub Pages
+# Builds the app with Bun and deploys dist/ to GitHub Pages.
 
-name: Deploy Vite site to Pages
+name: Deploy to Pages
 
 on:
   # Runs on pushes targeting the default branch

@@ -9,14 +9,6 @@
 /* next-themes puts the "dark" class on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Archivo (Omnibus-Type, OFL, see fonts/OFL.txt): variable 100-900, Latin subset. */
-@font-face {
-  font-family: "Archivo";
-  src: url("./fonts/Archivo.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
 @layer base {
   :root {
     --panel-border: rgb(228 228 231);
