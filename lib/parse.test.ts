@@ -68,6 +68,13 @@ describe("parseClaude", () => {
 });
 
 describe("dayFormatter", () => {
+  it("keeps the cache of the current zone only", () => {
+    const utc = dayFormatter("UTC");
+    expect(dayFormatter("UTC")).toBe(utc); // same zone: reused
+    dayFormatter("Asia/Kolkata");
+    expect(dayFormatter("UTC")).not.toBe(utc); // the old cache was dropped
+  });
+
   // Offsets of +5:30, +5:45 and +12:45, and zones with daylight saving time.
   const zones = [
     "UTC",

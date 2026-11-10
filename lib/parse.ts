@@ -21,8 +21,9 @@ interface RawClaudeConversation {
 
 /** Width of the cached time blocks: 15 minutes in ms. */
 const BLOCK = 15 * 60 * 1000;
-/** One day function per time zone, kept for the session. */
-const dayFns = new Map<string, (ms: number) => string>();
+/** The day function of the last zone used. Only one is kept: each one caches
+ *  about 1 MB per 70,000 prompts, and the app shows one zone at a time. */
+let cached: { timeZone: string; fn: (ms: number) => string } | undefined;
 
 /**
  * Returns a function that maps a timestamp (ms) to its `YYYY-MM-DD` day in
@@ -32,8 +33,7 @@ const dayFns = new Map<string, (ms: number) => string>();
  * Intl is the slow part, so the cache makes a time zone change cheap.
  */
 export function dayFormatter(timeZone: string): (ms: number) => string {
-  let fn = dayFns.get(timeZone);
-  if (!fn) {
+  if (cached?.timeZone !== timeZone) {
     // sv-SE formats dates as YYYY-MM-DD.
     const fmt = new Intl.DateTimeFormat("sv-SE", {
       timeZone,
@@ -42,16 +42,16 @@ export function dayFormatter(timeZone: string): (ms: number) => string {
       day: "2-digit",
     });
     const cache = new Map<number, string>();
-    fn = (ms) => {
+    const fn = (ms: number) => {
       const block = Math.floor(ms / BLOCK);
       let day = cache.get(block);
       if (day === undefined)
         cache.set(block, (day = fmt.format(block * BLOCK)));
       return day;
     };
-    dayFns.set(timeZone, fn);
+    cached = { timeZone, fn };
   }
-  return fn;
+  return cached.fn;
 }
 
 /** True for a ChatGPT message the user typed and can see in the chat. */
