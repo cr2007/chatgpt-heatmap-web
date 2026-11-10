@@ -1,18 +1,31 @@
-import { useMemo, useRef, useState } from "react";
-import { matchZone, zoneList } from "@/lib/time-zones";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn, plural } from "@/lib/utils";
+import {
+  buildIndex,
+  searchZones,
+  zoneList,
+  type ZoneEntry,
+} from "@/lib/time-zones";
+
+/** The search index, built once per visit (about 50 ms). */
+let index: ZoneEntry[] | undefined;
+const getIndex = () => (index ??= buildIndex(zoneList()));
+
+/** Space in px the list needs below the field before it opens upward. */
+const LIST_ROOM = 320;
 
 /**
- * A labelled text field with the browser's own suggestion list (`<datalist>`)
- * for picking a time zone. The input id is `${id}-tz`.
+ * A searchable time zone field (the WAI-ARIA combobox pattern): type a city,
+ * a zone, a time name ("Gulf Standard Time"), an abbreviation ("IST") or an
+ * offset ("+5:30"); small typos still match. The input id is `${id}-tz`.
  *
- * Step 1: On focus, empty the field and show the current zone as its
- *         placeholder, so typing starts fresh and the list shows every zone.
- *         (Selecting the text instead fails in Safari: its mouseup moves the
- *         caret to the click point.)
- * Step 2: While typing, apply a name the moment it matches a zone exactly
- *         (picking a suggestion does the same).
- * Step 3: Enter on unknown text shows an error. Blur or Escape puts the
- *         current zone back; unknown text leaves a note that says so.
+ * Step 1: On focus, empty the field (the current zone stays as the
+ *         placeholder) and open the list. Selecting the text instead fails
+ *         in Safari: its mouseup moves the caret to the click point.
+ * Step 2: Typing ranks the zones (lib/time-zones.ts); the best one is active.
+ * Step 3: Arrow keys move the active option, Enter or a click picks it,
+ *         Escape or leaving the field keeps the current zone.
  */
 export function TimeZonePicker({
   id,
@@ -26,23 +39,77 @@ export function TimeZonePicker({
   /** Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen. */
   inline?: boolean;
 }) {
-  const zones = useMemo(() => zoneList(), []);
-  /** The text while the field is being edited; null shows the current zone. */
-  const [draft, setDraft] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  /** Set by Escape, so the blur that follows reverts without a note. */
-  const cancelled = useRef(false);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const [active, setActive] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const inputId = `${id}-tz`;
+  const listId = `${inputId}-list`;
 
-  /** Ends editing: the field shows the current zone again. */
-  function finish(text: string) {
-    if (cancelled.current) {
-      cancelled.current = false;
-      setError("");
-    } else if (text.trim() && !matchZone(text, zones))
-      setError(`"${text.trim()}" is not a time zone, so ${timeZone} stays.`);
-    setDraft(null);
+  // Build the index when the browser is idle, so the first open is instant.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((f) => setTimeout(f, 1500));
+    idle(() => getIndex());
+  }, []);
+
+  // Step 2: an empty query lists the current zone first, then every zone.
+  const results = useMemo(() => {
+    if (!open) return [];
+    const all = getIndex();
+    if (query.trim()) return searchZones(all, query);
+    const current = all.find((e) => e.zone === timeZone);
+    return current ? [current, ...all.filter((e) => e !== current)] : all;
+  }, [open, query, timeZone]);
+
+  // Keep the active option in view while the arrow keys move it.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector(`[data-index="${active}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [active, results]);
+
+  /** Opens the list, upward when the field is near the bottom of the screen. */
+  function openList() {
+    const box = inputRef.current?.getBoundingClientRect();
+    setUp(
+      !!box &&
+        window.innerHeight - box.bottom < LIST_ROOM &&
+        box.top > LIST_ROOM,
+    );
+    setActive(0);
+    setOpen(true);
   }
+
+  /** Picks a zone and closes the field. */
+  function pick(entry: ZoneEntry | undefined) {
+    if (entry && entry.zone !== timeZone) setTimeZone(entry.zone);
+    setOpen(false);
+    setQuery("");
+    inputRef.current?.blur();
+  }
+
+  // Step 3
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) return openList();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActive(
+        (a) => (a + step + results.length) % Math.max(results.length, 1),
+      );
+    } else if (e.key === "Enter" && open) {
+      e.preventDefault();
+      if (results[active]) pick(results[active]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+      inputRef.current?.blur();
+    }
+  }
+
+  const activeId = open && results[active] ? `${listId}-${active}` : undefined;
 
   return (
     <div
@@ -62,58 +129,114 @@ export function TimeZonePicker({
       >
         {inline ? "Days start at midnight in" : "Time Zone"}
       </label>
-      <input
-        id={inputId}
-        list={`${inputId}-list`}
-        value={draft ?? timeZone}
-        placeholder={timeZone}
-        autoComplete="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        className={`h-9 ${inline ? "w-56" : "w-full"} rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 aria-invalid:border-red-500/60 dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400 dark:aria-invalid:border-red-400/60`}
-        // Step 1
-        onFocus={() => {
-          setError("");
-          setDraft("");
-        }}
-        // Step 2
-        onChange={(e) => {
-          const text = e.currentTarget.value;
-          setDraft(text);
-          setError("");
-          const zone = matchZone(text, zones);
-          if (zone && zone !== timeZone) setTimeZone(zone);
-        }}
-        // Step 3
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            cancelled.current = true;
-            e.currentTarget.blur();
-          } else if (e.key === "Enter" && draft !== null) {
-            if (!draft.trim() || matchZone(draft, zones))
-              e.currentTarget.blur();
-            else setError("Pick a time zone from the list.");
-          }
-        }}
-        onBlur={(e) => finish(e.currentTarget.value)}
-      />
-      <datalist id={`${inputId}-list`}>
-        {zones.map((zone) => (
-          // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- a datalist option is a suggestion, labelled by its value
-          <option key={zone} value={zone} />
-        ))}
-      </datalist>
-      {error && (
-        <p
-          id={`${inputId}-error`}
-          aria-live="polite"
-          className="basis-full text-xs text-red-600 dark:text-red-400"
-        >
-          {error}
+      <div className={cn("relative", inline ? "w-64 max-w-full" : "w-full")}>
+        <input
+          ref={inputRef}
+          id={inputId}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
+          value={open ? query : timeZone}
+          placeholder={timeZone}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="h-9 w-full rounded-md border border-neutral-200 bg-white pr-8 pl-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400"
+          // Step 1
+          onFocus={openList}
+          onClick={() => !open && openList()}
+          onChange={(e) => {
+            setQuery(e.currentTarget.value);
+            setActive(0);
+            if (!open) openList();
+          }}
+          onKeyDown={onKeyDown}
+          onBlur={() => {
+            setOpen(false);
+            setQuery("");
+          }}
+        />
+        <ChevronsUpDown
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-zinc-400"
+        />
+        {open && (
+          <div
+            className={cn(
+              "absolute right-0 left-0 z-30 animate-tooltip-in overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg shadow-zinc-950/10 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40",
+              inline && "min-w-80",
+              up
+                ? "bottom-full mb-1 origin-bottom"
+                : "top-full mt-1 origin-top",
+            )}
+          >
+            <ul
+              ref={listRef}
+              id={listId}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- a <select> cannot show this list; the combobox pattern needs a listbox
+              role="listbox"
+              aria-label="Time zones"
+              className="max-h-72 overflow-y-auto overscroll-contain p-1"
+            >
+              {results.map((e, i) => (
+                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- the combobox pattern: the input handles the keys and points at the option with aria-activedescendant
+                <li
+                  key={e.zone}
+                  id={`${listId}-${i}`}
+                  data-index={i}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- a native <option> cannot hold this layout
+                  role="option"
+                  aria-selected={i === active}
+                  // Keeps the focus in the field, so the click picks before the blur closes the list.
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => pick(e)}
+                  onMouseMove={() => i !== active && setActive(i)}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 text-sm",
+                    i === active && "bg-zinc-100 dark:bg-zinc-800",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      {e.city}
+                    </span>
+                    {e.area && (
+                      <span className="ml-1.5 text-zinc-500 dark:text-zinc-400">
+                        {e.area}
+                      </span>
+                    )}
+                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                      {e.long}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
+                    {e.offset}
+                  </span>
+                  <Check
+                    aria-hidden="true"
+                    className={cn(
+                      "size-4 shrink-0 text-violet-600 dark:text-violet-400",
+                      e.zone !== timeZone && "invisible",
+                    )}
+                  />
+                </li>
+              ))}
+              {results.length === 0 && (
+                <li className="px-2.5 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+                  No time zone matches "{query.trim()}". Try a city, a time name
+                  such as "Pacific Time", or an offset such as +5:30.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+        {/* Tells screen reader users how many zones match. */}
+        <p aria-live="polite" className="sr-only">
+          {open && query.trim() ? plural(results.length, "time zone") : ""}
         </p>
-      )}
+      </div>
     </div>
   );
 }

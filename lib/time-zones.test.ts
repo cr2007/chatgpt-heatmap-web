@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { matchZone, zoneList } from "./time-zones";
+import { buildIndex, searchZones, zoneList } from "./time-zones";
 
 describe("zoneList", () => {
   it("adds UTC and the computer's zone when the engine's list lacks them", () => {
@@ -17,17 +17,59 @@ describe("zoneList", () => {
   });
 });
 
-describe("matchZone", () => {
-  const zones = ["UTC", "America/New_York", "Asia/Kolkata"];
+describe("searchZones", () => {
+  // January: no daylight saving time in the north, so offsets are fixed.
+  const index = buildIndex(zoneList(), new Date(Date.UTC(2026, 0, 15)));
+  const first = (q: string) => searchZones(index, q)[0]?.zone;
+  const resolve = (z: string) =>
+    new Intl.DateTimeFormat("en", { timeZone: z }).resolvedOptions().timeZone;
 
+  /** Query, then the zone it must find first. */
   it.each([
-    ["Asia/Kolkata", "Asia/Kolkata"],
-    ["  utc ", "UTC"],
-    ["america/new york", "America/New_York"],
-    ["Asia/Kolk", null],
-    ["Mars/Base", null],
-    ["", null],
-  ])("matches %p to %p", (text, expected) => {
-    expect(matchZone(text, zones)).toBe(expected);
+    ["dubai", "Asia/Dubai"],
+    ["Asia/Dubai", "Asia/Dubai"],
+    ["new york", "America/New_York"],
+    ["new_york", "America/New_York"],
+    ["utc", "UTC"],
+    ["kolkata", "Asia/Kolkata"],
+    ["calcutta", "Asia/Kolkata"],
+    ["kyiv", "Europe/Kyiv"],
+    ["sao paulo", "America/Sao_Paulo"],
+    ["são paulo", "America/Sao_Paulo"],
+    ["ist", "Asia/Kolkata"],
+    ["PST", "America/Los_Angeles"],
+    ["gulf standard", "Asia/Dubai"],
+    ["india standard time", "Asia/Kolkata"],
+    // Typos: 1 wrong letter in a short name, 2 in a long one.
+    ["dubay", "Asia/Dubai"],
+    ["londn", "Europe/London"],
+    ["tokio", "Asia/Tokyo"],
+    ["newyork", "America/New_York"],
+    ["singapur", "Asia/Singapore"],
+    ["jerusalm", "Asia/Jerusalem"],
+    ["johanesburg", "Africa/Johannesburg"],
+  ])("%s finds %s first", (q, zone) => {
+    expect(first(q)).toBe(resolve(zone));
+  });
+
+  it("matches offsets in any common form", () => {
+    for (const q of ["+4", "gmt+4", "UTC+04:00", "+04"])
+      expect(searchZones(index, q).map((e) => e.zone)).toContain("Asia/Dubai");
+    expect(searchZones(index, "+5:30").map((e) => e.zone)).toContain(
+      resolve("Asia/Kolkata"),
+    );
+  });
+
+  it("lists every candidate of an ambiguous abbreviation first", () => {
+    expect(
+      searchZones(index, "ist")
+        .slice(0, 3)
+        .map((e) => e.zone),
+    ).toEqual(["Asia/Kolkata", "Europe/Dublin", "Asia/Jerusalem"].map(resolve));
+  });
+
+  it("finds nothing for text that is no zone", () => {
+    expect(searchZones(index, "zzzz")).toEqual([]);
+    expect(searchZones(index, "Mars/Base")).toEqual([]);
   });
 });
