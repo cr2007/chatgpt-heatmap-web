@@ -1,9 +1,11 @@
-/** Matches a mouse-driven, landscape browser window wide enough for the
+/** Matches a mouse-driven, landscape browser window big enough for the
  *  side-by-side desktop grid (panel-form as a fixed sidebar, panel-heatmap
  *  filling the rest). Below this, layout falls back to a single scrolling
- *  column. */
+ *  column. The height limit keeps a short window (or 200% zoom, where a
+ *  1440x900 screen is 720x450) from shrinking the calendar to fit; the
+ *  scrolling column shows it at full size. app/globals.css repeats it. */
 export const DESKTOP_SPLIT_QUERY =
-  "(orientation: landscape) and (min-width: 640px) and (pointer: fine)";
+  "(orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine)";
 
 /** Matches a folded device held upright (book mode): fold runs vertically,
  *  panels sit side by side as two grid columns. */

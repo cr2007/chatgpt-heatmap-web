@@ -292,7 +292,8 @@
 
 /* ── Landscape side-by-side (640 px+) ──────────────────────────── */
 
-@media (orientation: landscape) and (min-width: 640px) and (pointer: fine) {
+/* Same query as DESKTOP_SPLIT_QUERY in lib/layout.ts (a test keeps them equal). */
+@media (orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine) {
   .layout-split {
     display: grid;
     grid-template-columns: clamp(320px, 36%, 420px) 1fr;

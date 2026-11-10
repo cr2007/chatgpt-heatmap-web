@@ -1,5 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { getHeatmapOrientation, getLayoutClassName } from "./layout";
+import {
+  DESKTOP_SPLIT_QUERY,
+  getHeatmapOrientation,
+  getLayoutClassName,
+} from "./layout";
 
 describe("getHeatmapOrientation", () => {
   it.each([
@@ -37,5 +41,12 @@ describe("getLayoutClassName", () => {
     expect(getLayoutClassName({ hasData, isFolded, formOnRight })).toBe(
       expected,
     );
+  });
+});
+
+describe("DESKTOP_SPLIT_QUERY", () => {
+  it("matches the media query in app/globals.css", async () => {
+    const css = await Bun.file(`${import.meta.dir}/../app/globals.css`).text();
+    expect(css).toContain(`@media ${DESKTOP_SPLIT_QUERY} {`);
   });
 });
