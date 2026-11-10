@@ -81,3 +81,29 @@ export function getLayoutClassName({
     .filter(Boolean)
     .join(" ");
 }
+
+/** What the calendar shows: every year, or one year. */
+export type YearView = "all" | number;
+
+/**
+ * The calendar view from the year tabs, the address and the layout.
+ *
+ * Step 1: A picked year that the data has wins; "all" wins when there is
+ *         more than one year (one year shows as that year).
+ * Step 2: With nothing valid picked, the desktop split shows every year;
+ *         the phone column shows the latest year, which reads better than
+ *         narrow year columns side by side.
+ */
+export function pickYearView(
+  picked: YearView | null,
+  years: readonly number[],
+  isDesktopSplit: boolean,
+): YearView {
+  const latest = years[years.length - 1];
+  if (latest === undefined) return "all";
+  // Step 1
+  if (picked === "all") return years.length > 1 ? "all" : latest;
+  if (picked !== null && years.includes(picked)) return picked;
+  // Step 2
+  return isDesktopSplit && years.length > 1 ? "all" : latest;
+}

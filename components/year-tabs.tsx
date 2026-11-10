@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { cn, count } from "@/lib/utils";
 
-/** What the calendar shows: every year, or one year. */
-export type YearView = "all" | number;
+import type { YearView } from "@/lib/layout";
 
 /**
  * A row of buttons that picks the calendar view: "All years" scrolls

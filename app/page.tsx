@@ -4,7 +4,7 @@ import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import { SiteLinks } from "@/components/site-links";
 import { Welcome } from "@/components/welcome";
 import { Summary } from "@/components/summary";
-import { YearTabs, type YearView } from "@/components/year-tabs";
+import { YearTabs } from "@/components/year-tabs";
 import { HeatLegend } from "@/components/heat-legend";
 import { summarize } from "@/lib/stats";
 import { YearNav } from "@/components/year-nav";
@@ -16,6 +16,8 @@ import {
   FOLDED_LANDSCAPE_QUERY,
   getHeatmapOrientation,
   getLayoutClassName,
+  pickYearView,
+  type YearView,
 } from "@/lib/layout";
 import { aggregateDateData } from "@/lib/aggregate";
 import type { Exports as PartialExports } from "@/lib/upload";
@@ -149,19 +151,7 @@ export default function Home() {
     if (next !== undefined) setSelectedYear(next);
   }
 
-  // Year tabs (outside the fold layouts): the desktop split shows every
-  // year by default; the phone column shows the latest year, which reads
-  // better than narrow year columns side by side.
-  const view: YearView =
-    picked === "all"
-      ? dataYears.length > 1
-        ? "all"
-        : (dataYears[0] ?? "all")
-      : picked !== null && dataYears.includes(picked)
-        ? picked
-        : isDesktopSplit && dataYears.length > 1
-          ? "all"
-          : (dataYears[dataYears.length - 1] ?? "all");
+  const view = pickYearView(picked, dataYears, isDesktopSplit);
   const viewStats = useMemo(
     () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
     [agg, allStats, view],
