@@ -260,12 +260,13 @@ export function HeatMapForm({
 
         {/* Timezone */}
         <div className="form-grid__tz flex flex-col gap-2">
-          <Label htmlFor="timeZone" className="text-xs text-zinc-600 dark:text-zinc-400 uppercase tracking-wide font-medium">
+          <Label htmlFor={`${inputId}-tz`} className="text-xs text-zinc-600 dark:text-zinc-400 uppercase tracking-wide font-medium">
             Time Zone
           </Label>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
+                id={`${inputId}-tz`}
                 variant="outline"
                 role="combobox"
                 aria-expanded={open}

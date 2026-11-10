@@ -26,9 +26,9 @@ export class ErrorBoundary extends React.Component<
         <div className="flex min-h-screen items-center justify-center p-8 text-center">
           <div className="max-w-sm space-y-4">
             <p className="text-sm font-medium">Something went wrong.</p>
-            <p className="text-xs text-muted-foreground">{this.state.message}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">{this.state.message}</p>
             <button
-              className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className="rounded text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400"
               onClick={this.reset}
             >
               Try again

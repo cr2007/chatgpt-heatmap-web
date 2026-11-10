@@ -17,6 +17,15 @@ const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
 const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+/** "1 message", "3 messages". */
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Accessible name of a day cell, for example "2024-03-10: 3 messages (ChatGPT 2, Claude 1)". */
+function describeDay(day: string, chatgpt: number, claude: number): string {
+  const parts = [chatgpt > 0 && `ChatGPT ${chatgpt}`, claude > 0 && `Claude ${claude}`].filter(Boolean);
+  return `${day}: ${plural(chatgpt + claude, "message")} (${parts.join(", ")})`;
+}
+
 export interface CalendarHeatmapProps {
   data: Record<string, CalHeatmapDay>;
   dayTitles: Record<string, DayTitleBreakdown>;
@@ -143,8 +152,8 @@ export function CalendarHeatmap({
   const handleLeave = useCallback(() => setTip(null), []);
 
   /** Renders one day's `<rect>`, filled solid, gradient-split (both
-   *  providers active), or the empty shade, with a hover handler only
-   *  wired up when the day actually has data. */
+   *  providers active), or the empty shade. A day with data gets a hover
+   *  handler and an accessible name, so screen readers can read the counts. */
   function makeCell(day: string, x: number, y: number): React.ReactElement {
     const { chatgpt = 0, claude = 0 } = data[day] ?? {};
     const hasData = chatgpt + claude > 0;
@@ -159,6 +168,8 @@ export function CalendarHeatmap({
         stroke={cellStroke} strokeWidth={1}
         onMouseEnter={hasData ? e => handleEnter(e, day) : undefined}
         onMouseLeave={hasData ? handleLeave : undefined}
+        role={hasData ? "img" : undefined}
+        aria-label={hasData ? describeDay(day, chatgpt, claude) : undefined}
       />
     );
   }
@@ -300,7 +311,7 @@ export function CalendarHeatmap({
     >
     <div ref={containerRef} style={{ position: "relative" }}>
       <svg
-        role="img"
+        role="group"
         aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
         viewBox={`0 0 ${svgW} ${svgH}`}
         width={renderedW}
@@ -337,7 +348,7 @@ export function CalendarHeatmap({
           }}>
             <p style={{ fontWeight: 600, color: fg, fontSize: 13, marginBottom: 6 }}>
               {tip.day}:{" "}
-              <span style={{ fontWeight: 400 }}>{tipTotal} messages</span>
+              <span style={{ fontWeight: 400 }}>{plural(tipTotal, "message")}</span>
             </p>
 
             {tipData.chatgpt > 0 && (
