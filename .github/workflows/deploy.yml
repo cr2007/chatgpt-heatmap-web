@@ -34,10 +34,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Bun
+      - name: Setup Bun # version from package.json "packageManager"
         uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "latest"
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

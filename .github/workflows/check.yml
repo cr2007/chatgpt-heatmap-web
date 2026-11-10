@@ -19,9 +19,7 @@ jobs:
         tz: [UTC, America/New_York, Asia/Kolkata]
     steps:
       - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      - uses: oven-sh/setup-bun@v2 # version from package.json "packageManager"
       - run: bun install --frozen-lockfile
       - run: bun --bun test
         env:
@@ -31,9 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      - uses: oven-sh/setup-bun@v2 # version from package.json "packageManager"
       - run: bun install --frozen-lockfile
       - name: Lint
         run: bun run lint
