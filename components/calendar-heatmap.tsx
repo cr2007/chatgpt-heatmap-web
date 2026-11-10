@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
-import { CELL, layoutCalendar, shade } from "@/lib/calendar-geometry";
+import { CELL, fitScale, layoutCalendar, shade } from "@/lib/calendar-geometry";
 import { providerInfo } from "@/lib/providers";
 import { plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
@@ -38,6 +38,8 @@ export interface CalendarHeatmapProps {
   vertical?: boolean;
   /** Counts time zone changes; each new value runs the date-order sweep. 0 means none. */
   sweep?: number;
+  /** The panel has a fixed height (split and fold layouts), so the calendar fits it. */
+  fixedHeight?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export function CalendarHeatmap({
   to,
   vertical = false,
   sweep = 0,
+  fixedHeight = false,
 }: CalendarHeatmapProps) {
   const isDark = useTheme().resolvedTheme === "dark";
   const uid = useId().replace(/:/g, "");
@@ -85,12 +88,7 @@ export function CalendarHeatmap({
     () => layoutCalendar(startYear, endYear, vertical),
     [startYear, endYear, vertical],
   );
-  const scale = !panel.width
-    ? 1
-    : Math.min(
-        panel.width / layout.width,
-        panel.height ? panel.height / layout.height : Infinity,
-      );
+  const scale = fitScale(panel, layout, fixedHeight);
   const renderedW = Math.round(layout.width * scale) || layout.width;
   const renderedH = Math.round(layout.height * scale) || layout.height;
 

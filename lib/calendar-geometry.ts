@@ -209,3 +209,26 @@ export function layoutCalendar(
 
   return { width, height, cells, labels };
 }
+
+/**
+ * The scale that fits a calendar of `layout` size into its panel.
+ *
+ * In the split and fold layouts the panel has a fixed height, so the
+ * calendar fits both sides and may grow. Where the page scrolls, the panel
+ * height comes from the calendar itself; using it would let a short narrow
+ * moment (a phone rotation, a window resize) shrink the calendar for good.
+ * There it fits the width only, up to its natural size.
+ */
+export function fitScale(
+  panel: { width: number; height: number },
+  layout: { width: number; height: number },
+  fixedHeight: boolean,
+): number {
+  if (!panel.width) return 1;
+  const byHeight = fixedHeight
+    ? panel.height
+      ? panel.height / layout.height
+      : Infinity
+    : 1;
+  return Math.min(panel.width / layout.width, byHeight);
+}

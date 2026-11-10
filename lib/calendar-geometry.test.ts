@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { CELL, layoutCalendar, shade } from "./calendar-geometry";
+import { CELL, fitScale, layoutCalendar, shade } from "./calendar-geometry";
 
 const PALETTE = ["low", "mid", "high"] as const;
 const STEP = CELL + 2;
@@ -57,5 +57,30 @@ describe("layoutCalendar", () => {
     const { cells, labels } = layoutCalendar(2024, 2024, false);
     const march1 = cells.find((c) => c.day === "2024-03-01")!;
     expect(labels.find((l) => l.text === "Mar")!.x).toBe(march1.x);
+  });
+});
+
+describe("fitScale", () => {
+  const layout = { width: 131, height: 745 }; // one year, vertical
+
+  it("recovers after a narrow moment where the page scrolls", () => {
+    // The panel height there is the calendar's own height from the last render.
+    let size = { width: 342, height: 745 };
+    size = {
+      width: 72,
+      height: 745 * fitScale({ width: 72, height: size.height }, layout, false),
+    };
+    expect(fitScale({ width: 342, height: size.height }, layout, false)).toBe(
+      1,
+    );
+  });
+
+  it("fits both sides of a fixed-height panel, and may grow", () => {
+    expect(fitScale({ width: 600, height: 1490 }, layout, true)).toBe(2);
+    expect(fitScale({ width: 600, height: 372.5 }, layout, true)).toBe(0.5);
+  });
+
+  it("is 1 before the panel is measured", () => {
+    expect(fitScale({ width: 0, height: 0 }, layout, false)).toBe(1);
   });
 });

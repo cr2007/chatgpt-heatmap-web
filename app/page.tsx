@@ -250,6 +250,7 @@ export default function Home() {
                 from={(isFolded && activeViewFrom) || agg.from}
                 to={(isFolded && activeViewTo) || agg.to}
                 vertical={useVerticalHeatmap}
+                fixedHeight={isDesktopSplit || isFolded}
                 sweep={sweep}
               />
             ) : (
