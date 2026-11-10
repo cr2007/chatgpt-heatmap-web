@@ -12,7 +12,8 @@ export interface ProviderInfo {
   text: string;
   dot: string;
   /** Heatmap cell fills for low, medium and high activity. */
-  shades: readonly [string, string, string];
+  /** Prefix of the heatmap shade classes in app/globals.css (`lv-g1` to `lv-g4`). */
+  ramp: "g" | "o";
 }
 
 /** ChatGPT first, then Claude: the order of every list in the UI. */
@@ -26,7 +27,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     bg: "bg-green-50 dark:bg-green-950/20",
     text: "text-green-700 dark:text-green-400",
     dot: "bg-green-500",
-    shades: ["#CCFFCC", "#5CE65C", "#008000"],
+    ramp: "g",
   },
   {
     key: "claude",
@@ -37,7 +38,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     bg: "bg-orange-50 dark:bg-orange-950/20",
     text: "text-orange-700 dark:text-orange-400",
     dot: "bg-orange-500",
-    shades: ["#FED7AA", "#F97316", "#C2410C"],
+    ramp: "o",
   },
 ];
 

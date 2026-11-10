@@ -34,8 +34,8 @@ describe("aggregateDateData", () => {
   it("merges both providers on a shared day", () => {
     const r = aggregateDateData(gpt, claude, "UTC")!;
     expect(r.data["2024-01-11"]).toEqual({ chatgpt: 1, claude: 1 });
-    expect(r.maxChatgpt).toBe(2);
-    expect(r.maxClaude).toBe(1);
+    expect(r.edges.chatgpt).toEqual([1, 1, 2]);
+    expect(r.edges.claude).toEqual([1, 1, 1]);
   });
 
   it("breaks each day down by provider and chat", () => {

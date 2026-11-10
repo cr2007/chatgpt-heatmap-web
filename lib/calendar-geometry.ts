@@ -62,17 +62,25 @@ export interface CalendarLayout {
   labels: Label[];
 }
 
+/** Upper counts of shade levels 1 to 3; a larger count is level 4. */
+export type Edges = readonly [number, number, number];
+
 /**
- * Buckets a count into the low, medium or high shade of a palette, by its
- * ratio to the busiest day.
+ * The quartiles of the days with prompts (nearest rank). Each shade level
+ * then holds about a quarter of the active days, so one very busy day
+ * does not push every other day into the palest shade.
  */
-export function shade(
-  count: number,
-  max: number,
-  palette: readonly [string, string, string],
-): string {
-  const ratio = count / max;
-  return ratio < 0.34 ? palette[0] : ratio < 0.67 ? palette[1] : palette[2];
+export function quartiles(counts: readonly number[]): Edges {
+  const sorted = counts.filter((n) => n > 0).sort((a, b) => a - b);
+  const at = (p: number) =>
+    sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)] ?? 0;
+  return [at(0.25), at(0.5), at(0.75)];
+}
+
+/** The shade level of a count: 0 for no prompts, else 1 (fewest) to 4. */
+export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) return 0;
+  return count <= a ? 1 : count <= b ? 2 : count <= c ? 3 : 4;
 }
 
 /**

@@ -244,8 +244,7 @@ export default function Home() {
               <CalendarHeatmap
                 data={agg.data}
                 dayTitles={agg.dayTitles}
-                maxChatgpt={agg.maxChatgpt}
-                maxClaude={agg.maxClaude}
+                edges={agg.edges}
                 from={(isFolded && activeViewFrom) || agg.from}
                 to={(isFolded && activeViewTo) || agg.to}
                 vertical={useVerticalHeatmap}

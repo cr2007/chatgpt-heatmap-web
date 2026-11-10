@@ -76,6 +76,83 @@
   transition: none !important;
 }
 
+/* Heatmap shades: levels 1 to 4 per provider (lib/calendar-geometry.ts).
+   More prompts always means more contrast with the page, so the dark ramp
+   runs from dim to bright, not from pale to dark. */
+:root {
+  --cell-empty: oklch(93.4% 0.004 286);
+  --g1: oklch(90% 0.07 152);
+  --g2: oklch(78% 0.13 150);
+  --g3: oklch(63% 0.15 148);
+  --g4: oklch(46% 0.13 150);
+  --o1: oklch(91% 0.06 62);
+  --o2: oklch(81% 0.12 56);
+  --o3: oklch(69% 0.18 47);
+  --o4: oklch(54% 0.17 40);
+}
+.dark {
+  --cell-empty: oklch(24% 0.006 286);
+  --g1: oklch(36% 0.07 152);
+  --g2: oklch(50% 0.11 150);
+  --g3: oklch(66% 0.15 148);
+  --g4: oklch(83% 0.16 148);
+  --o1: oklch(38% 0.07 45);
+  --o2: oklch(52% 0.12 47);
+  --o3: oklch(68% 0.16 50);
+  --o4: oklch(84% 0.12 62);
+}
+.lv-0 {
+  fill: var(--cell-empty);
+}
+.lv-g1 {
+  fill: var(--g1);
+}
+.lv-g2 {
+  fill: var(--g2);
+}
+.lv-g3 {
+  fill: var(--g3);
+}
+.lv-g4 {
+  fill: var(--g4);
+}
+.lv-o1 {
+  fill: var(--o1);
+}
+.lv-o2 {
+  fill: var(--o2);
+}
+.lv-o3 {
+  fill: var(--o3);
+}
+.lv-o4 {
+  fill: var(--o4);
+}
+.st-g1 {
+  stop-color: var(--g1);
+}
+.st-g2 {
+  stop-color: var(--g2);
+}
+.st-g3 {
+  stop-color: var(--g3);
+}
+.st-g4 {
+  stop-color: var(--g4);
+}
+.st-o1 {
+  stop-color: var(--o1);
+}
+.st-o2 {
+  stop-color: var(--o2);
+}
+.st-o3 {
+  stop-color: var(--o3);
+}
+.st-o4 {
+  stop-color: var(--o4);
+}
+
 /* Heatmap cells. `--t` is the cell's place in the date range, 0 to 1, so
    every change runs from the first date to the last. The reduced-motion
    rule above makes all of it instant. */

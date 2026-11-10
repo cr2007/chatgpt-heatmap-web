@@ -1,17 +1,33 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { CELL, fitScale, layoutCalendar, shade } from "./calendar-geometry";
+import {
+  CELL,
+  fitScale,
+  layoutCalendar,
+  level,
+  quartiles,
+} from "./calendar-geometry";
 
-const PALETTE = ["low", "mid", "high"] as const;
 const STEP = CELL + 2;
 
-describe("shade", () => {
-  it.each([
-    [3, "low"],
-    [4, "mid"],
-    [6, "mid"],
-    [7, "high"],
-  ])("puts %d of 10 in the %s bucket", (count, expected) => {
-    expect(shade(count, 10, PALETTE)).toBe(expected);
+describe("quartiles and level", () => {
+  it("ignores days with no prompts", () => {
+    expect(quartiles([0, 0, 1, 2, 3, 4])).toEqual([1, 2, 3]);
+  });
+
+  it("keeps one very busy day from flattening the rest", () => {
+    // 812 prompts on one day: the other days must still use all levels.
+    const counts = [1, 2, 3, 4, 5, 6, 7, 8, 812];
+    const edges = quartiles(counts);
+    expect(counts.map((n) => level(n, edges))).toEqual([
+      1, 1, 1, 2, 2, 3, 3, 4, 4,
+    ]);
+  });
+
+  it("puts equal days on one level, and no prompts on level 0", () => {
+    const edges = quartiles([5, 5, 5]);
+    expect(level(5, edges)).toBe(1);
+    expect(level(0, edges)).toBe(0);
+    expect(quartiles([])).toEqual([0, 0, 0]);
   });
 });
 

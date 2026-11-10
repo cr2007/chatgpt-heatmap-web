@@ -6,12 +6,13 @@ import type {
   Provider,
 } from "./types";
 import { dayFormatter } from "./parse";
+import { quartiles, type Edges } from "./calendar-geometry";
 
 export interface AggregatedData {
   data: Record<string, CalHeatmapDay>;
   dayTitles: Record<string, DayTitleBreakdown>;
-  maxChatgpt: number;
-  maxClaude: number;
+  /** Shade level edges per provider (see `quartiles`). */
+  edges: Record<Provider, Edges>;
   /** First and last day with a prompt, as local midnight. */
   from: Date;
   to: Date;
@@ -24,7 +25,7 @@ export interface AggregatedData {
  *
  * Step 1: Add one to the day and to the day's chat for each prompt, then
  *         list each day's chats, busiest first.
- * Step 2: Derive the busiest day per provider, the date range and the years.
+ * Step 2: Derive the shade edges per provider, the date range and the years.
  */
 export function aggregateDateData(
   chatgptSummary: ConversationSummary[] | null,
@@ -74,8 +75,10 @@ export function aggregateDateData(
   return {
     data,
     dayTitles,
-    maxChatgpt: Math.max(...counts.map((c) => c.chatgpt)),
-    maxClaude: Math.max(...counts.map((c) => c.claude)),
+    edges: {
+      chatgpt: quartiles(counts.map((c) => c.chatgpt)),
+      claude: quartiles(counts.map((c) => c.claude)),
+    },
     from: new Date(allDays[0] + "T00:00:00"),
     to: new Date(allDays[allDays.length - 1] + "T00:00:00"),
     years: [...new Set(allDays.map((d) => Number(d.slice(0, 4))))],
