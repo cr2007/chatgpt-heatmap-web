@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { cn, plural } from "./utils";
 
 describe("cn", () => {
-  // Overrides like the ones components pass to the shadcn parts, with
+  // Overrides like the ones components pass to cn(), with
   // Tailwind v4 class names that tailwind-merge must know.
   it.each([
     [["px-3 py-1", "px-4"], "py-1 px-4"],

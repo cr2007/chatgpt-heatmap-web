@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
-import { ModeToggle } from "@/components/modeToggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { YearNav } from "@/components/year-nav";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -204,7 +204,7 @@ export default function Home() {
                     className="hidden size-4 dark:block"
                   />
                 </a>
-                <ModeToggle />
+                <ThemeToggle />
               </div>
             </header>
 

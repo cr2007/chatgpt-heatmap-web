@@ -6,11 +6,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useTheme } from "next-themes";
 import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
 import { CELL, fitScale, layoutCalendar, shade } from "@/lib/calendar-geometry";
 import { providerInfo } from "@/lib/providers";
-import { plural } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
 import { DayTooltip } from "@/components/day-tooltip";
 
@@ -65,7 +64,6 @@ export function CalendarHeatmap({
   sweep = 0,
   fixedHeight = false,
 }: CalendarHeatmapProps) {
-  const isDark = useTheme().resolvedTheme === "dark";
   const uid = useId().replace(/:/g, "");
   const [outerRef, panel] = useElementSize<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,11 +73,6 @@ export function CalendarHeatmap({
   );
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
-
-  const emptyFill = isDark ? "#2a2a2a" : "#eee";
-  const textFill = isDark ? "#888" : "#666";
-  // A faint edge keeps the palest green apart from the empty grey.
-  const cellStroke = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
 
   // Step 1
   // Keyed on the years: the page passes new Date objects on each render.
@@ -132,24 +125,30 @@ export function CalendarHeatmap({
     hideTimer.current = setTimeout(() => setTip(null), HIDE_DELAY);
   }, []);
 
-  /** The fill of a day: a gradient for both providers, one shade, or empty. */
-  function fillOf(chatgpt: number, claude: number, day: string): string {
+  /** The fill of a day with data: a gradient for both providers, or one shade.
+   *  Empty days get no fill attribute; their color comes from CSS. */
+  function fillOf(
+    chatgpt: number,
+    claude: number,
+    day: string,
+  ): string | undefined {
     if (chatgpt > 0 && claude > 0 && maxChatgpt > 0 && maxClaude > 0)
       return `url(#${uid}g${day})`;
     if (chatgpt > 0 && maxChatgpt > 0)
       return shade(chatgpt, maxChatgpt, GPT_SHADES);
     if (claude > 0 && maxClaude > 0)
       return shade(claude, maxClaude, CLAUDE_SHADES);
-    return emptyFill;
+    return undefined;
   }
 
-  // Step 3: two class names, so that each new sweep restarts the animation.
-  const cellClass =
-    sweep === 0
-      ? "heat-cell"
-      : sweep % 2
-        ? "heat-cell sweep-a"
-        : "heat-cell sweep-b";
+  // Step 3: two sweep names, so that each new sweep restarts the animation.
+  // The faint edge keeps the palest green apart from the empty grey.
+  const cellClass = cn(
+    "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",
+    sweep > 0 && (sweep % 2 ? "sweep-a" : "sweep-b"),
+  );
+  /** Empty days take their grey from CSS, so a theme switch needs no render. */
+  const emptyClass = "fill-[#eee] dark:fill-[#2a2a2a]";
 
   return (
     <div
@@ -172,7 +171,7 @@ export function CalendarHeatmap({
               key={l.key}
               x={l.x}
               y={l.y}
-              fill={textFill}
+              className="fill-[#666] dark:fill-[#888]"
               fontSize={l.size}
               fontWeight={l.bold ? 600 : undefined}
               textAnchor={l.anchor}
@@ -192,9 +191,8 @@ export function CalendarHeatmap({
                 height={CELL}
                 rx={2}
                 fill={fillOf(chatgpt, claude, day)}
-                stroke={cellStroke}
                 strokeWidth={1}
-                className={cellClass}
+                className={hasData ? cellClass : cn(cellClass, emptyClass)}
                 style={{ "--t": t.toFixed(3) } as React.CSSProperties}
                 onMouseEnter={hasData ? (e) => handleEnter(e, day) : undefined}
                 onMouseLeave={hasData ? handleLeave : undefined}

@@ -7,7 +7,7 @@
 @source "../src";
 @source "../lib/providers.ts";
 
-/* next-themes puts the "dark" class on <html>. */
+/* hooks/use-theme-toggle.ts puts the "dark" class on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
@@ -66,6 +66,15 @@
       animation-delay: 0s !important;
     }
   }
+}
+
+/* useThemeToggle adds this class for one frame during a theme switch, so
+   every color changes at once instead of each fading at its own speed. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 /* Heatmap cells. `--t` is the cell's place in the date range, 0 to 1, so

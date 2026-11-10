@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useTheme } from "next-themes";
+import { useThemeToggle } from "@/hooks/use-theme-toggle";
 
 /** True when the key press belongs to a field or control, not to the page. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -17,10 +17,10 @@ function isTypingTarget(target: EventTarget | null): boolean {
  *
  * Step 1: Ignore modified keys (Ctrl+D bookmarks, Cmd+D), held keys and
  *         presses inside fields.
- * Step 2: Flip the theme the user sees, so "system" also toggles at once.
+ * Step 2: Flip the theme the user sees (see useThemeToggle).
  */
 export function ThemeShortcut() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { toggle } = useThemeToggle();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -29,11 +29,11 @@ export function ThemeShortcut() {
         return;
       if (isTypingTarget(e.target)) return;
       // Step 2
-      setTheme(resolvedTheme === "dark" ? "light" : "dark");
+      toggle();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [resolvedTheme, setTheme]);
+  }, [toggle]);
 
   return null;
 }
