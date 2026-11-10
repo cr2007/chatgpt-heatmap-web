@@ -1,4 +1,11 @@
-import { Check, ChevronDown, ChevronsUpDown, Upload, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  LoaderCircle,
+  Upload,
+  X,
+} from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -158,7 +165,7 @@ export function HeatMapForm({
             htmlFor={inputId}
             className={cn(
               "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-4 text-center h-full",
-              "cursor-pointer select-none transition-all duration-200",
+              "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
               isDragging
                 ? "border-violet-500/60 bg-violet-500/5 scale-[1.01] dark:border-violet-400/60 dark:bg-violet-400/5"
                 : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
@@ -168,20 +175,38 @@ export function HeatMapForm({
             )}
             onDragOver={(e) => {
               e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
               setIsDragging(true);
             }}
-            onDragLeave={() => setIsDragging(false)}
+            onDragLeave={(e) => {
+              // Moving onto a child (the icon, the text) also fires dragleave; ignore it.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                setIsDragging(false);
+            }}
             onDrop={async (e) => {
               e.preventDefault();
               setIsDragging(false);
               await processFiles(e.dataTransfer.files);
             }}
           >
-            <Upload
-              aria-hidden="true"
-              className="h-5 w-5 text-zinc-500 dark:text-zinc-400"
-              strokeWidth={1.5}
-            />
+            {isReading ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-5 w-5 animate-spin text-violet-500 dark:text-violet-400"
+                strokeWidth={1.5}
+              />
+            ) : (
+              <Upload
+                aria-hidden="true"
+                className={cn(
+                  "h-5 w-5 transition-[translate,color] duration-200",
+                  isDragging
+                    ? "-translate-y-0.5 text-violet-500 dark:text-violet-400"
+                    : "text-zinc-500 dark:text-zinc-400",
+                )}
+                strokeWidth={1.5}
+              />
+            )}
             <div aria-live="polite">
               <p className="text-xs font-medium leading-tight">
                 {isReading ? "Reading files..." : "Drop export files here"}
