@@ -19,21 +19,23 @@ const dateLabel = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
- * The hover card for one heatmap day: the date, the prompt count and the
- * busiest chats per provider. It is decoration for pointer users; each cell
- * already carries the counts in its accessible name.
+ * The details card for one heatmap day: the date, the prompt count and the
+ * busiest chats per provider. The focused or tapped cell names it as its
+ * description (`id`), so a screen reader also reads the chats.
  *
  * Step 1: Render next to the cursor (`x`, `y` are relative to the parent).
  * Step 2: Before paint, measure the card and flip it to the other side of
  *         the cursor when it would leave the viewport, then clamp it.
  */
 export function DayTooltip({
+  id,
   day,
   counts,
   chats,
   x,
   y,
 }: {
+  id: string;
   /** `YYYY-MM-DD`. */
   day: string;
   counts: CalHeatmapDay;
@@ -67,7 +69,8 @@ export function DayTooltip({
   return (
     <div
       ref={ref}
-      aria-hidden="true"
+      id={id}
+      role="tooltip"
       className="pointer-events-none absolute z-20 w-max max-w-[260px] rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-tooltip-in dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
     >
       <div className="flex items-baseline justify-between gap-4">

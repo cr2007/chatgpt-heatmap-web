@@ -110,6 +110,13 @@
   stroke: var(--cell-empty);
   stroke-width: 1.5px;
 }
+/* Keyboard focus on a day: an accent outline drawn with the stroke, which
+   works on SVG in every engine. */
+.heat-cell:focus-visible {
+  outline: none;
+  stroke: rgb(var(--accent));
+  stroke-width: 2px;
+}
 .lv-g1 {
   fill: var(--g1);
 }
