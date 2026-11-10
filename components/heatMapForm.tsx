@@ -14,19 +14,13 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { toast } from "sonner";
-import { detectFormat } from "@/lib/parse";
+import { readExports } from "@/lib/upload";
 import type { LoadedExport, Provider } from "@/lib/types";
 
 interface LoadedInfo {
   name: string;
   count: number;
 }
-
-type ParsedFile = {
-  format: Provider | "unknown";
-  data: unknown[];
-  name: string;
-};
 
 interface ProviderTheme {
   key: Provider;
@@ -89,8 +83,8 @@ export function HeatMapForm({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
   const [isShaking, setIsShaking] = useState(false);
-  /** Bumped to remount the file input, clearing its selection after a removal. */
-  const [inputKey, setInputKey] = useState(0);
+  /** True while picked files are read and checked; big exports take a moment. */
+  const [isReading, setIsReading] = useState(false);
 
   const timeZones = Intl.supportedValuesOf("timeZone");
 
@@ -100,81 +94,38 @@ export function HeatMapForm({
   }, []);
 
   /**
-   * Parses every dropped/selected file, validates the batch, and hands the
-   * results off to the parent.
+   * Reads every dropped or picked file and hands the checked exports to the page.
    *
-   * Step 1: parse each file as JSON and detect its export format.
-   * Step 2: reject the batch if any file's format wasn't recognised.
-   * Step 3: reject more than one Claude export (only one is supported).
-   * Step 4: hand the raw exports to the page, which parses them.
-   * Step 5: toast each loaded provider.
+   * Step 1: read the files as text; a read error is shown, never thrown.
+   * Step 2: check and group them (`readExports`), or show why not.
+   * Step 3: hand the raw exports to the page and toast each provider.
    */
   const processFiles = useCallback(
     async (fileList: FileList) => {
       setError("");
-      const results: ParsedFile[] = [];
-
-      // Step 1
-      for (const file of Array.from(fileList)) {
-        let parsed: unknown[];
-        try {
-          const json = JSON.parse(await file.text());
-          if (!Array.isArray(json) || json.length === 0) {
-            showError(`${file.name}: expected a non-empty array of conversations`);
-            return;
-          }
-          parsed = json;
-        } catch {
-          showError(`${file.name}: could not parse JSON`);
-          return;
-        }
-        results.push({ format: detectFormat(parsed), data: parsed, name: file.name });
-      }
-
-      // Step 2
-      const unknownFiles = results.filter((r) => r.format === "unknown");
-      if (unknownFiles.length > 0) {
-        showError(
-          `${unknownFiles[0].name}: unrecognised format - expected a ChatGPT or Claude conversations.json`
+      setIsReading(true);
+      try {
+        // Step 1
+        const files = await Promise.all(
+          Array.from(fileList, async (f) => ({ name: f.name, text: await f.text() })),
         );
-        return;
-      }
-
-      // Step 3
-      const gptFiles    = results.filter((r) => r.format === "chatgpt");
-      const claudeFiles = results.filter((r) => r.format === "claude");
-      if (claudeFiles.length > 1) {
-        showError("Upload at most one Claude export");
-        return;
-      }
-
-      // Step 4
-      const next: Partial<Record<Provider, LoadedExport>> = {};
-      if (gptFiles.length > 0) {
-        next.chatgpt = {
-          name: gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
-          data: gptFiles.flatMap((f) => f.data),
-        };
-      }
-      if (claudeFiles.length === 1) next.claude = { name: claudeFiles[0].name, data: claudeFiles[0].data };
-      onLoad(next);
-
-      // Step 5
-      for (const p of PROVIDERS) {
-        const count = next[p.key]?.data.length;
-        if (count) toast.success(`${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`);
+        // Step 2
+        const result = readExports(files);
+        if (!result.ok) return showError(result.error);
+        // Step 3
+        onLoad(result.exports);
+        for (const p of PROVIDERS) {
+          const count = result.exports[p.key]?.data.length;
+          if (count) toast.success(`${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`);
+        }
+      } catch (e) {
+        showError(`Could not read the file: ${e instanceof Error ? e.message : String(e)}`);
+      } finally {
+        setIsReading(false);
       }
     },
     [onLoad, showError]
   );
-
-  /** Clears one provider's loaded data, resetting the file input only once
-   *  nothing is loaded at all (so a second file can still be added). */
-  function clearFile(provider: Provider) {
-    onClear(provider);
-    const otherProvider = provider === "chatgpt" ? "claude" : "chatgpt";
-    if (loaded[otherProvider] === null) setInputKey((k) => k + 1);
-  }
 
   const hasAnyLoaded = PROVIDERS.some((p) => loaded[p.key] !== null);
 
@@ -210,21 +161,22 @@ export function HeatMapForm({
             }}
           >
             <Upload aria-hidden="true" className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
-            <div>
-              <p className="text-xs font-medium leading-tight">Drop export files here</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight">or click to browse</p>
+            <div aria-live="polite">
+              <p className="text-xs font-medium leading-tight">{isReading ? "Reading files..." : "Drop export files here"}</p>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight">
+                {isReading ? "Large exports take a few seconds" : "or click to browse"}
+              </p>
             </div>
             <input
-              key={inputKey}
               id={inputId}
               type="file"
               accept="application/json,.json"
               multiple
               className="sr-only"
               onChange={async (e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  await processFiles(e.target.files);
-                }
+                const input = e.currentTarget;
+                if (input.files?.length) await processFiles(input.files);
+                input.value = ""; // so picking the same file again fires onChange
               }}
             />
           </label>
@@ -257,7 +209,7 @@ export function HeatMapForm({
                       </span>
                     </span>
                     <button
-                      onClick={() => clearFile(p.key)}
+                      onClick={() => onClear(p.key)}
                       className="ml-2 flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-700 transition-colors"
                       aria-label={`Remove ${p.label} file`}
                     >
