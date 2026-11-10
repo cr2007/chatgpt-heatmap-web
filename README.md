@@ -82,6 +82,7 @@ Each cell shows the number of messages you sent on that day, in the time zone yo
 - Hidden context does not count, for example ChatGPT custom instructions.
 - Starting a chat does not count by itself. A chat with no prompts adds nothing.
 - A prompt with no timestamp does not count.
+- A prompt dated before ChatGPT's launch (30 November 2022) or more than a day in the future does not count. Such a date comes from a wrong clock or a broken file.
 
 `test/oracle.test.ts` checks this rule with `jq`, which counts the prompts straight from the raw export. To check your own export (the file stays on your machine):
 

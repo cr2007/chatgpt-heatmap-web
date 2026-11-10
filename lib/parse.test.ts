@@ -1,5 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { dayFormatter, detectFormat, parseChatGPT, parseClaude } from "./parse";
+import {
+  dayFormatter,
+  detectFormat,
+  parseChatGPT,
+  parseClaude,
+  summarizeClaude,
+} from "./parse";
 
 const FIXTURES = `${import.meta.dir}/../test/fixtures`;
 const chatgpt = await Bun.file(`${FIXTURES}/chatgpt-export.json`).json();
@@ -105,5 +111,22 @@ describe("dayFormatter", () => {
           throw new Error(`${timeZone} at ${new Date(ms).toISOString()}`);
       }
     }
+  });
+});
+
+describe("prompt dates", () => {
+  it("counts only times from ChatGPT's launch to one day from now", () => {
+    const msg = (created_at: string) => ({ sender: "human", created_at });
+    const c = summarizeClaude({
+      name: "Clock",
+      chat_messages: [
+        msg("1970-01-01T00:00:00Z"),
+        msg("2022-11-29T23:59:59Z"),
+        msg("2022-11-30T00:00:00Z"),
+        msg("2100-01-01T00:00:00Z"),
+      ],
+    });
+    expect(c.times).toEqual([Date.UTC(2022, 10, 30)]);
+    expect(c.outside).toBe(3);
   });
 });

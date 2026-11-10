@@ -19,6 +19,21 @@ interface RawClaudeConversation {
   chat_messages?: { sender?: string; created_at?: string }[];
 }
 
+/** ChatGPT's launch day (UTC). No AI chat export has an earlier prompt, so an
+ *  earlier time comes from a wrong clock or a broken file. */
+export const FIRST_PROMPT = Date.UTC(2022, 10, 30);
+/** A day in ms: a prompt time may be this far in the future (clock skew). */
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Sorts each time into the summary: a time from ChatGPT's launch to one day
+ * from now counts; any other time only adds to `outside`.
+ */
+function keep(summary: ConversationSummary, time: number, latest: number) {
+  if (time >= FIRST_PROMPT && time <= latest) summary.times.push(time);
+  else summary.outside = (summary.outside ?? 0) + 1;
+}
+
 /** Width of the cached time blocks: 15 minutes in ms. */
 const BLOCK = 15 * 60 * 1000;
 /** The day function of the last zone used. Only one is kept: each one caches
@@ -90,24 +105,32 @@ export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
  */
 export function summarizeChatGPT(conversation: unknown): ConversationSummary {
   const c = conversation as RawGPTConversation | null;
-  const times: number[] = [];
+  const summary: ConversationSummary = {
+    title: c?.title?.trim() || "Untitled",
+    times: [],
+  };
+  const latest = Date.now() + DAY;
   for (const node of Object.values(c?.mapping ?? {})) {
     const m = node?.message;
     if (isVisiblePrompt(m) && Number.isFinite(m.create_time))
-      times.push(m.create_time * 1000);
+      keep(summary, m.create_time * 1000, latest);
   }
-  return { title: c?.title?.trim() || "Untitled", times };
+  return summary;
 }
 
 /** Keeps the title and the human message times (ms) of one Claude conversation. */
 export function summarizeClaude(conversation: unknown): ConversationSummary {
   const c = conversation as RawClaudeConversation | null;
-  const times: number[] = [];
+  const summary: ConversationSummary = {
+    title: c?.name?.trim() || "Untitled",
+    times: [],
+  };
+  const latest = Date.now() + DAY;
   for (const m of c?.chat_messages ?? []) {
     const t = m?.sender === "human" ? Date.parse(m.created_at ?? "") : NaN;
-    if (Number.isFinite(t)) times.push(t);
+    if (Number.isFinite(t)) keep(summary, t, latest);
   }
-  return { title: c?.name?.trim() || "Untitled", times };
+  return summary;
 }
 
 /** Summarizes a whole parsed ChatGPT export. */

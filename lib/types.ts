@@ -12,6 +12,8 @@ export interface ConversationSummary {
   title: string;
   /** The time (ms since 1970) of each visible user prompt (see the README count rule). */
   times: number[];
+  /** Prompts with a time before ChatGPT's launch or in the future; they do not count. */
+  outside?: number;
 }
 
 export interface CalHeatmapDay {

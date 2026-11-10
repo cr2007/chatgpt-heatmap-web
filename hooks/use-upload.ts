@@ -67,12 +67,16 @@ export function useUpload({
         if (!result.ok) return showError(result.error);
         onLoad(result.exports);
         for (const p of PROVIDERS) {
-          const count = result.exports[p.key]?.chats.length;
-          if (count)
-            toast(
-              "success",
-              `${p.label} export loaded - ${plural(count, "conversation")}`,
-            );
+          const chats = result.exports[p.key]?.chats;
+          if (!chats?.length) continue;
+          const outside = chats.reduce((n, c) => n + (c.outside ?? 0), 0);
+          toast(
+            "success",
+            `${p.label} export loaded - ${plural(chats.length, "conversation")}` +
+              (outside
+                ? `. ${plural(outside, "prompt")} with a date before November 2022 or in the future ${outside === 1 ? "does" : "do"} not count.`
+                : ""),
+          );
         }
       } catch (e) {
         if (upload.signal.aborted) return; // the newer upload owns the state now

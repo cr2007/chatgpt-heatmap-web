@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { $ } from "bun";
 import { aggregateDateData } from "@/lib/aggregate";
-import { detectFormat } from "@/lib/parse";
+import { detectFormat, FIRST_PROMPT } from "@/lib/parse";
 import { loadExports } from "@/lib/upload";
 
 /**
@@ -10,17 +10,22 @@ import { loadExports } from "@/lib/upload";
  * parse + aggregate pipeline must give the same numbers.
  */
 
-/** jq program: visible ChatGPT user prompts per local day. */
+/** ChatGPT's launch (2022-11-30 UTC) in seconds; earlier prompt times do not count. */
+const FIRST = String(FIRST_PROMPT / 1000);
+
+/** jq program: visible ChatGPT user prompts per local day, launch to one day from now. */
 const JQ_CHATGPT = `[.[] | .mapping[] | .message
   | select(. != null and .author.role == "user" and .create_time != null
       and (.metadata.is_visually_hidden_from_conversation // false) == false
       and .content.content_type != "user_editable_context")
-  | .create_time | floor | strflocaltime("%Y-%m-%d")]
+  | .create_time | select(. >= $first and . <= now + 86400)
+  | floor | strflocaltime("%Y-%m-%d")]
   | group_by(.) | map({key: .[0], value: length}) | from_entries`;
 
-/** jq program: Claude human messages per local day. */
+/** jq program: Claude human messages per local day, launch to one day from now. */
 const JQ_CLAUDE = `[.[] | .chat_messages[] | select(.sender == "human")
-  | .created_at | sub("\\\\.[0-9]+"; "") | fromdateiso8601 | strflocaltime("%Y-%m-%d")]
+  | .created_at | sub("\\\\.[0-9]+"; "") | fromdateiso8601
+  | select(. >= $first and . <= now + 86400) | strflocaltime("%Y-%m-%d")]
   | group_by(.) | map({key: .[0], value: length}) | from_entries`;
 
 const TIME_ZONES = ["UTC", "America/New_York", "Asia/Kolkata"];
@@ -33,7 +38,9 @@ async function jqCounts(
   file: string,
   tz: string,
 ): Promise<Record<string, number>> {
-  return $`jq -c ${program} ${file}`.env({ ...process.env, TZ: tz }).json();
+  return $`jq -c --argjson first ${FIRST} ${program} ${file}`
+    .env({ ...process.env, TZ: tz })
+    .json();
 }
 
 /**

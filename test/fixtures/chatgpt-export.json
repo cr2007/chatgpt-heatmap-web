@@ -207,6 +207,54 @@
         },
         "parent": "sys",
         "children": []
+      },
+      "beforeLaunch": {
+        "id": "beforeLaunch",
+        "message": {
+          "id": "beforeLaunch",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": ["clock was wrong"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "a1",
+        "children": []
+      },
+      "future": {
+        "id": "future",
+        "message": {
+          "id": "future",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 4102444800,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": ["clock was wrong"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "a1",
+        "children": []
       }
     },
     "moderation_results": [],
