@@ -23,8 +23,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
   # Build job
   build:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

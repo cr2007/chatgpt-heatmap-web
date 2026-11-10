@@ -10,7 +10,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+
   publish-docker-image:
+    needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -41,5 +47,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.IMAGE }}:latest
-          cache-from: type=ghs
+          cache-from: type=gha
           cache-to: type=gha,mode=max

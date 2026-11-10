@@ -1,0 +1,44 @@
+# Tests, lint, types, format and audit. Pull requests run it directly;
+# the Pages and Docker workflows call it and deploy only when it passes.
+name: Check
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # bun test runs in UTC unless TZ is set, which hides time zone bugs.
+        tz: [UTC, America/New_York, Asia/Kolkata]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun --bun test
+        env:
+          TZ: ${{ matrix.tz }}
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Type check
+        run: bun check
+      - name: Format
+        run: bun fmt --check
+      - name: Audit runtime dependencies
+        run: bun audit --prod
