@@ -52,8 +52,8 @@ export function HeatMapForm({
           />
 
           {error && (
+            // No role="alert": the error toast already announces it once.
             <p
-              role="alert"
               className={cn(
                 "text-xs text-red-600 dark:text-red-400",
                 isShaking && "animate-shake",

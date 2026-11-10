@@ -111,6 +111,17 @@
   animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
+/* A toast rises 8 px and fades in. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@utility animate-toast-in {
+  animation: toast-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 @keyframes shake {
   0%,
   100% {

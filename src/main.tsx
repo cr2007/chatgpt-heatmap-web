@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeShortcut } from "@/components/theme-shortcut";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/toaster";
 import App from "@/app/page";
 import "@/app/globals.css";
 

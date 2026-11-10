@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { PROVIDERS } from "@/lib/providers";
 import { loadExports, type Exports } from "@/lib/upload";
 import { plural } from "@/lib/utils";
@@ -24,9 +24,11 @@ export function useUpload({
   /** Cancels the upload in progress when a newer one starts. */
   const uploadRef = useRef<AbortController | null>(null);
 
+  /** Shows an error by the drop zone (it stays) and as a toast (it is announced). */
   const showError = useCallback((msg: string) => {
     setError(msg);
     setIsShaking(true);
+    toast("error", msg);
   }, []);
 
   /** Ends the error shake. */
@@ -67,7 +69,8 @@ export function useUpload({
         for (const p of PROVIDERS) {
           const count = result.exports[p.key]?.chats.length;
           if (count)
-            toast.success(
+            toast(
+              "success",
               `${p.label} export loaded - ${plural(count, "conversation")}`,
             );
         }
