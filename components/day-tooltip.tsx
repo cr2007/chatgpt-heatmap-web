@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import type { CalHeatmapDay, ChatCount, DayTitleBreakdown } from "@/lib/types";
 import { cn, plural } from "@/lib/utils";
+import { PROVIDERS } from "@/lib/providers";
 
 /** Chats listed per provider before the rest fold into "+N more chats". */
 const MAX_ROWS = 5;
@@ -16,21 +17,6 @@ const dateLabel = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   year: "numeric",
 });
-
-const PROVIDERS = [
-  {
-    key: "chatgpt",
-    label: "ChatGPT",
-    dot: "bg-green-500",
-    text: "text-green-700 dark:text-green-400",
-  },
-  {
-    key: "claude",
-    label: "Claude",
-    dot: "bg-orange-500",
-    text: "text-orange-700 dark:text-orange-400",
-  },
-] as const;
 
 /**
  * The hover card for one heatmap day: the date, the prompt count and the

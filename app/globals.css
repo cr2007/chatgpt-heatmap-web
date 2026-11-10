@@ -5,6 +5,7 @@
 @source "../app";
 @source "../components";
 @source "../src";
+@source "../lib/providers.ts";
 
 /* next-themes puts the "dark" class on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
