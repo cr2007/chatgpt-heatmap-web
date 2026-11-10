@@ -66,6 +66,7 @@ function isVisiblePrompt(
   );
 }
 
+/** Tells a ChatGPT export from a Claude export by the shape of its first conversation. */
 export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
   if (!arr.length) return "unknown";
   const el = arr[0] as Record<string, unknown>;
