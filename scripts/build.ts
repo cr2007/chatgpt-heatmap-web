@@ -1,17 +1,21 @@
 /**
- * Production build into dist/.
+ * Production build into dist/, with Bun APIs only.
  *
- * Step 1: Bundle index.html with Bun.build. The Tailwind plugin works in this
+ * Step 1: Remove the old dist/ (Bun Shell's built-in `rm`).
+ * Step 2: Bundle index.html with Bun.build. The Tailwind plugin works in this
  *         API but not yet in the `bun build` CLI.
- * Step 2: Copy public/ as-is (the font, llms.txt).
+ * Step 3: Copy public/ as-is (the font, llms.txt) with Bun.Glob and Bun.write.
+ * Step 4: Print each file's size and gzip size.
  */
 import tailwind from "bun-plugin-tailwind";
-import { cp, rm } from "node:fs/promises";
+import { $ } from "bun";
 
 const outdir = "dist";
-await rm(outdir, { recursive: true, force: true });
 
 // Step 1
+await $`rm -rf ${outdir}`;
+
+// Step 2
 const result = await Bun.build({
   entrypoints: ["./index.html"],
   outdir,
@@ -25,11 +29,18 @@ if (!result.success) {
   process.exit(1);
 }
 
-// Step 2
-await cp("public", outdir, { recursive: true });
+// Step 3
+for await (const path of new Bun.Glob("**/*").scan({
+  cwd: "public",
+  dot: true,
+}))
+  await Bun.write(`${outdir}/${path}`, Bun.file(`public/${path}`));
 
-for (const o of result.outputs) {
+// Step 4
+for (const output of result.outputs) {
+  const bytes = await Bun.file(output.path).bytes();
+  const kb = (n: number) => `${(n / 1024).toFixed(1).padStart(7)} kB`;
   console.log(
-    `${(o.size / 1024).toFixed(1).padStart(7)} kB  ${o.path.slice(o.path.lastIndexOf(outdir))}`,
+    `${kb(bytes.length)}  ${kb(Bun.gzipSync(bytes).length)} gzip  ${output.path.slice(output.path.lastIndexOf(outdir))}`,
   );
 }
