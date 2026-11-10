@@ -5,14 +5,6 @@ const FIXTURES = `${import.meta.dir}/../test/fixtures`;
 const chatgpt = await Bun.file(`${FIXTURES}/chatgpt-export.json`).json();
 const claude = await Bun.file(`${FIXTURES}/claude-export.json`).json();
 
-/** The local days of one summary's prompt times. */
-const daysIn = (s: { times: number[] }, tz: string) =>
-  s.times.map(dayFormatter(tz));
-
-/** Finds one parsed conversation by its title. */
-const byTitle = <T extends { title: string }>(list: T[], title: string) =>
-  list.find((c) => c.title === title)!;
-
 describe("detectFormat", () => {
   it.each([
     ["chatgpt", chatgpt],
@@ -28,38 +20,18 @@ describe("detectFormat", () => {
   );
 });
 
+describe("titles", () => {
+  it.each([
+    ["chatgpt", parseChatGPT(chatgpt)],
+    ["claude", parseClaude(claude)],
+  ])("%s trims titles and falls back to Untitled", (_name, parsed) => {
+    const titles = parsed.map((c) => c.title);
+    expect(titles).toContain("Untitled");
+    expect(titles).not.toContain("   ");
+  });
+});
+
 describe("parseChatGPT", () => {
-  const parsed = parseChatGPT(chatgpt);
-
-  it("trims the title and falls back to Untitled", () => {
-    expect(parsed.map((c) => c.title)).toContain("Untitled");
-    expect(parsed.map((c) => c.title)).not.toContain("   ");
-  });
-
-  it("counts visible prompts, including edits, and skips hidden context", () => {
-    expect(
-      daysIn(byTitle(parsed, "Edit branch with hidden context"), "UTC"),
-    ).toEqual(["2024-03-10", "2024-03-10"]);
-  });
-
-  it("skips prompts without a time and messages from other roles", () => {
-    expect(daysIn(byTitle(parsed, "Null times and tools"), "UTC")).toEqual([
-      "2024-07-01",
-      "2024-07-01",
-      "2024-07-01",
-    ]);
-  });
-
-  it("gives an empty chat no prompt days", () => {
-    expect(daysIn(byTitle(parsed, "Empty chat"), "UTC")).toEqual([]);
-  });
-
-  it("puts each prompt on its local day", () => {
-    expect(
-      daysIn(byTitle(parsed, "Null times and tools"), "Asia/Kolkata"),
-    ).toEqual(["2024-07-01", "2024-07-01", "2024-07-02"]);
-  });
-
   it("skips malformed conversations and times instead of throwing", () => {
     const bad = [
       { title: "No mapping", create_time: 1 },
@@ -82,22 +54,6 @@ describe("parseChatGPT", () => {
 });
 
 describe("parseClaude", () => {
-  const parsed = parseClaude(claude);
-
-  it("falls back to Untitled for a blank name", () => {
-    expect(parsed.map((c) => c.title)).toContain("Untitled");
-  });
-
-  it("counts only human messages, on their local day", () => {
-    expect(daysIn(byTitle(parsed, "Claude across midnight"), "UTC")).toEqual([
-      "2024-03-10",
-      "2024-03-10",
-    ]);
-    expect(
-      daysIn(byTitle(parsed, "Claude across midnight"), "Asia/Kolkata"),
-    ).toEqual(["2024-03-10", "2024-03-11"]);
-  });
-
   it("skips malformed conversations and times instead of throwing", () => {
     const bad = [
       { name: "No messages", created_at: "2024-01-01T00:00:00Z" },

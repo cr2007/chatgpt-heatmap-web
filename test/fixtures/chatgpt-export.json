@@ -34,7 +34,7 @@
           "recipient": "all"
         },
         "parent": "root",
-        "children": ["ctx"]
+        "children": ["ctx", "hiddenText", "ctxShown"]
       },
       "ctx": {
         "id": "ctx",
@@ -156,6 +156,56 @@
           "recipient": "all"
         },
         "parent": "u1b",
+        "children": []
+      },
+      "hiddenText": {
+        "id": "hiddenText",
+        "message": {
+          "id": "hiddenText",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041460,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": ["not a typed prompt"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all"
+        },
+        "parent": "sys",
+        "children": []
+      },
+      "ctxShown": {
+        "id": "ctxShown",
+        "message": {
+          "id": "ctxShown",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1710041520,
+          "update_time": null,
+          "content": {
+            "content_type": "user_editable_context",
+            "parts": ["not a typed prompt"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "sys",
         "children": []
       }
     },
