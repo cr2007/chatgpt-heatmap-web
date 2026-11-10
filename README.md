@@ -90,6 +90,17 @@ Each cell shows the number of messages you sent on that day, in the time zone yo
 CONVERSATIONS_JSON=/path/to/conversations.json bun --bun test test/oracle.test.ts
 ```
 
+### What the figures mean
+
+The figures above the calendar use the same counted prompts, in the same time zone. A year tab limits them to that year.
+
+- **Active days:** days with at least one prompt. The share is out of the days from the first to the last active day.
+- **Longest streak:** the most days in a row with at least one prompt.
+- **Busiest day:** the day with the most prompts. A tie goes to the earliest day.
+- **By provider:** the share of prompts sent to ChatGPT, when both exports are loaded. With one export, this figure shows the average prompts per active day.
+
+`test/oracle.test.ts` also computes these figures with `jq` and compares them with the app.
+
 ## Self-Hosting
 
 ### Option 1: Pre-built image from GitHub Container Registry

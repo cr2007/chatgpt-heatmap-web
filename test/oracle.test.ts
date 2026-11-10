@@ -3,6 +3,7 @@ import { $ } from "bun";
 import { aggregateDateData } from "@/lib/aggregate";
 import { detectFormat, FIRST_PROMPT } from "@/lib/parse";
 import { loadExports } from "@/lib/upload";
+import { summarize } from "@/lib/stats";
 
 /**
  * Independent check of the counting rule in the README: `jq` counts the
@@ -28,16 +29,32 @@ const JQ_CLAUDE = `[.[] | .chat_messages[] | select(.sender == "human")
   | select(. >= $first and . <= now + 86400) | strflocaltime("%Y-%m-%d")]
   | group_by(.) | map({key: .[0], value: length}) | from_entries`;
 
+/**
+ * jq program, run on a day map from the programs above: the figures above
+ * the calendar (total, active days, longest streak, busiest day with the
+ * earliest day winning a tie). Written apart from lib/stats.ts on purpose.
+ */
+const JQ_STATS = `to_entries | {
+  total: (map(.value) | add),
+  activeDays: length,
+  busiest: (sort_by(-.value, .key) | .[0] | {day: .key, count: .value}),
+  streak: ([.[].key | strptime("%Y-%m-%d") | mktime / 86400 | floor] as $d
+    | reduce range(0; $d | length) as $i ({best: 0, run: 0};
+        .run = (if $i > 0 and $d[$i] - $d[$i - 1] == 1 then .run + 1 else 1 end)
+        | .best = ([.best, .run] | max))
+    | .best)
+}`;
+
 const TIME_ZONES = ["UTC", "America/New_York", "Asia/Kolkata"];
 const FIXTURES = `${import.meta.dir}/fixtures`;
 const hasJq = Bun.which("jq") !== null;
 
-/** Runs a jq program on a file with the given TZ and returns its day map. */
-async function jqCounts(
+/** Runs a jq program on a file with the given TZ and returns its JSON (a day map by default). */
+async function jqCounts<T = Record<string, number>>(
   program: string,
   file: string,
   tz: string,
-): Promise<Record<string, number>> {
+): Promise<T> {
   return $`jq -c --argjson first ${FIRST} ${program} ${file}`
     .env({ ...process.env, TZ: tz })
     .json();
@@ -84,6 +101,31 @@ describe.skipIf(!hasJq)("app counts match jq", () => {
         expect(await appCounts(file, tz)).toEqual(
           await jqCounts(program, file, tz),
         );
+      });
+    }
+  }
+});
+
+describe.skipIf(!hasJq)("figures match jq", () => {
+  for (const file of files) {
+    for (const tz of TIME_ZONES) {
+      test(`${file.split("/").pop()} in ${tz}`, async () => {
+        const raw = await Bun.file(file).json();
+        const program = detectFormat(raw) === "claude" ? JQ_CLAUDE : JQ_CHATGPT;
+        const counts = await appCounts(file, tz);
+        const data = Object.fromEntries(
+          Object.entries(counts).map(([d, n]) => [
+            d,
+            { chatgpt: n, claude: 0 },
+          ]),
+        );
+        const s = summarize(data)!;
+        expect({
+          total: s.total,
+          activeDays: s.activeDays,
+          busiest: s.busiest,
+          streak: s.streak.days,
+        }).toEqual(await jqCounts(`${program} | ${JQ_STATS}`, file, tz));
       });
     }
   }
