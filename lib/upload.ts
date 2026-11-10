@@ -33,17 +33,34 @@ interface FileState {
   bytes: number;
 }
 
+/** Joins the files read so far into one export per provider; ChatGPT files merge in upload order. */
+function toExports(states: FileState[]): Exports {
+  const gpt = states.filter((s) => s.format === "chatgpt");
+  const claude = states.find((s) => s.format === "claude");
+  return {
+    ...(gpt.length && {
+      chatgpt: {
+        name: gpt.length === 1 ? gpt[0].name : `${gpt.length} files`,
+        chats: gpt.length === 1 ? gpt[0].chats : gpt.flatMap((s) => s.chats),
+      },
+    }),
+    ...(claude && { claude: { name: claude.name, chats: claude.chats } }),
+  };
+}
+
 /**
  * Streams a batch of uploaded files into compact exports. All files stream
  * at the same time, so ChatGPT and Claude data fill in together.
  *
- * Step 1: Read each file as a stream of conversations. The first one sets
- *         the file's format; unknown formats and a second Claude file fail,
- *         and the first failure stops the other files.
- * Step 2: Keep only each conversation's title and prompt times, and give
- *         the browser a turn about every 12 ms.
- * Step 3: Report progress at most every 200 ms, with the partial result.
- * Step 4: Merge the ChatGPT files, in upload order, into one export.
+ * Step 1: Set up one state per file and a stop signal that ends every file
+ *         when one fails or the caller aborts.
+ * Step 2: Stream each file (`readOne`):
+ *   Step 2.1: The first conversation sets the file's format; an unknown
+ *             format or a second Claude file fails.
+ *   Step 2.2: Keep only each conversation's title and prompt times.
+ *   Step 2.3: At most every 200 ms, report progress with the partial result.
+ *   Step 2.4: About every 12 ms, give the browser a turn.
+ * Step 3: Return the first failure, or the merged exports.
  *
  * An abort through `signal` rejects with the signal's reason.
  */
@@ -54,6 +71,7 @@ export async function loadExports(
     onProgress,
   }: { signal?: AbortSignal; onProgress?: OnProgress } = {},
 ): Promise<ReadResult> {
+  // Step 1
   signal?.throwIfAborted();
   const total = files.reduce((n, f) => n + f.size, 0) || 1;
   const states: FileState[] = files.map((f) => ({
@@ -69,34 +87,19 @@ export async function loadExports(
   let lastYield = performance.now();
   let lastProgress = 0;
 
-  // Step 4
-  const partial = (): Exports => {
-    const gpt = states.filter((s) => s.format === "chatgpt");
-    const claude = states.find((s) => s.format === "claude");
-    return {
-      ...(gpt.length && {
-        chatgpt: {
-          name: gpt.length === 1 ? gpt[0].name : `${gpt.length} files`,
-          chats: gpt.length === 1 ? gpt[0].chats : gpt.flatMap((s) => s.chats),
-        },
-      }),
-      ...(claude && { claude: { name: claude.name, chats: claude.chats } }),
-    };
-  };
-
   /** Streams one file; returns why it failed, or nothing. */
   async function readOne(
     file: UploadFile,
     s: FileState,
   ): Promise<string | undefined> {
     try {
-      // Step 1
       for await (const { items, bytes } of readArray(
         file.stream(),
         stop.signal,
       )) {
         s.bytes = bytes;
         for (const item of items) {
+          // Step 2.1
           if (!s.format) {
             const format = detectFormat([item]);
             if (format === "unknown")
@@ -108,7 +111,7 @@ export async function loadExports(
               return "Upload at most one Claude export";
             s.format = format;
           }
-          // Step 2
+          // Step 2.2
           s.chats.push(
             s.format === "chatgpt"
               ? summarizeChatGPT(item)
@@ -116,14 +119,15 @@ export async function loadExports(
           );
         }
         const now = performance.now();
-        // Step 3
+        // Step 2.3
         if (onProgress && now - lastProgress >= PROGRESS_EVERY) {
           lastProgress = now;
           onProgress(
             states.reduce((n, o) => n + o.bytes, 0) / total,
-            partial(),
+            toExports(states),
           );
         }
+        // Step 2.4
         if (now - lastYield >= YIELD_AFTER) {
           await yieldToBrowser();
           lastYield = performance.now();
@@ -139,6 +143,7 @@ export async function loadExports(
       : `${s.name}: expected a non-empty array of conversations`;
   }
 
+  // Step 2
   try {
     await Promise.all(
       files.map(async (file, i) => {
@@ -152,8 +157,10 @@ export async function loadExports(
   } finally {
     signal?.removeEventListener("abort", onAbort);
   }
+  // Step 3
   if (signal?.aborted) throw signal.reason;
   if (failure) return { ok: false, error: failure };
-  onProgress?.(1, partial());
-  return { ok: true, exports: partial() };
+  const exports = toExports(states);
+  onProgress?.(1, exports);
+  return { ok: true, exports };
 }

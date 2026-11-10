@@ -13,49 +13,31 @@ import {
   getLayoutClassName,
 } from "@/lib/layout";
 import { aggregateDateData } from "@/lib/aggregate";
-import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
 import type { Exports as PartialExports } from "@/lib/upload";
-import type { LoadedExport, Provider } from "@/lib/types";
+import type { Provider } from "@/lib/types";
+import { loadTestData, type Exports } from "@/app/dev-data";
 import githubMark from "@/app/assets/github-mark.svg";
 import githubMarkWhite from "@/app/assets/github-mark-white.svg";
-
-type Exports = Record<Provider, LoadedExport | null>;
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
 
-/** Nothing loaded. */
-const NO_EXPORTS: Exports = { chatgpt: null, claude: null };
-
 /**
- * Dev only: reads the exports that `dev/test.html` (or a browser check)
- * left in `sessionStorage` as `test-chatgpt` and `test-claude`. The
- * production build replaces `process.env.NODE_ENV`, so the bundler drops
- * this code and the keys from the shipped bundle.
- */
-function loadTestData(): Exports {
-  if (process.env.NODE_ENV === "production") return NO_EXPORTS;
-  try {
-    const read = (key: string): LoadedExport | null => {
-      const json = sessionStorage.getItem(key);
-      if (!json) return null;
-      const raw = JSON.parse(json) as unknown[];
-      const parse = detectFormat(raw) === "claude" ? parseClaude : parseChatGPT;
-      return { name: "Test data", chats: parse(raw) };
-    };
-    return { chatgpt: read("test-chatgpt"), claude: read("test-claude") };
-  } catch {
-    return NO_EXPORTS;
-  }
-}
-
-/**
- * Root page: owns the loaded exports (title and prompt times per chat), the
- * partial result of an upload in progress and the time zone, aggregates
- * them, and owns the responsive layout decision (plain
- * stack / desktop split / book / tent) and the year picker.
+ * Root page: owns the loaded exports, an upload in progress, the time zone
+ * and the year picker, and picks the layout (plain stack, desktop split,
+ * book or tent).
+ *
+ * Step 1: Hold the state: exports, the streaming partial, the time zone and
+ *         the sweep counter, the panel side and the picked year.
+ * Step 2: Aggregate the exports; while an upload streams, its partial
+ *         result stands in for its provider, so the heatmap fills in.
+ * Step 3: Wire the form: a new upload clears the sweep, a time zone change
+ *         starts one.
+ * Step 4: Pick the year to show, the heatmap orientation and the layout class.
+ * Step 5: Render the form panel, the heatmap panel and the fold navigation.
  */
 export default function Home() {
+  // Step 1
   const [exports, setExports] = useState<Exports>(loadTestData);
   /** What an upload in progress has read so far; null when idle. */
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
@@ -79,8 +61,7 @@ export default function Home() {
   const isTentMode = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
   const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
 
-  /** Prompt counts per day. While an upload streams, its partial result
-   *  stands in for the provider it loads, so the heatmap fills in. */
+  // Step 2
   const agg = useMemo(() => {
     const shown = { ...exports, ...streaming };
     return aggregateDateData(
@@ -108,7 +89,7 @@ export default function Home() {
   const clearExport = (provider: Provider) =>
     setExports((prev) => ({ ...prev, [provider]: null }));
 
-  /** Props shared by the sidebar form and tent mode's bottom-bar form. */
+  // Step 3: props shared by the sidebar form and tent mode's bottom-bar form.
   const formProps = {
     loaded: {
       chatgpt: exports.chatgpt && {
@@ -134,7 +115,7 @@ export default function Home() {
     },
   };
 
-  // A picked year that the data no longer has falls back to the latest year.
+  // Step 4: a picked year that the data no longer has falls back to the latest year.
   const activeYear =
     selectedYear !== null && dataYears.includes(selectedYear)
       ? selectedYear
@@ -144,15 +125,11 @@ export default function Home() {
   const activeViewTo =
     activeYear != null ? new Date(activeYear, 11, 31) : undefined;
 
-  function goToPrevYear() {
+  /** Moves the picked year by `delta` places in the data's years, within bounds. */
+  function stepYear(delta: number) {
     if (activeYear == null) return;
-    const idx = dataYears.indexOf(activeYear);
-    if (idx > 0) setSelectedYear(dataYears[idx - 1]);
-  }
-  function goToNextYear() {
-    if (activeYear == null) return;
-    const idx = dataYears.indexOf(activeYear);
-    if (idx < dataYears.length - 1) setSelectedYear(dataYears[idx + 1]);
+    const next = dataYears[dataYears.indexOf(activeYear) + delta];
+    if (next !== undefined) setSelectedYear(next);
   }
 
   const useVerticalHeatmap =
@@ -166,11 +143,12 @@ export default function Home() {
       years={dataYears}
       activeYear={activeYear}
       onSelectYear={setSelectedYear}
-      onPrevYear={goToPrevYear}
-      onNextYear={goToNextYear}
+      onPrevYear={() => stepYear(-1)}
+      onNextYear={() => stepYear(1)}
     />
   );
 
+  // Step 5
   return (
     <div className="relative">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-zinc-50 dark:bg-zinc-950" />
