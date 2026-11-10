@@ -14,10 +14,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { toast } from "sonner";
-import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
-import type { ConversationSummary } from "@/lib/types";
-
-type Provider = "chatgpt" | "claude";
+import { detectFormat } from "@/lib/parse";
+import type { LoadedExport, Provider } from "@/lib/types";
 
 interface LoadedInfo {
   name: string;
@@ -65,26 +63,20 @@ const PROVIDERS: ProviderTheme[] = [
 ];
 
 export function HeatMapForm({
-  setChatgptFile,
-  setClaudeFile,
+  loaded,
+  onLoad,
+  onClear,
   timeZone,
   setTimeZone,
-  externalCounts,
   compact,
 }: {
-  setChatgptFile: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>;
-  setClaudeFile: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>;
+  /** What each provider has loaded, or null. Owned by the page, so every form instance agrees. */
+  loaded: Record<Provider, LoadedInfo | null>;
+  /** Hands new exports to the page; providers left out keep their data. */
+  onLoad: (exports: Partial<Record<Provider, LoadedExport>>) => void;
+  onClear: (provider: Provider) => void;
   timeZone: string;
   setTimeZone: React.Dispatch<React.SetStateAction<string>>;
-  /** Conversation counts from the parent's own data, keyed by provider (null
-   *  if that provider has nothing loaded). A real upload sets this and the
-   *  local `loaded` state together via `processFiles`, but data can also
-   *  arrive by other means - notably `public/test.html`, which seeds
-   *  `sessionStorage` directly and lets `page.tsx` pick it up on mount,
-   *  bypassing this component entirely. Falling back to this prop keeps the
-   *  loaded badge and the `compact` summary in sync regardless of how the
-   *  data got there. */
-  externalCounts: Record<Provider, number | null>;
   /** Collapse the form behind a tap-to-expand summary once data is loaded.
    *  Only worth it where the form and heatmap share one scrolling column
    *  (the plain mobile/narrow stack) - everywhere else (desktop split,
@@ -97,11 +89,6 @@ export function HeatMapForm({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
   const [isShaking, setIsShaking] = useState(false);
-  /** Per-provider summary of what's currently loaded, or null if cleared/never loaded. */
-  const [loaded, setLoaded] = useState<Record<Provider, LoadedInfo | null>>({
-    chatgpt: null,
-    claude: null,
-  });
   /** Bumped to remount the file input, clearing its selection after a removal. */
   const [inputKey, setInputKey] = useState(0);
 
@@ -119,8 +106,8 @@ export function HeatMapForm({
    * Step 1: parse each file as JSON and detect its export format.
    * Step 2: reject the batch if any file's format wasn't recognised.
    * Step 3: reject more than one Claude export (only one is supported).
-   * Step 4: record what's loaded for the badge/summary UI.
-   * Step 5: parse and hand off each recognised format, toasting success.
+   * Step 4: hand the raw exports to the page, which parses them.
+   * Step 5: toast each loaded provider.
    */
   const processFiles = useCallback(
     async (fileList: FileList) => {
@@ -162,56 +149,34 @@ export function HeatMapForm({
       }
 
       // Step 4
-      setLoaded((prev) => {
-        const next = { ...prev };
-        if (gptFiles.length > 0) {
-          next.chatgpt = {
-            name:  gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
-            count: gptFiles.reduce((sum, f) => sum + f.data.length, 0),
-          };
-        }
-        if (claudeFiles.length === 1) {
-          next.claude = { name: claudeFiles[0].name, count: claudeFiles[0].data.length };
-        }
-        return next;
-      });
+      const next: Partial<Record<Provider, LoadedExport>> = {};
+      if (gptFiles.length > 0) {
+        next.chatgpt = {
+          name: gptFiles.length === 1 ? gptFiles[0].name : `${gptFiles.length} files`,
+          data: gptFiles.flatMap((f) => f.data),
+        };
+      }
+      if (claudeFiles.length === 1) next.claude = { name: claudeFiles[0].name, data: claudeFiles[0].data };
+      onLoad(next);
 
       // Step 5
-      if (gptFiles.length > 0) {
-        const totalGpt = gptFiles.reduce((sum, f) => sum + f.data.length, 0);
-        setChatgptFile(parseChatGPT(gptFiles.flatMap((f) => f.data), timeZone));
-        toast.success(`ChatGPT export loaded - ${totalGpt} conversation${totalGpt === 1 ? "" : "s"}`);
-      }
-      if (claudeFiles.length === 1) {
-        const claudeCount = claudeFiles[0].data.length;
-        setClaudeFile(parseClaude(claudeFiles[0].data, timeZone));
-        toast.success(`Claude export loaded - ${claudeCount} conversation${claudeCount === 1 ? "" : "s"}`);
+      for (const p of PROVIDERS) {
+        const count = next[p.key]?.data.length;
+        if (count) toast.success(`${p.label} export loaded - ${count} conversation${count === 1 ? "" : "s"}`);
       }
     },
-    [timeZone, setChatgptFile, setClaudeFile, showError]
+    [onLoad, showError]
   );
 
   /** Clears one provider's loaded data, resetting the file input only once
    *  nothing is loaded at all (so a second file can still be added). */
   function clearFile(provider: Provider) {
-    (provider === "chatgpt" ? setChatgptFile : setClaudeFile)(null);
-    setLoaded((prev) => ({ ...prev, [provider]: null }));
+    onClear(provider);
     const otherProvider = provider === "chatgpt" ? "claude" : "chatgpt";
-    if (loaded[otherProvider] === null && externalCounts[otherProvider] === null) {
-      setInputKey((k) => k + 1);
-    }
+    if (loaded[otherProvider] === null) setInputKey((k) => k + 1);
   }
 
-  /** Merges the rich local `loaded` state (real uploads: filename + count)
-   *  with `externalCounts` (data injected some other way: count only, with
-   *  a generic label) so every render site sees one consistent answer. */
-  function getLoadedInfo(provider: Provider): LoadedInfo | null {
-    if (loaded[provider]) return loaded[provider];
-    const count = externalCounts[provider];
-    return count !== null ? { name: "Loaded externally", count } : null;
-  }
-
-  const hasAnyLoaded = PROVIDERS.some((p) => getLoadedInfo(p.key) !== null);
+  const hasAnyLoaded = PROVIDERS.some((p) => loaded[p.key] !== null);
 
   /**
    * The upload dropzone, loaded-file badges, "how to export" cards, and
@@ -277,7 +242,7 @@ export function HeatMapForm({
           {hasAnyLoaded && (
             <div className="flex flex-col gap-2">
               {PROVIDERS.map((p) => {
-                const info = getLoadedInfo(p.key);
+                const info = loaded[p.key];
                 if (!info) return null;
                 return (
                   <div
@@ -399,7 +364,7 @@ export function HeatMapForm({
     <details className="group/collapse">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40 [&::-webkit-details-marker]:hidden">
         <div className="flex flex-1 min-w-0 flex-wrap items-center gap-2">
-          {PROVIDERS.map((p) => getLoadedInfo(p.key) && (
+          {PROVIDERS.map((p) => loaded[p.key] && (
             <span
               key={p.key}
               className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", p.border, p.bg, p.text)}

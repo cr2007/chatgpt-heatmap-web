@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HeatMapForm } from "@/components/heatMapForm";
-import { AIChatHeatmap } from "@/components/heatmap";
+import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import { ModeToggle } from "@/components/modeToggle";
 import { YearNav } from "@/components/year-nav";
 import { useTheme } from "next-themes";
@@ -13,33 +13,39 @@ import {
   getHeatmapOrientation,
   getLayoutClassName,
 } from "@/lib/layout";
-import type { ConversationSummary } from "@/lib/types";
+import { aggregateDateData } from "@/lib/aggregate";
+import { parseChatGPT, parseClaude } from "@/lib/parse";
+import type { LoadedExport, Provider } from "@/lib/types";
+
+type Exports = Record<Provider, LoadedExport | null>;
+
+/** Stable empty year list, so effects keyed on it do not rerun. */
+const NO_YEARS: number[] = [];
 
 /** Loads the `sessionStorage` test-data hooks used by the CDP verification
  *  scripts (`test-chatgpt`/`test-claude`), if present. No-op otherwise. */
-function loadTestData(
-  setChatgptData: React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>,
-  setClaudeData:  React.Dispatch<React.SetStateAction<ConversationSummary[] | null>>,
-) {
+function loadTestData(setExports: (e: Exports) => void) {
   try {
-    const gpt    = sessionStorage.getItem("test-chatgpt");
-    const claude = sessionStorage.getItem("test-claude");
-    if (gpt)    setChatgptData(JSON.parse(gpt)    as ConversationSummary[]);
-    if (claude) setClaudeData (JSON.parse(claude) as ConversationSummary[]);
+    const read = (key: string): LoadedExport | null => {
+      const json = sessionStorage.getItem(key);
+      return json ? { name: "Test data", data: JSON.parse(json) } : null;
+    };
+    const chatgpt = read("test-chatgpt");
+    const claude  = read("test-claude");
+    if (chatgpt || claude) setExports({ chatgpt, claude });
   } catch {}
 }
 
 /**
- * Root page: owns the loaded conversation data, the responsive layout
- * decision (plain stack / desktop split / book / tent), and the year
- * picker shared between the form panel and the heatmap.
+ * Root page: owns the raw uploaded exports and the time zone, parses and
+ * aggregates them once, and owns the responsive layout decision (plain
+ * stack / desktop split / book / tent) and the year picker.
  */
 export default function Home() {
   const { theme, resolvedTheme } = useTheme();
   const effectiveTheme = theme === "system" ? resolvedTheme : theme;
 
-  const [chatgptData, setChatgptData] = useState<ConversationSummary[] | null>(null);
-  const [claudeData, setClaudeData]   = useState<ConversationSummary[] | null>(null);
+  const [exports, setExports]         = useState<Exports>({ chatgpt: null, claude: null });
   const [timeZone, setTimeZone]       = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [mounted, setMounted]         = useState(false);
   /** Book mode only: swaps which side the form sits on. Persisted. */
@@ -51,19 +57,15 @@ export default function Home() {
   const isTentMode     = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
   const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
 
-  /** Distinct years present across both loaded exports, ascending. */
-  const dataYears = useMemo<number[]>(() => {
-    const allDays = [
-      ...(chatgptData ?? []).map(c => c.create_day),
-      ...(claudeData  ?? []).map(c => c.create_day),
-    ];
-    if (!allDays.length) return [];
-    const yearSet = new Set(allDays.map(d => parseInt(d.slice(0, 4), 10)));
-    return Array.from(yearSet).sort((a, b) => a - b);
-  }, [chatgptData, claudeData]);
+  /** Prompt counts per day. Parsed again only when an export or the time zone changes. */
+  const agg = useMemo(() => aggregateDateData(
+    exports.chatgpt ? parseChatGPT(exports.chatgpt.data, timeZone) : null,
+    exports.claude  ? parseClaude(exports.claude.data, timeZone)   : null,
+  ), [exports, timeZone]);
+  const dataYears = agg?.years ?? NO_YEARS;
 
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { loadTestData(setChatgptData, setClaudeData); }, []);
+  useEffect(() => { loadTestData(setExports); }, []);
 
   // Step 1: restore/persist the book-mode panel-swap preference.
   useEffect(() => {
@@ -83,15 +85,23 @@ export default function Home() {
     setSelectedYear(prev => (prev !== null && dataYears.includes(prev) ? prev : dataYears[dataYears.length - 1]));
   }, [dataYears]);
 
-  const hasData = chatgptData !== null || claudeData !== null;
+  const hasData = exports.chatgpt !== null || exports.claude !== null;
   const isFolded = isBookMode || isTentMode;
 
-  /** Lets HeatMapForm recognise data that arrived without going through its
-   *  own upload flow (e.g. the public/test.html sessionStorage seed helper),
-   *  so its loaded badge and compact summary stay accurate either way. */
-  const externalCounts = {
-    chatgpt: chatgptData?.length ?? null,
-    claude:  claudeData?.length  ?? null,
+  /** Adds new exports, keeping a provider the upload did not include. */
+  const loadExports = (next: Partial<Exports>) => setExports(prev => ({ ...prev, ...next }));
+  const clearExport = (provider: Provider) => setExports(prev => ({ ...prev, [provider]: null }));
+
+  /** Props shared by the sidebar form and tent mode's bottom-bar form. */
+  const formProps = {
+    loaded: {
+      chatgpt: exports.chatgpt && { name: exports.chatgpt.name, count: exports.chatgpt.data.length },
+      claude:  exports.claude  && { name: exports.claude.name,  count: exports.claude.data.length },
+    },
+    onLoad: loadExports,
+    onClear: clearExport,
+    timeZone,
+    setTimeZone,
   };
 
   const activeYear     = selectedYear ?? dataYears[dataYears.length - 1] ?? null;
@@ -174,11 +184,7 @@ export default function Home() {
             className="outline-none rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
           >
             <HeatMapForm
-              setChatgptFile={setChatgptData}
-              setClaudeFile={setClaudeData}
-              timeZone={timeZone}
-              setTimeZone={setTimeZone}
-              externalCounts={externalCounts}
+              {...formProps}
               compact={!isDesktopSplit && !isFolded}
             />
           </main>
@@ -200,13 +206,23 @@ export default function Home() {
         {/* Heatmap panel */}
         {hasData && (
           <div className="panel-heatmap animate-fade-slide-up">
-            <AIChatHeatmap
-              chatgptSummary={chatgptData}
-              claudeSummary={claudeData}
-              vertical={useVerticalHeatmap}
-              viewFrom={(isTentMode || isBookMode) ? activeViewFrom : undefined}
-              viewTo={(isTentMode || isBookMode) ? activeViewTo : undefined}
-            />
+            {agg ? (
+              <CalendarHeatmap
+                data={agg.data}
+                dayTitles={agg.dayTitles}
+                maxChatgpt={agg.maxChatgpt}
+                maxClaude={agg.maxClaude}
+                from={(isFolded && activeViewFrom) || agg.from}
+                to={(isFolded && activeViewTo) || agg.to}
+                vertical={useVerticalHeatmap}
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
+                  No prompts found in this export
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -216,11 +232,7 @@ export default function Home() {
             <div className="tent-bottom">
               <div className="tent-bottom__form">
                 <HeatMapForm
-                  setChatgptFile={setChatgptData}
-                  setClaudeFile={setClaudeData}
-                  timeZone={timeZone}
-                  setTimeZone={setTimeZone}
-                  externalCounts={externalCounts}
+                  {...formProps}
                   compact={false}
                 />
               </div>

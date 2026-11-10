@@ -253,14 +253,6 @@
 
   <script>
     // ── Helpers ────────────────────────────────────────────────────────────
-    function dateStr(d) {
-      // YYYY-MM-DD in local time
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-
     // Seeded pseudo-random (mulberry32)
     function makeRng(seed) {
       let s = seed >>> 0;
@@ -272,8 +264,9 @@
       };
     }
 
-    // Generate ConversationSummary[] spanning `years` back from today
-    function generate(years, density, seed) {
+    // Generate a raw export (the same shape the app uploads) spanning
+    // `years` back from today. Only user prompts are written, to stay small.
+    function generate(years, density, seed, format) {
       const rng = makeRng(seed);
       const result = [];
       const today = new Date();
@@ -294,12 +287,23 @@
         const roll = rng();
         const count = roll < 0.15 ? 0 : Math.round(-lambda * Math.log(1 - rng() * 0.86));
 
-        const day = dateStr(cur);
         for (let i = 0; i < count; i++) {
-          // Each conversation can have 1-8 messages on the same day
+          // Each conversation has 1-8 prompts, a few minutes apart, between 08:00 and 20:00
           const msgCount = Math.max(1, Math.round(rng() * 7 + 1));
-          const msgs = Array.from({ length: msgCount }, () => day);
-          result.push({ title: `Conversation ${id++}`, create_day: day, convo_create_day: msgs });
+          const startMs = new Date(cur).setHours(8, 0, 0, 0) + rng() * 12 * 3600e3;
+          const times = Array.from({ length: msgCount }, (_, j) => startMs + j * 180e3);
+          const title = `Conversation ${id++}`;
+          if (format === "claude") {
+            result.push({ name: title, created_at: new Date(startMs).toISOString(),
+              chat_messages: times.map((t) => ({ sender: "human", created_at: new Date(t).toISOString() })) });
+          } else {
+            const mapping = { root: { id: "root", message: null, parent: null, children: [] } };
+            times.forEach((t, j) => {
+              mapping["u" + j] = { id: "u" + j, parent: j ? "u" + (j - 1) : "root", children: [],
+                message: { author: { role: "user" }, create_time: t / 1000, content: { content_type: "text" }, metadata: {} } };
+            });
+            result.push({ title, create_time: startMs / 1000, mapping });
+          }
         }
 
         cur.setDate(cur.getDate() + 1);
@@ -362,11 +366,17 @@
       sessionStorage.removeItem("test-chatgpt");
       sessionStorage.removeItem("test-claude");
 
-      if (chkChatgpt.checked) {
-        sessionStorage.setItem("test-chatgpt", JSON.stringify(generate(years, density, 0xdeadbeef)));
-      }
-      if (chkClaude.checked) {
-        sessionStorage.setItem("test-claude", JSON.stringify(generate(years, density, 0xcafebabe)));
+      try {
+        if (chkChatgpt.checked) {
+          sessionStorage.setItem("test-chatgpt", JSON.stringify(generate(years, density, 0xdeadbeef, "chatgpt")));
+        }
+        if (chkClaude.checked) {
+          sessionStorage.setItem("test-claude", JSON.stringify(generate(years, density, 0xcafebabe, "claude")));
+        }
+      } catch {
+        // sessionStorage holds about 5 MB per origin.
+        alert("Too much data for sessionStorage. Use fewer years or a lower density.");
+        return;
       }
 
       window.location.href = "/";

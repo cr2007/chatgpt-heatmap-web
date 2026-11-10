@@ -57,7 +57,7 @@ const files = [
 describe.skipIf(!hasJq)("app counts match jq", () => {
   for (const file of files) {
     for (const tz of TIME_ZONES) {
-      test.failing(`${file.split("/").pop()} in ${tz}`, async () => {
+      test(`${file.split("/").pop()} in ${tz}`, async () => {
         const raw = await Bun.file(file).json();
         const program = detectFormat(raw) === "claude" ? JQ_CLAUDE : JQ_CHATGPT;
         expect(await appCounts(file, tz)).toEqual(await jqCounts(program, file, tz));

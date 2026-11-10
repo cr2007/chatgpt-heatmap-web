@@ -28,28 +28,28 @@ describe("parseChatGPT", () => {
     expect(parsed.map((c) => c.title)).not.toContain("   ");
   });
 
-  it.failing("counts visible prompts, including edits, and skips hidden context", () => {
-    expect(byTitle(parsed, "Edit branch with hidden context").convo_create_day).toEqual(["2024-03-10", "2024-03-10"]);
+  it("counts visible prompts, including edits, and skips hidden context", () => {
+    expect(byTitle(parsed, "Edit branch with hidden context").days).toEqual(["2024-03-10", "2024-03-10"]);
   });
 
   it("skips prompts without a time and messages from other roles", () => {
-    expect(byTitle(parsed, "Null times and tools").convo_create_day).toEqual(["2024-07-01", "2024-07-01", "2024-07-01"]);
+    expect(byTitle(parsed, "Null times and tools").days).toEqual(["2024-07-01", "2024-07-01", "2024-07-01"]);
   });
 
   it("gives an empty chat no prompt days", () => {
-    expect(byTitle(parsed, "Empty chat").convo_create_day).toEqual([]);
+    expect(byTitle(parsed, "Empty chat").days).toEqual([]);
   });
 
   it("puts each prompt on its local day", () => {
     const kolkata = parseChatGPT(chatgpt, "Asia/Kolkata");
-    expect(byTitle(kolkata, "Null times and tools").convo_create_day).toEqual(["2024-07-01", "2024-07-01", "2024-07-02"]);
+    expect(byTitle(kolkata, "Null times and tools").days).toEqual(["2024-07-01", "2024-07-01", "2024-07-02"]);
   });
 
-  it.failing("skips malformed conversations and times instead of throwing", () => {
+  it("skips malformed conversations and times instead of throwing", () => {
     const bad = [{ title: "No mapping", create_time: 1 }, { title: "Bad time", create_time: 1, mapping: {
       a: { message: { author: { role: "user" }, create_time: Number.NaN, content: { content_type: "text" } } },
     } }];
-    expect(parseChatGPT(bad, "UTC").flatMap((c) => c.convo_create_day)).toEqual([]);
+    expect(parseChatGPT(bad, "UTC").flatMap((c) => c.days)).toEqual([]);
   });
 });
 
@@ -61,14 +61,14 @@ describe("parseClaude", () => {
   });
 
   it("counts only human messages, on their local day", () => {
-    expect(byTitle(parsed, "Claude across midnight").convo_create_day).toEqual(["2024-03-10", "2024-03-10"]);
+    expect(byTitle(parsed, "Claude across midnight").days).toEqual(["2024-03-10", "2024-03-10"]);
     const kolkata = parseClaude(claude, "Asia/Kolkata");
-    expect(byTitle(kolkata, "Claude across midnight").convo_create_day).toEqual(["2024-03-10", "2024-03-11"]);
+    expect(byTitle(kolkata, "Claude across midnight").days).toEqual(["2024-03-10", "2024-03-11"]);
   });
 
-  it.failing("skips malformed conversations and times instead of throwing", () => {
+  it("skips malformed conversations and times instead of throwing", () => {
     const bad = [{ name: "No messages", created_at: "2024-01-01T00:00:00Z" }, { name: "Bad time", created_at: "x",
       chat_messages: [{ sender: "human", created_at: "not a date" }] }];
-    expect(parseClaude(bad, "UTC").flatMap((c) => c.convo_create_day)).toEqual([]);
+    expect(parseClaude(bad, "UTC").flatMap((c) => c.days)).toEqual([]);
   });
 });

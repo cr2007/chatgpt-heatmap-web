@@ -1,68 +1,55 @@
-import type { ConversationSummary, CalHeatmapDay, DayTitleBreakdown } from "./types";
+import type { ConversationSummary, CalHeatmapDay, DayTitleBreakdown, Provider } from "./types";
 
 export interface AggregatedData {
   data: Record<string, CalHeatmapDay>;
   dayTitles: Record<string, DayTitleBreakdown>;
   maxChatgpt: number;
   maxClaude: number;
+  /** First and last day with a prompt, as local midnight. */
   from: Date;
   to: Date;
+  /** Distinct years that have a prompt, ascending. */
+  years: number[];
 }
 
-function buildFrequencyMap(summaries: ConversationSummary[]): Record<string, number> {
-  const map: Record<string, number> = {};
-  for (const item of summaries) {
-    map[item.create_day] = (map[item.create_day] || 0) + 1;
-    for (const d of item.convo_create_day) {
-      map[d] = (map[d] || 0) + 1;
-    }
-  }
-  return map;
-}
-
-function buildTitleCounts(
-  summaries: ConversationSummary[],
-  source: "chatgpt" | "claude",
-  dayTitles: Record<string, DayTitleBreakdown>
-): void {
-  for (const item of summaries) {
-    const activeDays = new Set([item.create_day, ...item.convo_create_day]);
-    for (const day of activeDays) {
-      const count =
-        (item.create_day === day ? 1 : 0) +
-        item.convo_create_day.filter((d) => d === day).length;
-      if (count === 0) continue;
-      if (!dayTitles[day]) dayTitles[day] = { chatgpt: {}, claude: {} };
-      dayTitles[day][source][item.title] =
-        (dayTitles[day][source][item.title] || 0) + count;
-    }
-  }
-}
-
+/**
+ * Counts prompts per day and per title for both providers.
+ *
+ * Step 1: Add one to the day and to the day's title for each prompt day.
+ * Step 2: Derive the busiest day per provider, the date range and the years.
+ */
 export function aggregateDateData(
   chatgptSummary: ConversationSummary[] | null,
   claudeSummary: ConversationSummary[] | null
 ): AggregatedData | null {
-  const chatgptPerDay = chatgptSummary ? buildFrequencyMap(chatgptSummary) : {};
-  const claudePerDay  = claudeSummary  ? buildFrequencyMap(claudeSummary)  : {};
-
-  const allDates = [...Object.keys(chatgptPerDay), ...Object.keys(claudePerDay)].sort();
-  if (allDates.length === 0) return null;
-
-  const from = new Date(allDates[0] + "T00:00:00");
-  const to   = new Date(allDates[allDates.length - 1] + "T00:00:00");
-
-  const maxChatgpt = Math.max(0, ...Object.values(chatgptPerDay));
-  const maxClaude  = Math.max(0, ...Object.values(claudePerDay));
-
-  const dayTitles: Record<string, DayTitleBreakdown> = {};
-  if (chatgptSummary) buildTitleCounts(chatgptSummary, "chatgpt", dayTitles);
-  if (claudeSummary)  buildTitleCounts(claudeSummary,  "claude",  dayTitles);
-
   const data: Record<string, CalHeatmapDay> = {};
-  for (const day of new Set([...Object.keys(chatgptPerDay), ...Object.keys(claudePerDay)])) {
-    data[day] = { chatgpt: chatgptPerDay[day] || 0, claude: claudePerDay[day] || 0 };
+  const dayTitles: Record<string, DayTitleBreakdown> = {};
+
+  // Step 1
+  const sources: [Provider, ConversationSummary[] | null][] = [["chatgpt", chatgptSummary], ["claude", claudeSummary]];
+  for (const [source, summaries] of sources) {
+    for (const { title, days } of summaries ?? []) {
+      for (const day of days) {
+        data[day] ??= { chatgpt: 0, claude: 0 };
+        data[day][source]++;
+        dayTitles[day] ??= { chatgpt: {}, claude: {} };
+        dayTitles[day][source][title] = (dayTitles[day][source][title] ?? 0) + 1;
+      }
+    }
   }
 
-  return { data, dayTitles, maxChatgpt, maxClaude, from, to };
+  // Step 2
+  const allDays = Object.keys(data).sort();
+  if (allDays.length === 0) return null;
+  const counts = Object.values(data);
+
+  return {
+    data,
+    dayTitles,
+    maxChatgpt: Math.max(...counts.map((c) => c.chatgpt)),
+    maxClaude: Math.max(...counts.map((c) => c.claude)),
+    from: new Date(allDays[0] + "T00:00:00"),
+    to: new Date(allDays[allDays.length - 1] + "T00:00:00"),
+    years: [...new Set(allDays.map((d) => Number(d.slice(0, 4))))],
+  };
 }

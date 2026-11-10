@@ -12,9 +12,10 @@ export function shade(count: number, max: number, palette: readonly [string, str
 
 /**
  * Zero-based day-of-year offset (Jan 1st is 0), used to place a date into
- * its week column on the calendar grid.
+ * its week column on the calendar grid. Uses UTC day numbers, because a
+ * local day with a daylight saving change is 23 or 25 hours long.
  */
 export function dayOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date.getTime() - startOfYear.getTime()) / 864e5); // 864e5 = ms per day.
+  const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return (day - Date.UTC(date.getFullYear(), 0, 1)) / 864e5; // 864e5 = ms per day.
 }

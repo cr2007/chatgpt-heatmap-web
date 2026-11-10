@@ -30,7 +30,7 @@ describe("dayOfYear", () => {
     beforeAll(() => { process.env.TZ = "America/New_York"; });
     afterAll(() => { process.env.TZ = saved; });
 
-    it.failing("counts each day once across the March change", () => {
+    it("counts each day once across the March change", () => {
       expect(dayOfYear(new Date(2024, 2, 10))).toBe(69);
       expect(dayOfYear(new Date(2024, 2, 11))).toBe(70);
       expect(dayOfYear(new Date(2024, 11, 31))).toBe(365);
