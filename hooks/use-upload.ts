@@ -70,6 +70,13 @@ export function useUpload({
           const chats = result.exports[p.key]?.chats;
           if (!chats?.length) continue;
           const outside = chats.reduce((n, c) => n + (c.outside ?? 0), 0);
+          if (!chats.some((c) => c.times.length)) {
+            toast(
+              "error",
+              `${p.label} export has no dated prompts, so there is nothing to draw.`,
+            );
+            continue;
+          }
           toast(
             "success",
             `${p.label} export loaded - ${plural(chats.length, "conversation")}` +

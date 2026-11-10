@@ -35,23 +35,42 @@ describe("loadExports", () => {
   });
 
   it.each([
-    ["broken.json", "{not json", "broken.json: expected a JSON array"],
+    [
+      "broken.json",
+      "{not json",
+      "broken.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
+    ],
     ["bad.json", "[{not json}]", "bad.json: could not parse JSON"],
     ["cut.json", '[{"a":1', "cut.json: the file ends before the array closes"],
     [
       "empty.json",
       "[]",
-      "empty.json: expected a non-empty array of conversations",
+      "empty.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
     ],
     [
       "numbers.json",
       "[1,2]",
-      "numbers.json: expected a non-empty array of conversations",
+      "numbers.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
+    ],
+    [
+      "manifest.json",
+      '{"data_files":[{"category":"conversations"}]}',
+      "manifest.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
+    ],
+    [
+      "projects.json",
+      '[{"uuid":"p1","name":"Thesis","docs":[]}]',
+      "projects.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
+    ],
+    [
+      "conversations-000.zip",
+      "PK",
+      "conversations-000.zip: this is a zip file. Unzip it, then upload the conversations.json inside.",
     ],
     [
       "other.json",
       '[{"foo":1}]',
-      "other.json: unrecognised format - expected a ChatGPT or Claude conversations.json",
+      "other.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
     ],
   ])("rejects %s", async (name, text, error) => {
     expect(await loadExports([new File([text], name)])).toEqual({
@@ -77,7 +96,8 @@ describe("loadExports", () => {
     const result = await loadExports([endless, new File(["{}"], "bad.json")]);
     expect(result).toEqual({
       ok: false,
-      error: "bad.json: expected a JSON array",
+      error:
+        "bad.json: no conversations found. Upload conversations.json from a ChatGPT or Claude export.",
     });
     expect(cancelled).toBe(true);
   });

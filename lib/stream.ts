@@ -6,6 +6,9 @@
  */
 
 /** Why a stream is not a usable JSON array. */
+/** The error when a file does not start with "[". */
+export const NOT_ARRAY = "expected a JSON array";
+
 export class StreamError extends Error {}
 
 /**
@@ -48,7 +51,7 @@ export function arraySplitter() {
       }
       if (c === 32 || c === 10 || c === 13 || c === 9) continue; // whitespace
       if (!opened) {
-        if (c !== 91) throw new StreamError("expected a JSON array");
+        if (c !== 91) throw new StreamError(NOT_ARRAY);
         opened = true;
         depth = 1;
         continue;

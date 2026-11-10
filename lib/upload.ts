@@ -1,5 +1,5 @@
 import { detectFormat, summarizeChatGPT, summarizeClaude } from "./parse";
-import { readArray, StreamError } from "./stream";
+import { NOT_ARRAY, readArray, StreamError } from "./stream";
 import type { LoadedExport, Provider } from "./types";
 
 /** A picked or dropped file. A browser `File` and a `BunFile` both fit. */
@@ -21,6 +21,14 @@ export type OnProgress = (fraction: number, partial: Exports) => void;
 const PROGRESS_EVERY = 200;
 /** Longest run of work in ms before the browser gets a turn to paint. */
 const YIELD_AFTER = 12;
+
+/** Shown for any file that holds no conversations: an empty export, a
+ *  file list (the Claude export manifest), projects.json or other JSON. */
+const NOT_CONVERSATIONS =
+  "no conversations found. Upload conversations.json from a ChatGPT or Claude export.";
+/** Claude now sends a zip per category; the picker hides zips, a drop does not. */
+const ZIP =
+  "this is a zip file. Unzip it, then upload the conversations.json inside.";
 
 /** Lets the browser paint and handle input; a macrotask, not a microtask. */
 const yieldToBrowser = () => new Promise<void>((r) => setTimeout(r, 0));
@@ -55,8 +63,8 @@ function toExports(states: FileState[]): Exports {
  * Step 1: Set up one state per file and a stop signal that ends every file
  *         when one fails or the caller aborts.
  * Step 2: Stream each file (`readOne`):
- *   Step 2.1: The first conversation sets the file's format; an unknown
- *             format or a second Claude file fails.
+ *   Step 2.1: A zip fails at once. The first conversation sets the file's
+ *             format; an unknown format or a second Claude file fails.
  *   Step 2.2: Keep only each conversation's title and prompt times.
  *   Step 2.3: At most every 200 ms, report progress with the partial result.
  *   Step 2.4: About every 12 ms, give the browser a turn.
@@ -92,6 +100,7 @@ export async function loadExports(
     file: UploadFile,
     s: FileState,
   ): Promise<string | undefined> {
+    if (/\.zip$/i.test(s.name)) return `${s.name}: ${ZIP}`; // Step 2.1
     try {
       for await (const { items, bytes } of readArray(
         file.stream(),
@@ -102,8 +111,7 @@ export async function loadExports(
           // Step 2.1
           if (!s.format) {
             const format = detectFormat([item]);
-            if (format === "unknown")
-              return `${s.name}: unrecognised format - expected a ChatGPT or Claude conversations.json`;
+            if (format === "unknown") return `${s.name}: ${NOT_CONVERSATIONS}`;
             if (
               format === "claude" &&
               states.some((o) => o.format === "claude")
@@ -135,12 +143,11 @@ export async function loadExports(
       }
     } catch (e) {
       if (stop.signal.aborted) return; // another file failed, or the caller aborted
-      if (e instanceof StreamError) return `${s.name}: ${e.message}`;
+      if (e instanceof StreamError)
+        return `${s.name}: ${e.message === NOT_ARRAY ? NOT_CONVERSATIONS : e.message}`;
       throw e;
     }
-    return s.format
-      ? undefined
-      : `${s.name}: expected a non-empty array of conversations`;
+    return s.format ? undefined : `${s.name}: ${NOT_CONVERSATIONS}`;
   }
 
   // Step 2
