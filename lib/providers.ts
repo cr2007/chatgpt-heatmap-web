@@ -31,7 +31,8 @@ export const PROVIDERS: readonly ProviderInfo[] = [
   {
     key: "claude",
     label: "Claude",
-    steps: "Account Settings → Export data.",
+    steps:
+      "Settings → Privacy → Export data. Open the file list from the email, download the conversations zip and unzip it.",
     border: "border-orange-300 dark:border-orange-900/40",
     bg: "bg-orange-50 dark:bg-orange-950/20",
     text: "text-orange-700 dark:text-orange-400",

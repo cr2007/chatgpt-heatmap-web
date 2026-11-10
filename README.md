@@ -66,9 +66,10 @@ bun run size             # Gzip size budget for dist/ (after the build)
 
 ### Claude
 
-1. Go to [claude.ai](https://claude.ai) > Settings > Export Data
-2. Download and unzip the archive
-3. Upload the `conversations.json` file
+1. Go to [claude.ai](https://claude.ai) > Settings > Privacy > Export Data
+2. Claude emails you a link to a list of files (a manifest JSON). Each download link in it expires after 24 hours.
+3. Find the file with the category `conversations` (for example `conversations-000.zip`) and open its `export_url` to download it
+4. Unzip it and upload the `conversations.json` file
 
 You can upload one or both files. The heatmap updates automatically after each upload.
 
