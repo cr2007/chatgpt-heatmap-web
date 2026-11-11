@@ -10,7 +10,9 @@ const ABSORB = 220;
 
 /**
  * The drop target and file picker, with a spinner and a progress line while
- * reading. `hero` is the large form on the welcome screen, with a button.
+ * reading. `hero` is the large form on the welcome screen, with a button;
+ * `page` fills its parent (the overlay that takes a drop anywhere on the
+ * loaded page).
  *
  * Step 1: Files over the page: the zone says it is ready and how many files
  *         there are (lib/file-drag.ts).
@@ -26,6 +28,7 @@ export function DropZone({
   error,
   onFiles,
   hero = false,
+  page = false,
 }: {
   inputId: string;
   /** Share of bytes read (0 to 1), or null when idle. */
@@ -35,6 +38,7 @@ export function DropZone({
   error: string;
   onFiles: (files: FileList) => Promise<void>;
   hero?: boolean;
+  page?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [absorbing, setAbsorbing] = useState(false);
@@ -77,7 +81,11 @@ export function DropZone({
       data-drag={phase}
       className={cn(
         "drop-zone group/drop relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed",
-        hero ? "px-6 py-7" : "h-full justify-center px-4 py-4",
+        hero
+          ? "px-6 py-7"
+          : page
+            ? "h-full items-center justify-center bg-white/70 px-6 dark:bg-zinc-900/70"
+            : "h-full justify-center px-4 py-4",
         "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
         // The file input is hidden, so the zone shows its keyboard focus.
         "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent",
@@ -133,9 +141,12 @@ export function DropZone({
             strokeWidth={1.5}
           />
         )}
-        {hero ? (
+        {hero || page ? (
           <>
-            <p aria-live="polite" className="text-base font-semibold">
+            <p
+              aria-live="polite"
+              className={cn("font-semibold", page ? "text-lg" : "text-base")}
+            >
               {isReading
                 ? "Reading files..."
                 : phase === "over"
@@ -144,7 +155,7 @@ export function DropZone({
                     ? `Drop ${files} here`
                     : "Drop conversations.json here"}
             </p>
-            {!isReading && (
+            {hero && !isReading && (
               <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-accent-fill px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_oklab,var(--color-accent-fill)_88%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
                 Choose export files
               </span>
@@ -155,7 +166,9 @@ export function DropZone({
             >
               {isReading
                 ? `${Math.round(progress * 100)}%`
-                : "Add one export or both. More than one ChatGPT file is fine."}
+                : page
+                  ? "A new export replaces the one from the same provider."
+                  : "Add one export or both. More than one ChatGPT file is fine."}
             </p>
           </>
         ) : (

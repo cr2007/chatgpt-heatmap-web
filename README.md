@@ -20,7 +20,7 @@ A web application to visualize your ChatGPT and Claude conversation activity as 
 
 ## Features
 
-- Upload ChatGPT and/or Claude conversation exports (`conversations.json`)
+- Upload ChatGPT and/or Claude conversation exports (`conversations.json`); once one is loaded, drop the next file anywhere on the page
 - Side-by-side color-coded heatmap: green for ChatGPT, orange for Claude, gradient for days with both; 4 shades per provider, set by the quartiles of your active days
 - Figures above the calendar: total prompts, active days, longest streak, busiest day and the split between providers, for all years or one year
 - The chats of any day: hover a day, tap it on a phone, or move with the arrow keys

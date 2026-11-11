@@ -7,6 +7,12 @@
 export const DESKTOP_SPLIT_QUERY =
   "(orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine)";
 
+/** Matches a window wide enough for the full top bar once an export is
+ *  loaded: the export chips, Add export and the time zone in one row.
+ *  Below it, the bar keeps the name and the links, and a panel under it
+ *  holds the rest. */
+export const WIDE_BAR_QUERY = "(min-width: 64rem)";
+
 /** Matches a folded device held upright (book mode): fold runs vertically,
  *  panels sit side by side as two grid columns. */
 export const FOLDED_PORTRAIT_QUERY =

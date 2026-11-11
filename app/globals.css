@@ -389,6 +389,27 @@
   animation: tooltip-in 100ms ease;
 }
 
+/* A popover grows from its trigger (set transform-origin on it). */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@utility animate-pop-in {
+  animation: pop-in var(--dur-ui) var(--ease-out);
+}
+
+/* An overlay or a disclosed panel fades in. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@utility animate-fade-in {
+  animation: fade-in var(--dur-micro) var(--ease-out);
+}
+
 /* A toast rises 8 px and fades in. */
 @keyframes toast-in {
   from {

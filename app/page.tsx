@@ -9,11 +9,19 @@ import { HeatLegend } from "@/components/heat-legend";
 import { summarize } from "@/lib/stats";
 import { YearNav } from "@/components/year-nav";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useUpload } from "@/hooks/use-upload";
+import { AppBar } from "@/components/app-bar";
+import { ExportChips } from "@/components/export-chips";
+import { ExportPanel } from "@/components/export-panel";
+import { AddExport } from "@/components/add-export";
+import { PageDrop } from "@/components/page-drop";
+import { TimeZonePicker } from "@/components/time-zone-picker";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   DESKTOP_SPLIT_QUERY,
   FOLDED_PORTRAIT_QUERY,
   FOLDED_LANDSCAPE_QUERY,
+  WIDE_BAR_QUERY,
   getHeatmapOrientation,
   getLayoutClassName,
   pickYearView,
@@ -46,9 +54,12 @@ function readView(): YearView | null {
  * Step 3: Wire the form: a new upload clears the sweep, a time zone change
  *         starts one.
  * Step 4: Pick the year to show, the heatmap orientation and the layout class.
- * Step 5: Render the welcome screen while nothing is loaded (outside the
- *         fold layouts), else the form panel, the heatmap panel and the
- *         fold navigation.
+ * Step 5: Outside the fold layouts: the welcome screen while nothing is
+ *         loaded, else the top bar (the exports, Add export, the time zone),
+ *         the figures, the year tabs and the calendar. A file dragged
+ *         anywhere over the page shows one drop target.
+ * Step 6: Fold layouts: the form panel, the heatmap panel and the year
+ *         navigation.
  */
 export default function Home() {
   // Step 1
@@ -74,6 +85,7 @@ export default function Home() {
   const isBookMode = useMediaQuery(FOLDED_PORTRAIT_QUERY);
   const isTentMode = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
   const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
+  const isWideBar = useMediaQuery(WIDE_BAR_QUERY);
 
   // Step 2
   const agg = useMemo(() => {
@@ -134,6 +146,14 @@ export default function Home() {
     },
   };
 
+  const upload = useUpload({
+    onLoad: formProps.onLoad,
+    onStream: formProps.onStream,
+  });
+  const loadedKeys = (["chatgpt", "claude"] as const).filter(
+    (p) => formProps.loaded[p],
+  );
+
   // Step 4: a picked year that the data no longer has falls back to the latest year.
   const activeYear =
     selectedYear !== null && dataYears.includes(selectedYear)
@@ -178,158 +198,218 @@ export default function Home() {
     />
   );
 
-  // Step 5
-  return (
-    <div className="relative">
+  const background = (
+    <>
       <div className="pointer-events-none fixed inset-0 -z-10 bg-zinc-50 dark:bg-zinc-950" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,color-mix(in_oklab,var(--color-accent)_7%,transparent),transparent)] dark:bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,color-mix(in_oklab,var(--color-accent)_18%,transparent),transparent)]" />
+    </>
+  );
 
-      {!hasData && !isFolded ? (
+  // Step 5
+  if (!isFolded && !hasData)
+    return (
+      <div className="relative">
+        {background}
         <Welcome
           onLoad={formProps.onLoad}
           onStream={formProps.onStream}
           timeZone={timeZone}
           setTimeZone={formProps.setTimeZone}
         />
-      ) : (
-        <div className={layoutClass}>
-          {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
-          {(!isTentMode || !hasData) && (
-            <div className="panel-form">
-              <header className="flex items-center justify-between mb-6 pt-2">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  AI Chat Heatmap
-                </h1>
-                <div className="flex items-center gap-2">
-                  {isBookMode && hasData && (
-                    <button
-                      onClick={() => setFormOnRight((v) => !v)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-                      title={
-                        formOnRight ? "Move panel left" : "Move panel right"
-                      }
-                      aria-label={
-                        formOnRight ? "Move panel left" : "Move panel right"
-                      }
-                    >
-                      {formOnRight ? (
-                        <ChevronLeft size={16} />
-                      ) : (
-                        <ChevronRight size={16} />
-                      )}
-                    </button>
-                  )}
-                  <SiteLinks />
-                </div>
-              </header>
-
-              <main
-                id="main-content"
-                tabIndex={-1}
-                className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
-              >
-                <HeatMapForm
-                  {...formProps}
-                  compact={!isDesktopSplit && !isFolded}
+      </div>
+    );
+  if (!isFolded)
+    return (
+      <div className="relative min-h-dvh">
+        {background}
+        <AppBar
+          progress={upload.progress}
+          uploads={upload.uploads}
+          below={
+            !isWideBar && (
+              <ExportPanel
+                loaded={formProps.loaded}
+                onClear={clearExport}
+                progress={upload.progress}
+                onFiles={upload.processFiles}
+                timeZone={timeZone}
+                setTimeZone={formProps.setTimeZone}
+              />
+            )
+          }
+        >
+          {isWideBar && (
+            <>
+              <ExportChips loaded={formProps.loaded} onClear={clearExport} />
+              <AddExport
+                progress={upload.progress}
+                onFiles={upload.processFiles}
+                loaded={loadedKeys}
+              />
+              <div className="ml-auto">
+                <TimeZonePicker
+                  id="bar"
+                  inline
+                  label="Time zone"
+                  timeZone={timeZone}
+                  setTimeZone={formProps.setTimeZone}
                 />
-              </main>
-
-              {isBookMode && hasData && (
-                <div className="book-nav">{yearNav}</div>
-              )}
-            </div>
+              </div>
+            </>
           )}
+        </AppBar>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          aria-busy={streaming !== null}
+          className="mx-auto flex w-full max-w-6xl animate-fade-slide-up flex-col gap-5 px-5 pt-8 pb-16 outline-hidden sm:px-8"
+        >
+          {agg && viewStats && allStats ? (
+            <>
+              <Summary
+                stats={viewStats}
+                year={view === "all" ? null : view}
+                timeZone={timeZone}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <YearTabs
+                  years={dataYears}
+                  totals={yearTotals}
+                  view={view}
+                  onView={pickView}
+                />
+                <HeatLegend
+                  edges={agg.edges}
+                  providers={[
+                    ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
+                    ...(allStats.claude ? (["claude"] as const) : []),
+                  ]}
+                />
+              </div>
+              <CalendarHeatmap
+                data={agg.data}
+                dayTitles={agg.dayTitles}
+                edges={agg.edges}
+                from={view === "all" ? agg.from : new Date(view, 0, 1)}
+                to={view === "all" ? agg.to : new Date(view, 11, 31)}
+                firstDay={allStats.span.from}
+                lastDay={allStats.span.to}
+                vertical={useVerticalHeatmap}
+                maxScale={useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3}
+                sweep={sweep}
+              />
+            </>
+          ) : (
+            <p className="py-24 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              No prompts found in this export
+            </p>
+          )}
+        </main>
+        <PageDrop
+          progress={upload.progress}
+          uploads={upload.uploads}
+          onFiles={upload.processFiles}
+        />
+      </div>
+    );
 
-          {/* Heatmap panel empty state: visible when folded but no data loaded */}
-          {isFolded && !hasData && (
-            <div className="panel-heatmap">
+  // Step 6
+  return (
+    <div className="relative">
+      {background}
+      <div className={layoutClass}>
+        {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
+        {(!isTentMode || !hasData) && (
+          <div className="panel-form">
+            <header className="flex items-center justify-between mb-6 pt-2">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                AI Chat Heatmap
+              </h1>
+              <div className="flex items-center gap-2">
+                {isBookMode && hasData && (
+                  <button
+                    onClick={() => setFormOnRight((v) => !v)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
+                    title={formOnRight ? "Move panel left" : "Move panel right"}
+                    aria-label={
+                      formOnRight ? "Move panel left" : "Move panel right"
+                    }
+                  >
+                    {formOnRight ? (
+                      <ChevronLeft size={16} />
+                    ) : (
+                      <ChevronRight size={16} />
+                    )}
+                  </button>
+                )}
+                <SiteLinks />
+              </div>
+            </header>
+
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
+            >
+              <HeatMapForm {...formProps} />
+            </main>
+
+            {isBookMode && hasData && <div className="book-nav">{yearNav}</div>}
+          </div>
+        )}
+
+        {/* Heatmap panel empty state: visible when folded but no data loaded */}
+        {!hasData && (
+          <div className="panel-heatmap">
+            <div className="h-full w-full flex items-center justify-center">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
+                Upload an export to see your heatmap
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Heatmap panel */}
+        {hasData && (
+          <div
+            className="panel-heatmap animate-fade-slide-up"
+            aria-busy={streaming !== null}
+          >
+            {agg ? (
+              <CalendarHeatmap
+                data={agg.data}
+                dayTitles={agg.dayTitles}
+                edges={agg.edges}
+                from={activeViewFrom || agg.from}
+                to={activeViewTo || agg.to}
+                firstDay={allStats?.span.from}
+                lastDay={allStats?.span.to}
+                vertical={useVerticalHeatmap}
+                fixedHeight
+                sweep={sweep}
+              />
+            ) : (
               <div className="h-full w-full flex items-center justify-center">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                  Upload an export to see your heatmap
+                  No prompts found in this export
                 </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Heatmap panel */}
-          {hasData && (
-            <div
-              className="panel-heatmap animate-fade-slide-up"
-              aria-busy={streaming !== null}
-            >
-              {agg && isFolded ? (
-                <CalendarHeatmap
-                  data={agg.data}
-                  dayTitles={agg.dayTitles}
-                  edges={agg.edges}
-                  from={activeViewFrom || agg.from}
-                  to={activeViewTo || agg.to}
-                  firstDay={allStats?.span.from}
-                  lastDay={allStats?.span.to}
-                  vertical={useVerticalHeatmap}
-                  fixedHeight
-                  sweep={sweep}
-                />
-              ) : agg && viewStats && allStats ? (
-                <div className="mx-auto flex w-full max-w-[60rem] flex-col gap-5">
-                  <Summary
-                    stats={viewStats}
-                    year={view === "all" ? null : view}
-                    timeZone={timeZone}
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <YearTabs
-                      years={dataYears}
-                      totals={yearTotals}
-                      view={view}
-                      onView={pickView}
-                    />
-                    <HeatLegend
-                      edges={agg.edges}
-                      providers={[
-                        ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
-                        ...(allStats.claude ? (["claude"] as const) : []),
-                      ]}
-                    />
-                  </div>
-                  <CalendarHeatmap
-                    data={agg.data}
-                    dayTitles={agg.dayTitles}
-                    edges={agg.edges}
-                    from={view === "all" ? agg.from : new Date(view, 0, 1)}
-                    to={view === "all" ? agg.to : new Date(view, 11, 31)}
-                    firstDay={allStats.span.from}
-                    lastDay={allStats.span.to}
-                    vertical={useVerticalHeatmap}
-                    maxScale={
-                      useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3
-                    }
-                    sweep={sweep}
-                  />
-                </div>
-              ) : (
-                <div className="h-full w-full flex items-center justify-center">
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                    No prompts found in this export
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
-          {isTentMode && hasData && (
-            <div className="panel-form">
-              <div className="tent-bottom">
-                <div className="tent-bottom__form">
-                  <HeatMapForm {...formProps} compact={false} />
-                </div>
-                <div className="tent-bottom__nav">{yearNav}</div>
+        {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
+        {isTentMode && hasData && (
+          <div className="panel-form">
+            <div className="tent-bottom">
+              <div className="tent-bottom__form">
+                <HeatMapForm {...formProps} />
               </div>
+              <div className="tent-bottom__nav">{yearNav}</div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

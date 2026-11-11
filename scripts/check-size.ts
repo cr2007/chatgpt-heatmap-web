@@ -12,8 +12,9 @@
  *  screen; JS to 88 kB for the figures and year tabs (84.6 kB) plus the
  *  planned keyboard day details and zone search (about 3 kB); JS to 90 kB
  *  and CSS to 11 kB for the drop zone motion and drag guard (88.0 and
- *  10.6 kB). */
-const BUDGET = { js: 90_000, css: 11_000 } as const;
+ *  10.6 kB); CSS to 11.5 kB for the top bar, its chips, the help popover,
+ *  the phone panel and the page drop overlay (11.3 kB). */
+const BUDGET = { js: 90_000, css: 11_500 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

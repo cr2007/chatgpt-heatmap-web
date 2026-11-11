@@ -32,12 +32,15 @@ export function TimeZonePicker({
   timeZone,
   setTimeZone,
   inline = false,
+  label = inline ? "Days start at midnight in" : "Time zone",
 }: {
   id: string;
   timeZone: string;
   setTimeZone: (timeZone: string) => void;
   /** Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen. */
   inline?: boolean;
+  /** The label text; the top bar says "Time zone" in the inline layout. */
+  label?: string;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -127,7 +130,7 @@ export function TimeZonePicker({
             : "text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
         }
       >
-        {inline ? "Days start at midnight in" : "Time Zone"}
+        {label}
       </label>
       <div className={cn("relative", inline ? "w-64 max-w-full" : "w-full")}>
         <input
