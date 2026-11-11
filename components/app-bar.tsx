@@ -23,7 +23,7 @@ export function AppBar({
   return (
     <header
       id="app-bar"
-      className="sticky top-0 z-20 border-b border-zinc-200/80 bg-zinc-50/85 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80"
+      className="@container sticky top-0 z-20 border-b border-zinc-200/80 bg-zinc-50/85 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80"
     >
       <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center gap-3 px-5 sm:px-8">
         <h1
