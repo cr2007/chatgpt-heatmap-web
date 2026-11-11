@@ -181,6 +181,9 @@ export function TimeZonePicker({
               // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- a <select> cannot show this list; the combobox pattern needs a listbox
               role="listbox"
               aria-label="Time zones"
+              // Chrome puts a scrolling box in the Tab order; Tab must leave
+              // the field for the next control, not land in the list as it closes.
+              tabIndex={-1}
               className="max-h-72 overflow-y-auto overscroll-contain p-1"
             >
               {results.map((e, i) => (
