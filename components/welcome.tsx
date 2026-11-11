@@ -40,7 +40,20 @@ export function Welcome({
 }) {
   const { progress, uploads, error, isShaking, resetShake, processFiles } =
     upload;
-  const sample = useMemo(() => sampleYear(), []);
+  // The example year never changes: one element, so an upload's progress
+  // (which renders this screen often) does not redraw its 365 cells.
+  const example = useMemo(() => {
+    const sample = sampleYear();
+    return (
+      <CalendarHeatmap
+        data={sample.data}
+        dayTitles={{}}
+        edges={sample.edges}
+        from={new Date(2025, 0, 1)}
+        to={new Date(2025, 11, 31)}
+      />
+    );
+  }, []);
 
   // Step 1
   const hero = (
@@ -139,15 +152,7 @@ export function Welcome({
         className="mt-8 border-t border-zinc-200/80 pt-6 dark:border-zinc-800/80"
       >
         {/* Decoration: the caption says what it shows, and the cells are not real data. inert keeps its cells out of the Tab order too. */}
-        <div inert>
-          <CalendarHeatmap
-            data={sample.data}
-            dayTitles={{}}
-            edges={sample.edges}
-            from={new Date(2025, 0, 1)}
-            to={new Date(2025, 11, 31)}
-          />
-        </div>
+        <div inert>{example}</div>
         <figcaption className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
           What you get, drawn from sample data: teal days are ChatGPT, clay days
           Claude, and split days both.
