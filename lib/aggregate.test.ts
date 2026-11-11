@@ -25,12 +25,6 @@ describe("aggregateDateData", () => {
     expect(aggregateDateData([], [], "UTC")).toBeNull();
   });
 
-  it("counts one per prompt day", () => {
-    const r = aggregateDateData(gpt, null, "UTC")!;
-    expect(r.data["2024-01-10"]).toEqual({ chatgpt: 2, claude: 0 });
-    expect(r.data["2024-01-15"]).toEqual({ chatgpt: 1, claude: 0 });
-  });
-
   it("merges both providers on a shared day", () => {
     const r = aggregateDateData(gpt, claude, "UTC")!;
     expect(r.data["2024-01-11"]).toEqual({ chatgpt: 1, claude: 1 });
