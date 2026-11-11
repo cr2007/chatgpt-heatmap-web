@@ -5,6 +5,9 @@ import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
 
+/** Safari before 17 has no Popover API: the help would show all the time. */
+const HAS_POPOVER =
+  typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 /** Gap in px between the help button and its popover. */
 const GAP = 8;
 
@@ -44,10 +47,11 @@ export function AddExport({
     if (e.newState !== "open" || !help.current) return;
     const b = help.current.getBoundingClientRect();
     const pane = help.current.closest(".fold-pane")?.getBoundingClientRect();
-    const [left, right] = pane ? [pane.left, pane.right] : [0, innerWidth];
+    const width = document.documentElement.clientWidth;
+    const [left, right] = pane ? [pane.left, pane.right] : [0, width];
     const el = e.currentTarget;
     el.style.top = `${b.bottom + GAP}px`;
-    el.style.right = `${innerWidth - Math.min(b.right, right - GAP)}px`;
+    el.style.right = `${width - Math.min(b.right, right - GAP)}px`;
     el.style.maxWidth = `${right - left - 2 * GAP}px`;
   }
 
@@ -83,36 +87,40 @@ export function AddExport({
           }}
         />
       </label>
-      <button
-        ref={help}
-        type="button"
-        popoverTarget="export-help"
-        aria-label="How to export"
-        title="How to export"
-        className="inline-grid size-9 shrink-0 place-items-center rounded-md text-zinc-500 transition-[background-color,color,scale] duration-(--dur-micro) ease-out hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.94] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-      >
-        <CircleQuestionMark
-          aria-hidden="true"
-          className="size-4"
-          strokeWidth={1.75}
-        />
-      </button>
-      <div
-        id="export-help"
-        popover="auto"
-        aria-labelledby="export-help-title"
-        onBeforeToggle={place}
-        className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
-      >
-        <h2 id="export-help-title" className="text-base font-semibold">
-          How to export
-        </h2>
-        <ExportGuide
-          providers={order}
-          idPrefix="export-help"
-          className="mt-4 flex flex-col gap-6"
-        />
-      </div>
+      {HAS_POPOVER && (
+        <button
+          ref={help}
+          type="button"
+          popoverTarget="export-help"
+          aria-label="How to export"
+          title="How to export"
+          className="inline-grid size-9 shrink-0 place-items-center rounded-md text-zinc-500 transition-[background-color,color,scale] duration-(--dur-micro) ease-out hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.94] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+        >
+          <CircleQuestionMark
+            aria-hidden="true"
+            className="size-4"
+            strokeWidth={1.75}
+          />
+        </button>
+      )}
+      {HAS_POPOVER && (
+        <div
+          id="export-help"
+          popover="auto"
+          aria-labelledby="export-help-title"
+          onBeforeToggle={place}
+          className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
+        >
+          <h2 id="export-help-title" className="text-base font-semibold">
+            How to export
+          </h2>
+          <ExportGuide
+            providers={order}
+            idPrefix="export-help"
+            className="mt-4 flex flex-col gap-6"
+          />
+        </div>
+      )}
     </div>
   );
 }
