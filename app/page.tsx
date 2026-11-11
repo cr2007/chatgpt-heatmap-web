@@ -270,8 +270,8 @@ export default function Home() {
       firstDay={allStats.span.from}
       lastDay={allStats.span.to}
       vertical={vertical}
-      maxScale={vertical ? (view === "all" ? 1 : 1.6) : 1.3}
-      fixedHeight={posture !== undefined}
+      maxScale={vertical ? 1.6 : 1.3}
+      fixedHeight={posture === "tent"}
       sweep={sweep}
       pane={posture && { id: "day-pane", onPick: setPickedDay }}
     />

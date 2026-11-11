@@ -27,7 +27,8 @@ const H = {
   yearGap: 22,
   pad: { t: 6, r: 8, b: 8, l: 8 },
 } as const;
-/** Vertical: years stack left to right, weekdays are columns, weeks rows. */
+/** Vertical: years stack top to bottom in one column (a phone scrolls down
+ *  through them), weekdays are columns, weeks rows. */
 const V = {
   monthW: 28,
   dowH: 15,
@@ -102,12 +103,12 @@ export function layoutCalendar(
   // Step 1
   const years = endYear - startYear + 1;
   const hSection = H.yearH + H.monthH + 7 * STEP;
-  const vSection = V.monthW + 7 * STEP;
+  const vSection = V.yearH + V.dowH + 54 * STEP;
   const width = vertical
-    ? V.pad.l + years * vSection + (years - 1) * V.yearGap + V.pad.r
+    ? V.pad.l + V.monthW + 7 * STEP + V.pad.r
     : H.pad.l + H.dowW + 54 * STEP + H.pad.r;
   const height = vertical
-    ? V.pad.t + V.yearH + V.dowH + 54 * STEP + V.pad.b
+    ? V.pad.t + years * vSection + (years - 1) * V.yearGap + V.pad.b
     : H.pad.t + years * hSection + (years - 1) * H.yearGap + H.pad.b;
 
   const rangeStart = Date.UTC(startYear, 0, 1);
@@ -125,10 +126,10 @@ export function layoutCalendar(
 
     // Grid origin and the year label's place for this year's section.
     const hTop = H.pad.t + yi * (hSection + H.yearGap);
-    const vLeft = V.pad.l + yi * (vSection + V.yearGap);
-    const gridX = vertical ? vLeft + V.monthW : H.pad.l + H.dowW;
+    const vTop = V.pad.t + yi * (vSection + V.yearGap);
+    const gridX = vertical ? V.pad.l + V.monthW : H.pad.l + H.dowW;
     const gridY = vertical
-      ? V.pad.t + V.yearH + V.dowH
+      ? vTop + V.yearH + V.dowH
       : hTop + H.yearH + H.monthH;
 
     // Step 2.1
@@ -137,7 +138,7 @@ export function layoutCalendar(
         ? {
             key: `y${year}`,
             x: gridX,
-            y: V.pad.t + V.yearH - 4,
+            y: vTop + V.yearH - 4,
             text: String(year),
             size: 11,
             bold: true,
@@ -184,7 +185,7 @@ export function layoutCalendar(
         vertical
           ? {
               key: `m${year}${m}`,
-              x: vLeft + V.monthW - 3,
+              x: V.pad.l + V.monthW - 3,
               y: gridY + week * STEP + CELL - 2,
               text,
               size: 8,

@@ -60,6 +60,15 @@ describe("layoutCalendar", () => {
     },
   );
 
+  it("stacks the years of the vertical layout in one column", () => {
+    const { cells, width } = layoutCalendar(2023, 2024, true);
+    const jan1 = (y: number) => cells.find((c) => c.day === `${y}-01-01`)!;
+    expect(jan1(2024).y).toBeGreaterThan(
+      cells.find((c) => c.day === "2023-12-31")!.y,
+    );
+    expect(width).toBe(layoutCalendar(2024, 2024, true).width);
+  });
+
   it("covers every day once, including the leap day", () => {
     const { cells } = layoutCalendar(2023, 2024, false);
     expect(cells).toHaveLength(365 + 366);

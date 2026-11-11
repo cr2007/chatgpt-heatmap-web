@@ -98,8 +98,8 @@ export type YearView = "all" | number;
  * Step 1: A picked year that the data has wins; "all" wins when there is
  *         more than one year (one year shows as that year).
  * Step 2: With nothing valid picked, a desktop window shows every year;
- *         phones and foldables show the latest year, which reads better
- *         than narrow year columns side by side.
+ *         phones and foldables show the latest year, so the first screen
+ *         is one year, not a long scroll through all of them.
  */
 export function pickYearView(
   picked: YearView | null,
