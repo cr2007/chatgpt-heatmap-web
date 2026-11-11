@@ -28,6 +28,9 @@ export function YearTabs({
   onView: (view: YearView) => void;
 }) {
   const row = useRef<HTMLFieldSetElement>(null);
+  // A total that grows (a time zone change, a streaming upload) widens its
+  // button but not the scrolling row, so the labels are part of the key.
+  const labels = `${years.join()}|${totals.join()}`;
   const pill = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
@@ -46,7 +49,7 @@ export function YearTabs({
     const resize = new ResizeObserver(place);
     resize.observe(el);
     return () => resize.disconnect();
-  }, [view, years.length]);
+  }, [view, labels]);
 
   // Step 3
   useEffect(() => {
