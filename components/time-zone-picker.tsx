@@ -211,15 +211,15 @@ export function TimeZonePicker({
                       {e.city}
                     </span>
                     {e.area && (
-                      <span className="ml-1.5 text-zinc-500 dark:text-zinc-400">
+                      <span className="ml-1.5 text-zinc-600 dark:text-zinc-400">
                         {e.area}
                       </span>
                     )}
-                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="block truncate text-xs text-zinc-600 dark:text-zinc-400">
                       {e.long}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
+                  <span className="shrink-0 text-xs text-zinc-600 tabular-nums dark:text-zinc-400">
                     {e.offset}
                   </span>
                   <Check

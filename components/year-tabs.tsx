@@ -45,7 +45,7 @@ export function YearTabs({
     >
       <span className="leading-8">{label}</span>
       {total !== undefined && (
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+        <span className="text-xs text-zinc-600 dark:text-zinc-400">
           {count(total)}
         </span>
       )}
