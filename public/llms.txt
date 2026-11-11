@@ -3,7 +3,7 @@ This project is a web application called "AI Chat Heatmap".
 Purpose:
 - Visualize ChatGPT and Claude conversation activity as a calendar heatmap.
 - Users upload exported conversation history (conversations.json) from ChatGPT and/or Claude, select a time zone, and view their usage as a color-coded heatmap.
-- ChatGPT activity is shown in green, Claude in orange, and days with both sources use a gradient blend.
+- ChatGPT activity is shown in teal, Claude in clay, and days with both sources are split between the two.
 
 Technical Details:
 - Built with React, TypeScript, Tailwind CSS, and Bun.

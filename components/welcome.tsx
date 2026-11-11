@@ -149,8 +149,8 @@ export function Welcome({
           />
         </div>
         <figcaption className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          What you get, drawn from sample data: green days are ChatGPT, orange
-          days Claude, and split days both.
+          What you get, drawn from sample data: teal days are ChatGPT, clay days
+          Claude, and split days both.
         </figcaption>
       </figure>
     </section>

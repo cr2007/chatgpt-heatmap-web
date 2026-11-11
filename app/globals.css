@@ -105,20 +105,39 @@
   --dur-spring-bouncy: 620ms;
 }
 
-/* Accent tokens (utilities: `ring-accent`, `text-accent-ink`, ...).
+/* Accent tokens (utilities: `ring-accent`, `text-accent-ink`, ...): Cobalt,
+   an instrument's ink that no data color uses. Chosen in the palette lab,
+   where every pair below passed WCAG AA in both themes.
    accent: focus rings, borders, icons (3:1 on the page).
    accent-ink: accent text and links (4.5:1 on the page).
    accent-fill and accent-on: a filled button and its text (4.5:1). */
 @theme static {
-  --color-accent: oklch(60.6% 0.25 292.7);
-  --color-accent-ink: oklch(49.1% 0.27 292.6);
-  --color-accent-fill: oklch(54.1% 0.281 293);
-  --color-accent-on: oklch(100% 0 0);
+  --color-accent: oklch(51% 0.19 262);
+  --color-accent-ink: oklch(47% 0.18 263);
+  --color-accent-fill: oklch(48% 0.19 263);
+  --color-accent-on: oklch(99% 0.003 255);
 }
 .dark {
-  --color-accent: oklch(70.2% 0.183 293.5);
-  --color-accent-ink: oklch(81.1% 0.111 293.6);
-  --color-accent-fill: oklch(54.1% 0.281 293);
+  --color-accent: oklch(70% 0.14 258);
+  --color-accent-ink: oklch(80% 0.1 256);
+  --color-accent-fill: oklch(53% 0.19 263);
+  --color-accent-on: oklch(99% 0.003 255);
+}
+
+/* Neutrals: a cool grey on hue 255 in place of Tailwind's zinc, at zinc's
+   lightness steps, so every `zinc-*` class keeps its contrast. */
+@theme {
+  --color-zinc-50: oklch(98.5% 0.0054 255);
+  --color-zinc-100: oklch(96.7% 0.0054 255);
+  --color-zinc-200: oklch(92% 0.0054 255);
+  --color-zinc-300: oklch(87.1% 0.0090 255);
+  --color-zinc-400: oklch(70.5% 0.0090 255);
+  --color-zinc-500: oklch(55.2% 0.0090 255);
+  --color-zinc-600: oklch(44.2% 0.0090 255);
+  --color-zinc-700: oklch(37% 0.0090 255);
+  --color-zinc-800: oklch(27.4% 0.0090 255);
+  --color-zinc-900: oklch(21% 0.0090 255);
+  --color-zinc-950: oklch(14.1% 0.0054 255);
 }
 
 @layer base {
@@ -202,45 +221,49 @@
 }
 
 /* Heatmap shades: levels 1 to 4 per provider (lib/calendar-geometry.ts).
-   More prompts always means more contrast with the page, so the dark ramp
-   runs from dim to bright, not from pale to dark. */
+   ChatGPT is its product teal-green (#10a37f), Claude its clay (#d97757).
+   Teal reads bluish and clay yellowish to people with red-green color
+   blindness, and in light mode the Claude ramp is 6 points darker, so the
+   same level of each stays apart (CIEDE2000 12.5 light, 10.9 dark, in
+   simulated protan, deutan and tritan vision; 2.6 with the old green and
+   orange). Light ramps run pale to dark; dark ramps run dim to bright, so
+   more prompts always means more contrast with the page. The UI tokens
+   (-line, -wash, -ink, -dot) serve lib/providers.ts. */
 :root {
-  --cell-empty: oklch(93.4% 0.004 286);
-  --g1: oklch(90% 0.07 152);
-  --g2: oklch(78% 0.13 150);
-  --g3: oklch(63% 0.15 148);
-  --g4: oklch(46% 0.13 150);
-  --o1: oklch(91% 0.06 62);
-  --o2: oklch(81% 0.12 56);
-  --o3: oklch(69% 0.18 47);
-  --o4: oklch(54% 0.17 40);
-  /* Provider UI (lib/providers.ts): card line and wash, text, and the dot,
-     which matches level 3 of the calendar ramp. */
-  --g-line: oklch(87.1% 0.15 154.449);
-  --g-wash: oklch(98.2% 0.018 155.826);
-  --g-ink: oklch(52.7% 0.154 150.069);
+  --cell-empty: oklch(93.6% 0.003 70);
+  --g1: oklch(85% 0.085 175);
+  --g2: oklch(76% 0.1 175);
+  --g3: oklch(63% 0.124 175);
+  --g4: oklch(49% 0.1 176);
+  --o1: oklch(79.5% 0.085 45);
+  --o2: oklch(70% 0.1 45);
+  --o3: oklch(57% 0.131 45);
+  --o4: oklch(43% 0.13 43);
+  --g-line: oklch(84% 0.07 175);
+  --g-wash: oklch(97.5% 0.016 175);
+  --g-ink: oklch(44% 0.09 177);
   --g-dot: var(--g3);
-  --o-line: oklch(83.7% 0.128 66.29);
-  --o-wash: oklch(98% 0.016 73.684);
-  --o-ink: oklch(55.3% 0.195 38.402);
+  --o-line: oklch(84% 0.07 45);
+  --o-wash: oklch(97.5% 0.016 50);
+  --o-ink: oklch(46% 0.13 43);
   --o-dot: var(--o3);
 }
 .dark {
-  --cell-empty: oklch(24% 0.006 286);
-  --g1: oklch(36% 0.07 152);
-  --g2: oklch(50% 0.11 150);
-  --g3: oklch(66% 0.15 148);
-  --g4: oklch(83% 0.16 148);
-  --o1: oklch(38% 0.07 45);
-  --o2: oklch(52% 0.12 47);
-  --o3: oklch(68% 0.16 50);
-  --o4: oklch(84% 0.12 62);
-  --g-line: oklch(39.3% 0.095 152.535 / 0.4);
-  --g-wash: oklch(26.6% 0.065 152.934 / 0.2);
-  --g-ink: oklch(79.2% 0.209 151.711);
-  --o-line: oklch(40.8% 0.123 38.172 / 0.4);
-  --o-wash: oklch(26.6% 0.079 36.259 / 0.2);
-  --o-ink: oklch(75% 0.183 55.934);
+  --cell-empty: oklch(24% 0.006 70);
+  --g1: oklch(36% 0.07 185);
+  --g2: oklch(50% 0.085 185);
+  --g3: oklch(64% 0.115 185);
+  --g4: oklch(80% 0.11 185);
+  --o1: oklch(36% 0.07 38);
+  --o2: oklch(50% 0.105 38);
+  --o3: oklch(64% 0.13 38);
+  --o4: oklch(80% 0.09 45);
+  --g-line: oklch(40% 0.06 185 / 0.6);
+  --g-wash: oklch(26% 0.04 185 / 0.35);
+  --g-ink: oklch(80% 0.1 185);
+  --o-line: oklch(42% 0.07 38 / 0.6);
+  --o-wash: oklch(27% 0.045 38 / 0.35);
+  --o-ink: oklch(80% 0.1 45);
 }
 .lv-0 {
   fill: var(--cell-empty);

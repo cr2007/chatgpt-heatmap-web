@@ -278,7 +278,7 @@ export function CalendarHeatmap({
   }
 
   // Step 3: two sweep names, so that each new sweep restarts the animation.
-  // The faint edge keeps the palest green apart from the empty grey.
+  // The faint edge keeps the palest shade apart from the empty grey.
   const cellClass = cn(
     "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",
     sweep > 0 && (sweep % 2 ? "sweep-a" : "sweep-b"),
