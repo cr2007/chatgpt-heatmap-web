@@ -108,11 +108,12 @@
 /* Accent tokens (utilities: `ring-accent`, `text-accent-ink`, ...).
    accent: focus rings, borders, icons (3:1 on the page).
    accent-ink: accent text and links (4.5:1 on the page).
-   accent-fill: a filled button under white text (4.5:1). */
+   accent-fill and accent-on: a filled button and its text (4.5:1). */
 @theme static {
   --color-accent: oklch(60.6% 0.25 292.7);
   --color-accent-ink: oklch(49.1% 0.27 292.6);
   --color-accent-fill: oklch(54.1% 0.281 293);
+  --color-accent-on: oklch(100% 0 0);
 }
 .dark {
   --color-accent: oklch(70.2% 0.183 293.5);

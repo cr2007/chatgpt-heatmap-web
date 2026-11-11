@@ -157,7 +157,7 @@ export function DropZone({
                     : "Drop conversations.json here"}
             </p>
             {hero && !isReading && (
-              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-accent-fill px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_oklab,var(--color-accent-fill)_88%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
+              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-accent-fill px-4 text-sm font-semibold text-accent-on shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_oklab,var(--color-accent-fill)_88%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
                 Choose export files
               </span>
             )}
