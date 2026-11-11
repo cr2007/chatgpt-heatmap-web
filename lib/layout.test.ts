@@ -3,12 +3,26 @@ import { foldPosture, getHeatmapOrientation, pickYearView } from "./layout";
 
 describe("getHeatmapOrientation", () => {
   it.each([
-    ["tent posture", "tent", false, "horizontal"],
-    ["book posture", "book", true, "vertical"],
-    ["desktop or expanded window", undefined, true, "horizontal"],
-    ["phone or narrow window", undefined, false, "vertical"],
-  ] as const)("%s", (_name, posture, isWide, expected) => {
-    expect(getHeatmapOrientation({ posture, isWide })).toBe(expected);
+    ["tent posture, medium (an open Fold)", "tent", false, true, "horizontal"],
+    [
+      "tent posture, narrow (a Flip in Flex mode)",
+      "tent",
+      false,
+      false,
+      "vertical",
+    ],
+    ["book posture", "book", true, true, "vertical"],
+    ["desktop or expanded window", undefined, true, true, "horizontal"],
+    [
+      "medium window, not expanded (a tablet in portrait)",
+      undefined,
+      false,
+      true,
+      "vertical",
+    ],
+    ["phone or narrow window", undefined, false, false, "vertical"],
+  ] as const)("%s", (_name, posture, isWide, isMedium, expected) => {
+    expect(getHeatmapOrientation({ posture, isWide, isMedium })).toBe(expected);
   });
 });
 

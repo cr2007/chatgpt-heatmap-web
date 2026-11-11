@@ -527,14 +527,26 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
-/* Tent: the bottom half is wide and short, so the day pane sits beside the
-   figures and the tabs instead of under them, where it would need a scroll. */
-.fold-layout[data-posture="tent"] #main-content {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  align-items: start;
+/* Two side-by-side screens (book): a toast stays on the right one, never
+   across the fold (the toast stack is 356 px; a Fold 5 half is 345 px). */
+@media (horizontal-viewport-segments: 2) {
+  #toasts ol {
+    width: auto;
+    max-width: calc(env(viewport-segment-width 1 0) - 2rem);
+  }
 }
-.fold-layout[data-posture="tent"] #day-pane {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+
+/* Tent on a wide device: the bottom half is wide and short, so the day
+   pane sits beside the figures and the tabs instead of under them. A Flip
+   in Flex mode is too narrow for two columns and keeps one. */
+@media (min-width: 640px) {
+  .fold-layout[data-posture="tent"] #main-content {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+  .fold-layout[data-posture="tent"] #day-pane {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
 }

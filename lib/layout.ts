@@ -10,6 +10,11 @@ export const DESKTOP_QUERY =
  *  across, so the calendar runs horizontally, with or without a mouse. */
 export const EXPANDED_QUERY = "(min-width: 840px)";
 
+/** Matches a medium window or wider (Android: 600 dp): the short top half
+ *  of a Fold in tent posture (829 px on a Fold 5) still fits a year across
+ *  at about 14 px cells; a Flip (about 412 px) does not. */
+export const MEDIUM_QUERY = "(min-width: 600px)";
+
 /** Matches a window wide enough for the full top bar once an export is
  *  loaded: the export chips with their counts, Add export and the time zone
  *  in one row (1,146 px measured, about 1,180 px with five-digit counts).
@@ -69,6 +74,8 @@ export interface HeatmapOrientationInput {
   posture: Posture | undefined;
   /** `DESKTOP_QUERY` or `EXPANDED_QUERY` matches. */
   isWide: boolean;
+  /** `MEDIUM_QUERY` matches. */
+  isMedium: boolean;
 }
 
 /**
@@ -76,16 +83,20 @@ export interface HeatmapOrientationInput {
  * vertical layout (months down the side, ~120px per year) or its wide
  * horizontal GitHub-style layout (54 weeks across).
  *
- * Step 1: A foldable posture fixes it: a tent half is wide and short
- *         (horizontal), a book half is narrow (vertical).
+ * Step 1: A foldable posture fixes it: a book half is narrow (vertical);
+ *         a tent half is short, so a year runs across it when it is at
+ *         least medium (an open Fold), and down it when it is not (a Flip
+ *         in Flex mode, where a year across would have 5 px cells).
  * Step 2: Otherwise the horizontal layout needs a desktop or an expanded
  *         window; every narrower context gets the vertical one.
  */
 export function getHeatmapOrientation({
   posture,
   isWide,
+  isMedium,
 }: HeatmapOrientationInput): "vertical" | "horizontal" {
-  if (posture) return posture === "tent" ? "horizontal" : "vertical"; // Step 1
+  if (posture)
+    return posture === "tent" && isMedium ? "horizontal" : "vertical"; // Step 1
   return isWide ? "horizontal" : "vertical"; // Step 2
 }
 
