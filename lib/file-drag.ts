@@ -16,8 +16,11 @@ export interface FileDrag {
   count: number;
 }
 
-/** The drag ends this long (ms) after the last dragover. */
-const END_AFTER = 400;
+/** The drag ends this long (ms) after the last dragover. Real drags from a
+ *  file manager (Chrome on Linux, logged 2026-11-11) send no dragover while
+ *  the pointer stands still: gaps of up to 809 ms, and 550 ms just before a
+ *  drop, so 400 ms dropped the zone back to idle before the drop. */
+const END_AFTER = 1000;
 
 let state: FileDrag = { active: false, count: 0 };
 const listeners = new Set<() => void>();
