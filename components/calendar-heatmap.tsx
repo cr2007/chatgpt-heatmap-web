@@ -1,4 +1,11 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CalHeatmapDay, DayTitleBreakdown, Provider } from "@/lib/types";
 import {
   CELL,
@@ -11,6 +18,7 @@ import { providerInfo } from "@/lib/providers";
 import { cn, plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
 import { DayTooltip } from "@/components/day-details";
+import { playMorph } from "@/components/calendar-morph";
 
 /** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
 const HIDE_DELAY = 80;
@@ -107,6 +115,7 @@ export function CalendarHeatmap({
   const tipId = `${id ?? uid}-tip`;
   const [outerRef, panel] = useElementSize<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   /** The day whose details show, and where, relative to the grid. A tap
    *  keeps them open until the next tap. */
   const [tip, setTip] = useState<{
@@ -141,6 +150,11 @@ export function CalendarHeatmap({
       ? 1
       : parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
   const scale = fitScale(panel, layout, fixedHeight, maxScale * rem);
+  // A new view of the years plays the morph that the page prepared
+  // (components/calendar-morph.ts); without one it is a no-op.
+  useLayoutEffect(() => {
+    if (svgRef.current) playMorph(svgRef.current);
+  }, [startYear, endYear]);
   /** Each drawn day's readable name, made once per layout. */
   const names = useMemo(
     () =>
@@ -293,6 +307,7 @@ export function CalendarHeatmap({
       <div ref={containerRef} className="relative">
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the key handler moves the roving tab stop between the focusable cells */}
         <svg
+          ref={svgRef}
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
           role="group"
           aria-label={`Calendar heatmap of AI chat activity from ${startYear} to ${endYear}. Use the arrow keys to move between days.`}
@@ -306,6 +321,7 @@ export function CalendarHeatmap({
           {layout.labels.map((l) => (
             <text
               key={l.key}
+              data-key={l.key}
               x={l.x}
               y={l.y}
               className="fill-[#666] dark:fill-[#888]"

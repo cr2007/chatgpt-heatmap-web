@@ -336,6 +336,9 @@
 
 /* While an upload streams in: a short color fade, spread over 240 ms. */
 .heat-cell {
+  /* The year morph scales a cell around its own centre. */
+  transform-box: fill-box;
+  transform-origin: center;
   transition: fill 180ms var(--ease-out);
   transition-delay: calc(var(--t, 0) * 240ms);
 }

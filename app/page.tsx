@@ -13,6 +13,7 @@ import { Summary } from "@/components/summary";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 import { Welcome } from "@/components/welcome";
 import { YearTabs } from "@/components/year-tabs";
+import { prepareMorph } from "@/components/calendar-morph";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUpload } from "@/hooks/use-upload";
 import { useFoldPosture } from "@/hooks/use-fold-posture";
@@ -136,8 +137,9 @@ export default function Home() {
     setTimeZone(tz);
     setSweep((n) => n + 1);
   };
-  /** Picks a view and keeps it in the address. */
+  /** Picks a view and keeps it in the address; the calendar morphs to it. */
   function pickView(next: YearView) {
+    prepareMorph(document.querySelector("#calendar svg"));
     setPicked(next);
     history.replaceState(null, "", `#${next}`);
   }
