@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { buildIndex, searchZones, zoneList } from "./time-zones";
+import {
+  buildIndex,
+  distance,
+  nearestFirst,
+  placeOf,
+  searchZones,
+  zoneList,
+} from "./time-zones";
 
 describe("zoneList", () => {
   it("adds UTC and the computer's zone when the engine's list lacks them", () => {
@@ -48,6 +55,11 @@ describe("searchZones", () => {
     ["singapur", "Asia/Singapore"],
     ["jerusalm", "Asia/Jerusalem"],
     ["johanesburg", "Africa/Johannesburg"],
+    // Countries (Intl.DisplayNames from the tzdata country code).
+    ["india", "Asia/Kolkata"],
+    ["germany", "Europe/Berlin"],
+    ["united arab emirates", "Asia/Dubai"],
+    ["japan", "Asia/Tokyo"],
   ])("%s finds %s first", (q, zone) => {
     expect(first(q)).toBe(resolve(zone));
   });
@@ -71,5 +83,41 @@ describe("searchZones", () => {
   it("finds nothing for text that is no zone", () => {
     expect(searchZones(index, "zzzz")).toEqual([]);
     expect(searchZones(index, "Mars/Base")).toEqual([]);
+  });
+});
+
+describe("nearestFirst", () => {
+  const date = new Date(Date.UTC(2026, 0, 15));
+  /** Home zone, then the zones that must follow UTC, in order. The
+   *  neighbours are real: Dhaka is 245 km from Kolkata, Toronto 550 km
+   *  from New York (tzdata coordinates, 0.1 degree). */
+  it.each([
+    ["Asia/Dubai", ["Asia/Dubai", "Asia/Qatar", "Asia/Muscat", "Asia/Bahrain"]],
+    ["Asia/Kolkata", ["Asia/Kolkata", "Asia/Dhaka", "Asia/Thimphu"]],
+    [
+      "America/New_York",
+      ["America/New_York", "America/Toronto", "America/Detroit"],
+    ],
+    ["Europe/London", ["Europe/London", "Europe/Guernsey", "Europe/Jersey"]],
+  ] as const)("from %s", (home, after) => {
+    const resolve = (z: string) =>
+      new Intl.DateTimeFormat("en", { timeZone: z }).resolvedOptions().timeZone;
+    const list = nearestFirst(buildIndex(zoneList(home), date, home)).map(
+      (e) => e.zone,
+    );
+    expect(list.slice(0, after.length + 1)).toEqual(
+      ["UTC", ...after].map((z) => (z === "UTC" ? z : resolve(z))),
+    );
+  });
+
+  it("finds the place of a legacy name and measures in km", () => {
+    const kolkata = placeOf("Asia/Calcutta")!;
+    expect(kolkata.cc).toBe("IN");
+    // Kolkata to Dhaka by great circle: about 245 km.
+    expect(Math.round(distance(kolkata, placeOf("Asia/Dhaka")!))).toBeWithin(
+      235,
+      255,
+    );
+    expect(placeOf("UTC")).toBeUndefined();
   });
 });

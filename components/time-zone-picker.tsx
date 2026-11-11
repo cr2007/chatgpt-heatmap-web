@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, Globe } from "lucide-react";
 import { cn, plural } from "@/lib/utils";
 import {
   buildIndex,
+  nearestFirst,
   searchZones,
   zoneList,
   type ZoneEntry,
@@ -11,6 +12,9 @@ import {
 /** The search index, built once per visit (about 50 ms). */
 let index: ZoneEntry[] | undefined;
 const getIndex = () => (index ??= buildIndex(zoneList()));
+/** The list before a search: UTC, then the zones nearest the computer's. */
+let nearest: ZoneEntry[] | undefined;
+const getNearest = () => (nearest ??= nearestFirst(getIndex()));
 
 /** Space in px the list needs below the field before it opens upward. */
 const LIST_ROOM = 320;
@@ -24,7 +28,9 @@ const LIST_ROOM = 320;
  * Step 1: On focus, empty the field (the current zone stays as the
  *         placeholder) and open the list. Selecting the text instead fails
  *         in Safari: its mouseup moves the caret to the click point.
- * Step 2: Typing ranks the zones (lib/time-zones.ts); the best one is active.
+ * Step 2: Before any typing the list is UTC, then the zones nearest the
+ *         computer's zone, with the current zone active. Typing ranks the
+ *         zones (lib/time-zones.ts); the best one is active.
  * Step 3: Arrow keys move the active option, Enter or a click picks it,
  *         Escape or leaving the field keeps the current zone.
  */
@@ -62,14 +68,11 @@ export function TimeZonePicker({
     idle(() => getIndex());
   }, []);
 
-  // Step 2: an empty query lists the current zone first, then every zone.
+  // Step 2
   const results = useMemo(() => {
     if (!open) return [];
-    const all = getIndex();
-    if (query.trim()) return searchZones(all, query);
-    const current = all.find((e) => e.zone === timeZone);
-    return current ? [current, ...all.filter((e) => e !== current)] : all;
-  }, [open, query, timeZone]);
+    return query.trim() ? searchZones(getIndex(), query) : getNearest();
+  }, [open, query]);
 
   // Keep the active option in view while the arrow keys move it.
   useEffect(() => {
@@ -86,7 +89,12 @@ export function TimeZonePicker({
         window.innerHeight - box.bottom < LIST_ROOM &&
         box.top > LIST_ROOM,
     );
-    setActive(0);
+    setActive(
+      Math.max(
+        0,
+        getNearest().findIndex((e) => e.zone === timeZone),
+      ),
+    );
     setOpen(true);
   }
 
@@ -232,9 +240,11 @@ export function TimeZonePicker({
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                       {e.city}
                     </span>
-                    {e.area && (
+                    {/* The country, or the area for UTC; not twice for a
+                        city-state ("Qatar Qatar"). */}
+                    {(e.country || e.area) && e.country !== e.city && (
                       <span className="ml-1.5 text-zinc-600 dark:text-zinc-400">
-                        {e.area}
+                        {e.country || e.area}
                       </span>
                     )}
                     <span className="block truncate text-xs text-zinc-600 dark:text-zinc-400">

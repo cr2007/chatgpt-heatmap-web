@@ -24,7 +24,7 @@ A web application to visualize your ChatGPT and Claude conversation activity as 
 - Side-by-side color-coded heatmap: teal for ChatGPT, clay for Claude, a split for days with both; 4 shades per provider, set by the quartiles of your active days. The two ramps stay apart for people with red-green color blindness
 - Figures above the calendar: total prompts, active days, longest streak, busiest day and the split between providers, for all years or one year
 - The chats of any day: hover a day, tap it on a phone, or move with the arrow keys
-- Find your time zone by city, time name ("Pacific Time"), abbreviation ("IST") or offset ("+5:30"); small typos still match
+- Find your time zone by city, country, time name ("Pacific Time"), abbreviation ("IST") or offset ("+5:30"); small typos still match, and the zones nearest yours come first
 - Light and dark theme: follows your computer until you flip it with the theme button or the D key
 - Works on phones, tablets, laptops and large screens (a 4K screen at 1x scales up), and uses a half-open foldable as two screens: the calendar on one half, the figures and the chats of a day on the other
 - Built with React and [Tailwind CSS](https://tailwindcss.com/), with no UI component library

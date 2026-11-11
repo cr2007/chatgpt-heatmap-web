@@ -16,8 +16,11 @@
  *  the phone panel and the page drop overlay (11.3 kB); JS to 91 kB for
  *  citable ids and section headings (90.2 kB). CSS lowered to 11 kB when
  *  the fold layouts reused the flat parts (10.5 kB); JS stays at 91 kB for
- *  the star link (90.1 kB); JS to 92 kB for the year morph (91.3 kB). */
-const BUDGET = { js: 92_000, css: 11_000 } as const;
+ *  the star link (90.1 kB); JS to 92 kB for the year morph (91.3 kB); JS to 99 kB for
+ *  the tzdata places of 437 zones, which rank the nearest zones first and
+ *  find a zone by its country (98.2 kB; country names cost nothing, they
+ *  come from Intl.DisplayNames). */
+const BUDGET = { js: 99_000, css: 11_000 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

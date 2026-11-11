@@ -1,3 +1,5 @@
+import { ZONES } from "./zone-data";
+
 /** The computer's time zone, as the engine names it (Chromium may say "Asia/Calcutta"). */
 export const SYSTEM_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -13,6 +15,48 @@ export function zoneList(
   return [...new Set(["UTC", systemZone, ...supported])];
 }
 
+/** Where a zone is: its country code and its place in degrees (tzdata). */
+export interface Place {
+  cc: string;
+  lat: number;
+  lon: number;
+}
+let places: Map<string, Place> | undefined;
+/** The place of `zone` (lib/zone-data.ts), or undefined for UTC and Etc zones. */
+export function placeOf(zone: string): Place | undefined {
+  places ??= new Map(
+    ZONES.split("|").map((row) => {
+      const [z, cc, lat, lon] = row.split(" ");
+      return [z, { cc, lat: Number(lat), lon: Number(lon) }];
+    }),
+  );
+  return places.get(zone) ?? places.get(canonical(zone));
+}
+
+/** The engine's name for `zone` ("Asia/Calcutta" may become "Asia/Kolkata"). */
+function canonical(zone: string) {
+  try {
+    return new Intl.DateTimeFormat("en", { timeZone: zone }).resolvedOptions()
+      .timeZone;
+  } catch {
+    return zone;
+  }
+}
+
+/** Great-circle distance in km between two places (haversine). */
+export function distance(a: Place, b: Place): number {
+  const rad = Math.PI / 180;
+  const h =
+    Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 +
+    Math.cos(a.lat * rad) *
+      Math.cos(b.lat * rad) *
+      Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/** Distance for a zone with no place (UTC): after every placed zone. */
+const FAR = 1e9;
+
 /** One zone in the search index. */
 export interface ZoneEntry {
   zone: string;
@@ -20,6 +64,10 @@ export interface ZoneEntry {
   city: string;
   /** The zone name before the city: "Asia", "America/Argentina". */
   area: string;
+  /** "India" (English), or "" for UTC and Etc zones. */
+  country: string;
+  /** Distance in km from the home zone (the computer's), or FAR. */
+  km: number;
   /** "India Standard Time" (English, today's date). */
   long: string;
   /** "GMT+5:30" today. */
@@ -99,14 +147,21 @@ const labelMinutes = (label: string) => offsetQuery(label.toLowerCase()) ?? 0;
 
 /**
  * Builds the search index for `zones`, with the names and offsets of
- * `now`. It formats about 1,300 names (about 50 ms on a desktop), so the
- * picker builds it once, when the browser is idle or on first use.
+ * `now`, each zone's country (Intl.DisplayNames, so no names ship) and its
+ * distance from `home`. It formats about 1,300 names (about 50 ms on a
+ * desktop), so the picker builds it once, when the browser is idle or on
+ * first use.
  */
 export function buildIndex(
   zones: readonly string[],
   now = new Date(),
+  home = SYSTEM_ZONE,
 ): ZoneEntry[] {
+  const countries = new Intl.DisplayNames(["en"], { type: "region" });
+  const from = placeOf(home);
   return zones.map((zone) => {
+    const at = placeOf(zone);
+    const country = at ? (countries.of(at.cc) ?? "") : "";
     const name = (style: "long" | "longGeneric" | "shortOffset") =>
       new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: style })
         .formatToParts(now)
@@ -129,6 +184,8 @@ export function buildIndex(
       zone,
       city,
       area: parts.slice(0, -1).join("/").replaceAll("_", " "),
+      country,
+      km: at && from ? distance(from, at) : FAR,
       long,
       offset,
       minutes: labelMinutes(offset),
@@ -139,6 +196,7 @@ export function buildIndex(
         normalize(long),
         normalize(name("longGeneric")),
         city === place ? (renamed ?? "") : key,
+        normalize(country),
       ].filter(Boolean),
     };
   });
@@ -176,7 +234,8 @@ export function editDistance(a: string, b: string): number {
  *         that holds it. A query of 4+ letters may also match a city with
  *         1 typo (2 from 7 letters): score 4 plus the typos.
  * Step 4: Sort by score; a tie puts a widely used zone (one in the
- *         abbreviation table) first, then sorts by city.
+ *         abbreviation table) first, then the nearer zone, then sorts by
+ *         city.
  */
 export function searchZones(
   index: readonly ZoneEntry[],
@@ -190,16 +249,8 @@ export function searchZones(
   // (Ranked below with the other matches: score 1.)
 
   // Step 2
-  const resolve = (z: string) => {
-    try {
-      return new Intl.DateTimeFormat("en", { timeZone: z }).resolvedOptions()
-        .timeZone;
-    } catch {
-      return z;
-    }
-  };
-  const abbr = (ABBREVIATIONS[q] ?? []).map(resolve);
-  const common = new Set(Object.values(ABBREVIATIONS).flat().map(resolve));
+  const abbr = (ABBREVIATIONS[q] ?? []).map(canonical);
+  const common = new Set(Object.values(ABBREVIATIONS).flat().map(canonical));
   // Step 3
   const scored: [ZoneEntry, number][] = [];
   const typos = q.length >= 7 ? 2 : q.length >= 4 ? 1 : 0;
@@ -238,8 +289,23 @@ export function searchZones(
       (a, b) =>
         a[1] - b[1] ||
         Number(common.has(b[0].zone)) - Number(common.has(a[0].zone)) ||
+        a[0].km - b[0].km ||
         a[0].city.localeCompare(b[0].city),
     )
     .slice(0, limit)
     .map(([e]) => e);
+}
+
+/**
+ * The list before any search: UTC, then every zone by its distance from
+ * the computer's zone, nearest first (the computer's zone itself, then
+ * its neighbours). A zone with no place follows, by name.
+ */
+export function nearestFirst(index: readonly ZoneEntry[]): ZoneEntry[] {
+  return [...index].sort(
+    (a, b) =>
+      Number(b.zone === "UTC") - Number(a.zone === "UTC") ||
+      a.km - b.km ||
+      a.zone.localeCompare(b.zone),
+  );
 }
