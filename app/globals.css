@@ -447,436 +447,53 @@
   }
 }
 
-/* ── Layout primitives ─────────────────────────────────────────── */
-
-.layout-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100dvh;
-  gap: 2.5rem;
-  padding: 1.5rem 1.5rem 4rem;
-}
-
-.layout-stack .panel-form {
-  width: 100%;
-  max-width: 32rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-stack .panel-heatmap {
-  width: 100%;
-  max-width: min(90vw, 900px);
-}
-
-/* Portrait / narrow default for layout-split (same as stack) */
-.layout-split {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100dvh;
-  gap: 2.5rem;
-  padding: 1.5rem 1.5rem 4rem;
-}
-
-.layout-split .panel-form {
-  width: 100%;
-  max-width: 32rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-split .panel-heatmap {
-  width: 100%;
-  max-width: min(90vw, 900px);
-}
-
-/* ── Landscape side-by-side (640 px+) ──────────────────────────── */
-
-/* Same query as DESKTOP_SPLIT_QUERY in lib/layout.ts (a test keeps them equal). */
-@media (orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine) {
-  .layout-split {
-    display: grid;
-    grid-template-columns: clamp(320px, 36%, 420px) 1fr;
-    grid-template-rows: 100dvh;
-    height: 100dvh;
-    overflow: hidden;
-    gap: 0;
-    padding: 0;
-    align-items: stretch;
-  }
-
-  .layout-split .panel-form {
-    display: flex;
-    flex-direction: column;
-    padding: 1.75rem;
-    overflow-y: auto;
-    max-width: none;
-    border-right: 1px solid var(--panel-border);
-    scrollbar-width: thin;
-  }
-
-  /* The figures, the year tabs and the calendar scroll here; the
-     calendar fits the width, never the height (see fitScale). */
-  .layout-split .panel-heatmap {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 2rem;
-    overflow-y: auto;
-    max-width: none;
-    scrollbar-width: thin;
-  }
-
-  .layout-split.split-reversed .panel-form {
-    order: 1;
-    border-right: none;
-    border-left: 1px solid var(--panel-border);
-  }
-  .layout-split.split-reversed .panel-heatmap {
-    order: 0;
-  }
-}
-
-/* ── Foldable: portrait folded (book mode) ──────────────────────── */
-/* Portrait + folded: fold runs vertically, two panels side by side  */
-
-@media (device-posture: folded) and (orientation: portrait) {
-  .layout-split {
-    display: grid;
-    grid-template-columns:
-      env(viewport-segment-width 0 0, 50vw)
-      env(viewport-segment-width 1 0, 50vw);
-    grid-template-rows: 100dvh;
-    height: 100dvh;
-    overflow: hidden;
-    gap: 0;
-    padding: 0;
-    align-items: stretch;
-  }
-
-  .layout-split .panel-form {
-    display: flex;
-    flex-direction: column;
-    padding: 1.25rem 1.5rem;
-    overflow-y: auto;
-    max-width: none;
-    border-right: 1px solid var(--panel-border);
-    scrollbar-width: thin;
-  }
-
-  .layout-split .panel-heatmap {
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
-    padding: 0.75rem;
-    overflow: hidden;
-    max-width: none;
-  }
-
-  .layout-split.split-reversed .panel-form {
-    order: 1;
-    border-right: none;
-    border-left: 1px solid var(--panel-border);
-  }
-  .layout-split.split-reversed .panel-heatmap {
-    order: 0;
-  }
-}
-
-/* ── Foldable: landscape folded (tent / laptop mode) ────────────── */
-/* Landscape + folded: fold runs horizontally, heatmap top, form bottom */
-
-@media (device-posture: folded) and (orientation: landscape) {
-  .layout-split {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows:
-      env(viewport-segment-height 0 0, 50vh)
-      env(viewport-segment-height 0 1, 50vh);
-    height: 100dvh;
-    overflow: hidden;
-    gap: 0;
-    padding: 0;
-    align-items: stretch;
-    justify-items: stretch;
-  }
-
-  .layout-split .panel-form {
-    order: 2;
-    max-width: none;
-    width: 100%;
-    padding: 1rem 1.25rem;
-    overflow-y: auto;
-    border-right: none;
-    border-top: 1px solid var(--panel-border);
-    scrollbar-width: thin;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .layout-split .panel-heatmap {
-    order: 1;
-    max-width: none;
-    padding: 0.75rem;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
-  }
-}
-
-/* ── Book mode year nav (portrait folded, left panel) ───────────── */
-
-.book-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
-  margin-top: 0.75rem;
-  border-top: 1px solid var(--panel-border);
-}
-
-.book-nav .tent-years {
+/* Half-open foldables (components/fold-layout.tsx): one pane per screen
+   half, each scrolling on its own. The grid tracks are the viewport
+   segments, so the gap sits exactly on the hinge (0 on a seamless fold,
+   the hinge width on two screens). Before Chrome 138 the browser reports
+   no segments, and the fallbacks split the window in half. */
+.fold-layout {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  max-width: none;
-}
-
-.book-nav .tent-year-btn {
-  width: 100%;
-  text-align: center;
-}
-
-/* Tent mode, no data: push form into the bottom half so it never crosses the fold */
-@media (device-posture: folded) and (orientation: landscape) {
-  .layout-split.split-no-data .panel-form {
-    grid-row: 2;
-  }
-}
-
-/* ── Upload form grid ──────────────────────────────────────────── */
-/* A folded panel is genuinely constrained (a phone-width half-screen, or a
-   wide-but-short bar), so it's worth packing sections side by side there.
-   A regular, non-folded browser window - whether the centered stack card
-   or the landscape-split sidebar - is typically tall and narrow-ish rather
-   than short and wide, so it makes more sense to stack sections vertically
-   and let each one use the width it has, instead of forcing a fixed-width
-   row and leaving the rest of the card's height empty. */
-
-#main-content,
-.tent-bottom__form {
-  container-type: inline-size;
-}
-
-/* Fill whatever vertical room .panel-form has (header + book-nav permitting)
-   instead of sitting at natural content height with dead space below. */
-.panel-form #main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.form-grid {
-  display: grid;
-  width: 100%;
-  gap: 1rem;
-  grid-template-columns: 1fr;
-  grid-template-areas:
-    "upload"
-    "info"
-    "tz";
-}
-
-.form-grid__upload {
-  grid-area: upload;
-  min-width: 0;
-  min-height: 0;
-}
-.form-grid__info {
-  grid-area: info;
-  min-width: 0;
-}
-.form-grid__tz {
-  grid-area: tz;
-  min-width: 0;
-}
-
-/* Give the dropzone real presence in the default vertical stack, where it
-   has its own row and the card has vertical space to spare. A smaller
-   floor on short/narrow screens (phones) keeps the whole form - and,
-   once data exists, the heatmap below it - from needing a long scroll;
-   the full 240px floor only kicks in once there's room to spare (roughly
-   a phone in landscape or larger). Reset to 0 in folded panels - there it
-   shares its grid area with the info/tz columns via `h-full` (book mode's
-   2-row span, tent mode's single row), and a fixed floor on top of that
-   stretch can force the panel to overflow. */
-.form-grid__upload label {
-  min-height: 140px;
-}
-
-@media (min-width: 480px) {
-  .form-grid__upload label {
-    min-height: 240px;
-  }
-}
-
-@media (device-posture: folded) {
-  .form-grid__upload label {
-    min-height: 0;
-  }
-}
-
-/* Default to the plain always-on export steps; swap to compact tap-to-expand
-   cards only inside a folded, genuinely cramped panel. */
-.form-grid__info-compact {
-  display: none;
-}
-.form-grid__info-expanded {
-  display: flex;
-}
-
-@media (device-posture: folded) {
-  .form-grid {
-    /* minmax(0, 1fr), not plain 1fr: a bare 1fr track keeps an automatic
-       min size equal to its content's min-content width, so a wide badge
-       or button in one column can force the other column past its fair
-       share and off the edge of a narrow card. minmax(0, 1fr) lets both
-       columns actually shrink to fit. */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "upload info"
-      "upload tz";
-  }
-
-  /* Book mode's half-screen stays compact by default; only swap back to
-     the expanded text once a folded panel is wide enough to spare it
-     (tent mode's much wider bottom bar). */
-  .form-grid__info-expanded {
-    display: none;
-  }
-
-  @container (min-width: 500px) {
-    .form-grid__info-compact {
-      display: none;
-    }
-    .form-grid__info-expanded {
-      display: flex;
-    }
-  }
-
-  @container (min-width: 620px) {
-    .form-grid {
-      grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.4fr) minmax(
-          200px,
-          1fr
-        );
-      grid-template-areas: "upload info tz";
-      column-gap: 2rem;
-    }
-  }
-}
-
-/* ── Tent mode bottom panel ─────────────────────────────────────── */
-
-.tent-bottom {
-  display: flex;
-  gap: 1rem;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
-
-.tent-bottom__form {
-  flex: 1;
+.fold-layout[data-posture="book"] {
+  grid-template-columns:
+    env(viewport-segment-width 0 0, 1fr)
+    env(viewport-segment-width 1 0, 1fr);
+  column-gap: calc(
+    env(viewport-segment-left 1 0, 50vw) - env(viewport-segment-right 0 0, 50vw)
+  );
+}
+.fold-layout[data-posture="tent"] {
+  grid-template-rows:
+    env(viewport-segment-height 0 0, 1fr)
+    env(viewport-segment-height 0 1, 1fr);
+  row-gap: calc(
+    env(viewport-segment-top 0 1, 50dvh) -
+      env(viewport-segment-bottom 0 0, 50dvh)
+  );
+}
+/* Book: controls on the left unless swapped; tent: controls on the bottom. */
+.fold-layout[data-posture="tent"] > .fold-pane-controls,
+.fold-layout[data-swap] > .fold-pane-controls {
+  order: 1;
+}
+.fold-pane {
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
-
-.tent-bottom__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 0.5rem 0.5rem 0;
-  flex-shrink: 0;
+/* Tent: the bottom half is wide and short, so the day pane sits beside the
+   figures and the tabs instead of under them, where it would need a scroll. */
+.fold-layout[data-posture="tent"] #main-content {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
 }
-
-.tent-years {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-  max-width: 16rem;
-}
-
-.tent-year-btn {
-  padding: 0.375rem 0.875rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--panel-border);
-  background: transparent;
-  color: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
-  white-space: nowrap;
-}
-
-.tent-year-btn:hover {
-  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
-  border-color: var(--color-accent);
-}
-
-.tent-year-btn.tent-year-active {
-  /* White text needs the fill token (4.5:1), not the plain accent. */
-  background: var(--color-accent-fill);
-  border-color: var(--color-accent-fill);
-  color: #fff;
-}
-
-.tent-year-btn:focus-visible,
-.tent-arrow-btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.tent-arrows {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.tent-arrow-btn {
-  flex: 1;
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--panel-border);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s;
-}
-
-.tent-arrow-btn:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
-  border-color: var(--color-accent);
-}
-
-.tent-arrow-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
+.fold-layout[data-posture="tent"] #day-pane {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }

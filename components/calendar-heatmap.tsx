@@ -1,11 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CalHeatmapDay, DayTitleBreakdown, Provider } from "@/lib/types";
 import {
   CELL,
@@ -17,7 +10,7 @@ import {
 import { providerInfo } from "@/lib/providers";
 import { cn, plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
-import { DayTooltip } from "@/components/day-tooltip";
+import { DayTooltip } from "@/components/day-details";
 
 /** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
 const HIDE_DELAY = 80;
@@ -75,6 +68,9 @@ export interface CalendarHeatmapProps {
   maxScale?: number;
   /** Id of the root; the day details get `${id}-tip`. */
   id?: string;
+  /** Half-open foldables: show the day details in this pane (DayPane) in
+   *  place of a floating card. `onPick` gets each picked day. */
+  pane?: { id: string; onPick: (day: string | null) => void };
 }
 
 /**
@@ -89,7 +85,8 @@ export interface CalendarHeatmapProps {
  *         date order (see app/globals.css).
  * Step 4: Show the day details: on hover at the cursor; on keyboard focus
  *         or a tap at the cell. One cell is in the tab order (a roving
- *         tab stop); the arrow keys move by day and by week.
+ *         tab stop); the arrow keys move by day and by week. With `pane`,
+ *         the details go to the pane and stay until the next pick.
  */
 export function CalendarHeatmap({
   data,
@@ -104,6 +101,7 @@ export function CalendarHeatmap({
   fixedHeight = false,
   maxScale = 1,
   id,
+  pane,
 }: CalendarHeatmapProps) {
   const uid = useId().replace(/:/g, "");
   const tipId = `${id ?? uid}-tip`;
@@ -123,6 +121,11 @@ export function CalendarHeatmap({
   const [active, setActive] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
+  /** Sets the shown day, and tells the pane when there is one. */
+  function show(next: typeof tip) {
+    setTip(next);
+    pane?.onPick(next?.day ?? null);
+  }
 
   // Step 1
   // Keyed on the years: the page passes new Date objects on each render.
@@ -178,27 +181,28 @@ export function CalendarHeatmap({
   );
 
   // Step 4: leaving waits a moment, so moving to the next cell updates the
-  // open tooltip instead of reopening it.
-  const handleEnter = useCallback((e: React.PointerEvent, day: string) => {
+  // open tooltip instead of reopening it. A pane keeps the last day.
+  function handleEnter(e: React.PointerEvent, day: string) {
     if (e.pointerType !== "mouse" || !containerRef.current) return;
     clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
-    setTip({ day, x: e.clientX - b.left, y: e.clientY - b.top });
-  }, []);
-  const handleLeave = useCallback(() => {
+    show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
+  }
+  function handleLeave() {
+    if (pane) return;
     hideTimer.current = setTimeout(
       () => setTip((t) => (t?.tap ? t : null)),
       HIDE_DELAY,
     );
-  }, []);
+  }
 
   /** Shows the details of `day` under its cell (keyboard focus or a tap). */
   function showAtCell(day: string, cell: Element, tap = false) {
     const box = containerRef.current?.getBoundingClientRect();
-    if (!box || !data[day]) return setTip(null);
+    if (!box || !data[day]) return show(null);
     clearTimeout(hideTimer.current);
     const c = cell.getBoundingClientRect();
-    setTip({
+    show({
       day,
       x: c.left + c.width / 2 - box.left,
       y: c.bottom - box.top,
@@ -211,7 +215,7 @@ export function CalendarHeatmap({
   function onKeyDown(e: React.KeyboardEvent<SVGSVGElement>) {
     const day = (e.target as Element).getAttribute("data-day");
     if (!day) return;
-    if (e.key === "Escape") return setTip(null);
+    if (e.key === "Escape") return show(null);
     const along = vertical
       ? ["ArrowLeft", "ArrowRight"]
       : ["ArrowUp", "ArrowDown"];
@@ -241,15 +245,15 @@ export function CalendarHeatmap({
       ?.focus();
   }
 
-  // A tap outside the calendar closes details that a tap opened.
+  // A tap outside the calendar closes details that a tap opened (a pane keeps them).
   useEffect(() => {
-    if (!tip?.tap) return;
+    if (!tip?.tap || pane) return;
     const close = (e: PointerEvent) => {
       if (!(e.target as Element).closest?.("[data-day]")) setTip(null);
     };
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
-  }, [tip?.tap]);
+  }, [tip?.tap, pane]);
 
   /** The shade class of a day: one provider's level, none for a day with
    *  both (its gradient fill sets the colors), empty, or hollow when the day
@@ -351,7 +355,7 @@ export function CalendarHeatmap({
                 onBlur={handleLeave}
                 onPointerUp={(e) => {
                   if (e.pointerType === "mouse") return;
-                  if (tip?.tap && tip.day === day) setTip(null);
+                  if (tip?.tap && tip.day === day && !pane) show(null);
                   else showAtCell(day, e.currentTarget, true);
                 }}
                 // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
@@ -362,13 +366,15 @@ export function CalendarHeatmap({
                   claude,
                   outside,
                 )}
-                aria-describedby={tip?.day === day ? tipId : undefined}
+                aria-describedby={
+                  tip?.day === day ? (pane?.id ?? tipId) : undefined
+                }
               />
             );
           })}
         </svg>
 
-        {tip && data[tip.day] && (
+        {!pane && tip && data[tip.day] && (
           <DayTooltip
             id={tipId}
             day={tip.day}

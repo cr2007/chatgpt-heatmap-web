@@ -121,7 +121,7 @@ export function TimeZonePicker({
       className={
         inline
           ? "flex flex-wrap items-center gap-x-2 gap-y-1"
-          : "form-grid__tz flex flex-col gap-2"
+          : "flex flex-col gap-2"
       }
     >
       <label

@@ -17,7 +17,8 @@ const GAP = 8;
  *         the share read.
  * Step 2: The help button opens a native popover (top layer, Escape and an
  *         outside click close it). Before it opens, it is placed under the
- *         button, right edges aligned, inside the window.
+ *         button, right edges aligned, inside the button's fold pane (or
+ *         the window), so it never lies across a fold.
  */
 export function AddExport({
   progress,
@@ -42,9 +43,12 @@ export function AddExport({
   function place(e: React.ToggleEvent<HTMLDivElement>) {
     if (e.newState !== "open" || !help.current) return;
     const b = help.current.getBoundingClientRect();
+    const pane = help.current.closest(".fold-pane")?.getBoundingClientRect();
+    const [left, right] = pane ? [pane.left, pane.right] : [0, innerWidth];
     const el = e.currentTarget;
     el.style.top = `${b.bottom + GAP}px`;
-    el.style.right = `${Math.max(GAP, innerWidth - b.right)}px`;
+    el.style.right = `${innerWidth - Math.min(b.right, right - GAP)}px`;
+    el.style.maxWidth = `${right - left - 2 * GAP}px`;
   }
 
   return (

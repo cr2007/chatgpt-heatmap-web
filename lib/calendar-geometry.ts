@@ -221,7 +221,7 @@ export function layoutCalendar(
 /**
  * The scale that fits a calendar of `layout` size into its panel.
  *
- * In the split and fold layouts the panel has a fixed height, so the
+ * In the fold layouts the panel has a fixed height, so the
  * calendar fits both sides and may grow. Where the page scrolls, the panel
  * height comes from the calendar itself; using it would let a short narrow
  * moment (a phone rotation, a window resize) shrink the calendar for good.

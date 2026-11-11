@@ -1,54 +1,44 @@
 import { describe, it, expect } from "bun:test";
-import {
-  DESKTOP_SPLIT_QUERY,
-  getHeatmapOrientation,
-  getLayoutClassName,
-  pickYearView,
-} from "./layout";
+import { foldPosture, getHeatmapOrientation, pickYearView } from "./layout";
 
 describe("getHeatmapOrientation", () => {
   it.each([
-    ["tent mode, not desktop-split", true, false, false, "horizontal"],
-    ["tent mode, desktop-split", true, false, true, "horizontal"],
-    ["book mode, not desktop-split", false, true, false, "vertical"],
-    ["book mode, desktop-split", false, true, true, "vertical"],
-    ["wide desktop-split grid", false, false, true, "horizontal"],
-    ["plain stack (mobile, narrow window)", false, false, false, "vertical"],
-  ] as const)(
-    "%s",
-    (_name, isTentMode, isBookMode, isDesktopSplit, expected) => {
-      expect(
-        getHeatmapOrientation({ isTentMode, isBookMode, isDesktopSplit }),
-      ).toBe(expected);
-    },
-  );
-});
-
-describe("getLayoutClassName", () => {
-  it.each([
-    ["no data, not folded", false, false, false, "layout-stack"],
-    ["data loaded", true, false, false, "layout-split"],
-    ["folded without data", false, true, false, "layout-split split-no-data"],
-    ["data and formOnRight", true, false, true, "layout-split split-reversed"],
-    [
-      "formOnRight ignored without data",
-      false,
-      true,
-      true,
-      "layout-split split-no-data",
-    ],
-    ["folded with data drops split-no-data", true, true, false, "layout-split"],
-  ] as const)("%s", (_name, hasData, isFolded, formOnRight, expected) => {
-    expect(getLayoutClassName({ hasData, isFolded, formOnRight })).toBe(
-      expected,
-    );
+    ["tent posture", "tent", false, "horizontal"],
+    ["book posture", "book", true, "vertical"],
+    ["desktop window", undefined, true, "horizontal"],
+    ["phone or narrow window", undefined, false, "vertical"],
+  ] as const)("%s", (_name, posture, isDesktop, expected) => {
+    expect(getHeatmapOrientation({ posture, isDesktop })).toBe(expected);
   });
 });
 
-describe("DESKTOP_SPLIT_QUERY", () => {
-  it("matches the media query in app/globals.css", async () => {
-    const css = await Bun.file(`${import.meta.dir}/../app/globals.css`).text();
-    expect(css).toContain(`@media ${DESKTOP_SPLIT_QUERY} {`);
+describe("foldPosture", () => {
+  /** Two halves of a 744x860 Galaxy Z Fold 6 inner screen (DevTools sizes). */
+  const sideBySide = [
+    { x: 0, y: 0, width: 372, height: 860 },
+    { x: 372, y: 0, width: 372, height: 860 },
+  ];
+  const stacked = [
+    { x: 0, y: 0, width: 860, height: 372 },
+    { x: 0, y: 372, width: 860, height: 372 },
+  ];
+  /** Surface Duo: two screens and a 34 px hinge, side by side in a landscape window. */
+  const duo = [
+    { x: 0, y: 0, width: 540, height: 720 },
+    { x: 574, y: 0, width: 540, height: 720 },
+  ];
+  const one = [{ x: 0, y: 0, width: 744, height: 860 }];
+  it.each([
+    ["segments side by side, folded", sideBySide, true, true, "book"],
+    ["segments stacked, folded", stacked, true, false, "tent"],
+    ["two screens side by side in landscape", duo, false, false, "book"],
+    ["a seamless fold lying flat", sideBySide, false, true, undefined],
+    ["one segment, even when folded", one, true, true, undefined],
+    ["no segments API, folded portrait", undefined, true, true, "book"],
+    ["no segments API, folded landscape", undefined, true, false, "tent"],
+    ["no segments API, not folded", undefined, false, true, undefined],
+  ] as const)("%s", (_name, segments, folded, portrait, expected) => {
+    expect(foldPosture(segments, folded, portrait)).toBe(expected);
   });
 });
 

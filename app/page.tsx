@@ -1,40 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeatMapForm } from "@/components/heatMapForm";
-import { CalendarHeatmap } from "@/components/calendar-heatmap";
-import { SiteLinks } from "@/components/site-links";
-import { Welcome } from "@/components/welcome";
-import { Summary } from "@/components/summary";
-import { YearTabs } from "@/components/year-tabs";
-import { HeatLegend } from "@/components/heat-legend";
-import { summarize } from "@/lib/stats";
-import { YearNav } from "@/components/year-nav";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { useUpload } from "@/hooks/use-upload";
+import { ArrowLeftRight } from "lucide-react";
+import { AddExport } from "@/components/add-export";
 import { AppBar } from "@/components/app-bar";
+import { CalendarHeatmap } from "@/components/calendar-heatmap";
+import { DayPane } from "@/components/day-details";
 import { ExportChips } from "@/components/export-chips";
 import { ExportPanel } from "@/components/export-panel";
-import { AddExport } from "@/components/add-export";
+import { FoldLayout } from "@/components/fold-layout";
+import { HeatLegend } from "@/components/heat-legend";
 import { PageDrop } from "@/components/page-drop";
+import { Summary } from "@/components/summary";
 import { TimeZonePicker } from "@/components/time-zone-picker";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Welcome } from "@/components/welcome";
+import { YearTabs } from "@/components/year-tabs";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { useUpload } from "@/hooks/use-upload";
+import { useFoldPosture } from "@/hooks/use-fold-posture";
+import { aggregateDateData } from "@/lib/aggregate";
 import {
-  DESKTOP_SPLIT_QUERY,
-  FOLDED_PORTRAIT_QUERY,
-  FOLDED_LANDSCAPE_QUERY,
+  DESKTOP_QUERY,
   WIDE_BAR_QUERY,
   getHeatmapOrientation,
-  getLayoutClassName,
   pickYearView,
   type YearView,
 } from "@/lib/layout";
-import { aggregateDateData } from "@/lib/aggregate";
-import type { Exports as PartialExports } from "@/lib/upload";
-import type { Provider } from "@/lib/types";
+import { summarize } from "@/lib/stats";
 import { SYSTEM_ZONE } from "@/lib/time-zones";
+import type { Provider } from "@/lib/types";
+import type { Exports as PartialExports } from "@/lib/upload";
 import { loadTestData, type Exports } from "@/app/dev-data";
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
+/** localStorage key: book posture with the controls on the right. */
+const SWAP_KEY = "fold-swap";
 
 /** The view in the address (#all or #2025), so a view can be shared and kept. */
 function readView(): YearView | null {
@@ -43,23 +42,24 @@ function readView(): YearView | null {
 }
 
 /**
- * Root page: owns the loaded exports, an upload in progress, the time zone
- * and the year picker, and picks the layout (plain stack, desktop split,
- * book or tent).
+ * Root page: owns the loaded exports, an upload in progress, the time zone,
+ * the year view and the picked day, and arranges the screen for the window
+ * and the foldable posture.
  *
- * Step 1: Hold the state: exports, the streaming partial, the time zone and
- *         the sweep counter, the panel side and the picked year.
+ * Step 1: Hold the state. All that a fold or an unfold must keep (the view,
+ *         the time zone, the picked day) lives here, so a posture change
+ *         keeps it.
  * Step 2: Aggregate the exports; while an upload streams, its partial
  *         result stands in for its provider, so the heatmap fills in.
- * Step 3: Wire the form: a new upload clears the sweep, a time zone change
- *         starts one.
- * Step 4: Pick the year to show, the heatmap orientation and the layout class.
- * Step 5: Outside the fold layouts: the welcome screen while nothing is
- *         loaded, else the top bar (the exports, Add export, the time zone),
- *         the figures, the year tabs and the calendar. A file dragged
- *         anywhere over the page shows one drop target.
- * Step 6: Fold layouts: the form panel, the heatmap panel and the year
- *         navigation.
+ * Step 3: Build the parts once: the top bar, the figures, the year tabs and
+ *         the legend, the calendar.
+ * Step 4: Arrange them:
+ *   Step 4.1: Nothing loaded: the welcome screen.
+ *   Step 4.2: A half-open foldable: the bar, the figures, the tabs and the
+ *             day pane on one screen half, the calendar on the other.
+ *   Step 4.3: Otherwise: the bar, then the figures, the tabs and the
+ *             calendar at full width.
+ *   A file dragged anywhere over a loaded page shows one drop target.
  */
 export default function Home() {
   // Step 1
@@ -69,23 +69,28 @@ export default function Home() {
   /** Counts time zone changes since the last upload; each one runs the heatmap sweep. */
   const [sweep, setSweep] = useState(0);
   const [timeZone, setTimeZone] = useState(SYSTEM_ZONE);
-  /** Book mode only: swaps which side the form sits on. Persisted. */
-  const [formOnRight, setFormOnRight] = useState(() => {
+  /** The view picked with the year tabs; null means the default for the layout. */
+  const [picked, setPicked] = useState<YearView | null>(readView);
+  /** The day in the day pane (half-open foldables). */
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
+  /** Book posture: the controls on the right. Kept across visits. */
+  const [swapped, setSwapped] = useState(() => {
     try {
-      return localStorage.getItem("form-on-right") === "true";
+      return localStorage.getItem(SWAP_KEY) === "true";
     } catch {
       return false;
     }
   });
-  /** Year the user picked in book/tent mode; null means the latest year. */
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  /** The view picked with the year tabs; null means the default for the layout. */
-  const [picked, setPicked] = useState<YearView | null>(readView);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SWAP_KEY, String(swapped));
+    } catch {}
+  }, [swapped]);
 
-  const isBookMode = useMediaQuery(FOLDED_PORTRAIT_QUERY);
-  const isTentMode = useMediaQuery(FOLDED_LANDSCAPE_QUERY);
-  const isDesktopSplit = useMediaQuery(DESKTOP_SPLIT_QUERY);
-  const isWideBar = useMediaQuery(WIDE_BAR_QUERY);
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const posture = useFoldPosture();
+  // A fold pane is half the window: the full bar needs the whole width.
+  const isWideBar = useMediaQuery(WIDE_BAR_QUERY) && !posture;
 
   // Step 2
   const agg = useMemo(() => {
@@ -102,101 +107,34 @@ export default function Home() {
     () => dataYears.map((y) => (agg && summarize(agg.data, y)?.total) || 0),
     [agg, dataYears],
   );
-
-  // Persist the book-mode panel-swap preference.
-  useEffect(() => {
-    try {
-      localStorage.setItem("form-on-right", String(formOnRight));
-    } catch {}
-  }, [formOnRight]);
-
-  const hasData =
-    exports.chatgpt !== null || exports.claude !== null || agg !== null;
-  const isFolded = isBookMode || isTentMode;
+  const view = pickYearView(picked, dataYears, isDesktop);
+  const viewStats = useMemo(
+    () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
+    [agg, allStats, view],
+  );
 
   /** Adds new exports, keeping a provider the upload did not include. */
   const loadExports = (next: Partial<Exports>) =>
     setExports((prev) => ({ ...prev, ...next }));
   const clearExport = (provider: Provider) =>
     setExports((prev) => ({ ...prev, [provider]: null }));
-
-  // Step 3: props shared by the sidebar form and tent mode's bottom-bar form.
-  const formProps = {
-    loaded: {
-      chatgpt: exports.chatgpt && {
-        name: exports.chatgpt.name,
-        count: exports.chatgpt.chats.length,
-      },
-      claude: exports.claude && {
-        name: exports.claude.name,
-        count: exports.claude.chats.length,
-      },
-    },
-    onLoad: loadExports,
-    onStream: (partial: PartialExports | null) => {
-      setStreaming(partial);
-      if (partial) setSweep(0); // new data fades in, without the sweep
-    },
-    onClear: clearExport,
-    timeZone,
-    setTimeZone: (tz: string) => {
-      if (tz === timeZone) return;
-      setTimeZone(tz);
-      setSweep((n) => n + 1);
-    },
+  /** A streaming upload's partial result; new data fades in, without the sweep. */
+  const onStream = (partial: PartialExports | null) => {
+    setStreaming(partial);
+    if (partial) setSweep(0);
   };
-
-  const upload = useUpload({
-    onLoad: formProps.onLoad,
-    onStream: formProps.onStream,
-  });
-  const loadedKeys = (["chatgpt", "claude"] as const).filter(
-    (p) => formProps.loaded[p],
-  );
-
-  // Step 4: a picked year that the data no longer has falls back to the latest year.
-  const activeYear =
-    selectedYear !== null && dataYears.includes(selectedYear)
-      ? selectedYear
-      : (dataYears[dataYears.length - 1] ?? null);
-  const activeViewFrom =
-    activeYear != null ? new Date(activeYear, 0, 1) : undefined;
-  const activeViewTo =
-    activeYear != null ? new Date(activeYear, 11, 31) : undefined;
-
-  /** Moves the picked year by `delta` places in the data's years, within bounds. */
-  function stepYear(delta: number) {
-    if (activeYear == null) return;
-    const next = dataYears[dataYears.indexOf(activeYear) + delta];
-    if (next !== undefined) setSelectedYear(next);
-  }
-
-  const view = pickYearView(picked, dataYears, isDesktopSplit);
-  const viewStats = useMemo(
-    () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
-    [agg, allStats, view],
-  );
+  /** A new time zone runs the sweep over the calendar. */
+  const changeTimeZone = (tz: string) => {
+    if (tz === timeZone) return;
+    setTimeZone(tz);
+    setSweep((n) => n + 1);
+  };
   /** Picks a view and keeps it in the address. */
   function pickView(next: YearView) {
     setPicked(next);
     history.replaceState(null, "", `#${next}`);
   }
-
-  const useVerticalHeatmap =
-    getHeatmapOrientation({ isTentMode, isBookMode, isDesktopSplit }) ===
-    "vertical";
-  const layoutClass = getLayoutClassName({ hasData, isFolded, formOnRight });
-
-  /** Shared between book mode's below-form nav and tent mode's beside-form nav. */
-  const yearNav = (
-    <YearNav
-      years={dataYears}
-      activeYear={activeYear}
-      onSelectYear={setSelectedYear}
-      onPrevYear={() => stepYear(-1)}
-      onNextYear={() => stepYear(1)}
-    />
-  );
+  const upload = useUpload({ onLoad: loadExports, onStream });
 
   const background = (
     <>
@@ -205,232 +143,231 @@ export default function Home() {
     </>
   );
 
-  // Step 5
-  if (!isFolded && !hasData)
+  // Step 4.1
+  const hasData =
+    exports.chatgpt !== null || exports.claude !== null || agg !== null;
+  if (!hasData)
     return (
       <div className="relative">
         {background}
         <Welcome
-          onLoad={formProps.onLoad}
-          onStream={formProps.onStream}
+          onLoad={loadExports}
+          onStream={onStream}
           timeZone={timeZone}
-          setTimeZone={formProps.setTimeZone}
+          setTimeZone={changeTimeZone}
+          fold={posture}
         />
       </div>
     );
-  if (!isFolded)
+
+  // Step 3
+  const loaded = {
+    chatgpt: exports.chatgpt && {
+      name: exports.chatgpt.name,
+      count: exports.chatgpt.chats.length,
+    },
+    claude: exports.claude && {
+      name: exports.claude.name,
+      count: exports.claude.chats.length,
+    },
+  };
+  const bar = (
+    <AppBar
+      progress={upload.progress}
+      uploads={upload.uploads}
+      below={
+        !isWideBar && (
+          <ExportPanel
+            loaded={loaded}
+            onClear={clearExport}
+            progress={upload.progress}
+            onFiles={upload.processFiles}
+            timeZone={timeZone}
+            setTimeZone={changeTimeZone}
+          />
+        )
+      }
+    >
+      {isWideBar && (
+        <>
+          <ExportChips loaded={loaded} onClear={clearExport} />
+          <AddExport
+            progress={upload.progress}
+            onFiles={upload.processFiles}
+            loaded={(["chatgpt", "claude"] as const).filter((p) => loaded[p])}
+          />
+          <div className="ml-auto">
+            <TimeZonePicker
+              id="bar"
+              inline
+              label="Time zone"
+              timeZone={timeZone}
+              setTimeZone={changeTimeZone}
+            />
+          </div>
+        </>
+      )}
+      {posture === "book" && (
+        <button
+          type="button"
+          id="swap-sides"
+          onClick={() => setSwapped((v) => !v)}
+          aria-label="Swap the screen halves"
+          title="Swap the screen halves"
+          className="ml-auto inline-grid size-9 shrink-0 place-items-center rounded-md text-zinc-500 transition-[background-color,color,scale] duration-(--dur-micro) ease-out hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.94] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+        >
+          <ArrowLeftRight aria-hidden="true" className="size-4" />
+        </button>
+      )}
+    </AppBar>
+  );
+  const ready = agg && viewStats && allStats;
+  const vertical = getHeatmapOrientation({ posture, isDesktop }) === "vertical";
+  const figures = ready && (
+    <Summary
+      stats={viewStats}
+      year={view === "all" ? null : view}
+      timeZone={timeZone}
+    />
+  );
+  const controls = ready && (
+    <div
+      id="calendar-controls"
+      className="flex flex-wrap items-center justify-between gap-3"
+    >
+      <YearTabs
+        years={dataYears}
+        totals={yearTotals}
+        view={view}
+        onView={pickView}
+      />
+      <HeatLegend
+        edges={agg.edges}
+        providers={[
+          ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
+          ...(allStats.claude ? (["claude"] as const) : []),
+        ]}
+      />
+    </div>
+  );
+  const calendar = ready && (
+    <CalendarHeatmap
+      id="calendar"
+      data={agg.data}
+      dayTitles={agg.dayTitles}
+      edges={agg.edges}
+      from={view === "all" ? agg.from : new Date(view, 0, 1)}
+      to={view === "all" ? agg.to : new Date(view, 11, 31)}
+      firstDay={allStats.span.from}
+      lastDay={allStats.span.to}
+      vertical={vertical}
+      maxScale={vertical ? (view === "all" ? 1 : 1.6) : 1.3}
+      fixedHeight={posture !== undefined}
+      sweep={sweep}
+      pane={posture && { id: "day-pane", onPick: setPickedDay }}
+    />
+  );
+  const empty = (
+    <p className="py-24 text-center text-sm text-zinc-500 dark:text-zinc-400">
+      No prompts found in this export
+    </p>
+  );
+  const drop = (
+    <PageDrop
+      progress={upload.progress}
+      uploads={upload.uploads}
+      onFiles={upload.processFiles}
+    />
+  );
+
+  // Step 4.2
+  if (posture)
     return (
-      <div className="relative min-h-dvh">
+      <div className="relative">
         {background}
-        <AppBar
-          progress={upload.progress}
-          uploads={upload.uploads}
-          below={
-            !isWideBar && (
-              <ExportPanel
-                loaded={formProps.loaded}
-                onClear={clearExport}
-                progress={upload.progress}
-                onFiles={upload.processFiles}
-                timeZone={timeZone}
-                setTimeZone={formProps.setTimeZone}
-              />
-            )
-          }
-        >
-          {isWideBar && (
+        <FoldLayout
+          posture={posture}
+          swap={swapped}
+          controls={
             <>
-              <ExportChips loaded={formProps.loaded} onClear={clearExport} />
-              <AddExport
-                progress={upload.progress}
-                onFiles={upload.processFiles}
-                loaded={loadedKeys}
-              />
-              <div className="ml-auto">
-                <TimeZonePicker
-                  id="bar"
-                  inline
-                  label="Time zone"
-                  timeZone={timeZone}
-                  setTimeZone={formProps.setTimeZone}
-                />
-              </div>
-            </>
-          )}
-        </AppBar>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          aria-busy={streaming !== null}
-          className="mx-auto flex w-full max-w-6xl animate-fade-slide-up flex-col gap-5 px-5 pt-8 pb-16 outline-hidden sm:px-8"
-        >
-          {agg && viewStats && allStats ? (
-            <>
-              <Summary
-                stats={viewStats}
-                year={view === "all" ? null : view}
-                timeZone={timeZone}
-              />
-              <section
-                id="calendar-section"
-                aria-labelledby="calendar-title"
-                className="flex flex-col gap-5"
+              {bar}
+              <main
+                id="main-content"
+                tabIndex={-1}
+                aria-busy={streaming !== null}
+                className="flex flex-col gap-5 px-5 pt-6 pb-8 outline-hidden"
               >
-                <h2 id="calendar-title" className="sr-only">
-                  Prompts per day
-                </h2>
-                <div
-                  id="calendar-controls"
-                  className="flex flex-wrap items-center justify-between gap-3"
-                >
-                  <YearTabs
-                    years={dataYears}
-                    totals={yearTotals}
-                    view={view}
-                    onView={pickView}
-                  />
-                  <HeatLegend
-                    edges={agg.edges}
-                    providers={[
-                      ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
-                      ...(allStats.claude ? (["claude"] as const) : []),
-                    ]}
-                  />
-                </div>
-                <CalendarHeatmap
-                  id="calendar"
-                  data={agg.data}
-                  dayTitles={agg.dayTitles}
-                  edges={agg.edges}
-                  from={view === "all" ? agg.from : new Date(view, 0, 1)}
-                  to={view === "all" ? agg.to : new Date(view, 11, 31)}
-                  firstDay={allStats.span.from}
-                  lastDay={allStats.span.to}
-                  vertical={useVerticalHeatmap}
-                  maxScale={
-                    useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3
-                  }
-                  sweep={sweep}
-                />
-              </section>
+                {ready ? (
+                  <>
+                    {figures}
+                    {controls}
+                    <DayPane
+                      id="day-pane"
+                      day={
+                        pickedDay && agg.data[pickedDay]
+                          ? {
+                              day: pickedDay,
+                              counts: agg.data[pickedDay],
+                              chats: agg.dayTitles[pickedDay],
+                            }
+                          : null
+                      }
+                    />
+                  </>
+                ) : (
+                  empty
+                )}
+              </main>
             </>
-          ) : (
-            <p className="py-24 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              No prompts found in this export
-            </p>
-          )}
-        </main>
-        <PageDrop
-          progress={upload.progress}
-          uploads={upload.uploads}
-          onFiles={upload.processFiles}
+          }
+          content={
+            <section
+              id="calendar-section"
+              aria-labelledby="calendar-title"
+              className="h-full p-4"
+            >
+              <h2 id="calendar-title" className="sr-only">
+                Prompts per day
+              </h2>
+              {calendar}
+            </section>
+          }
         />
+        {drop}
       </div>
     );
 
-  // Step 6
+  // Step 4.3
   return (
-    <div className="relative">
+    <div className="relative min-h-dvh">
       {background}
-      <div className={layoutClass}>
-        {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
-        {(!isTentMode || !hasData) && (
-          <div id="form-panel" className="panel-form">
-            <header className="flex items-center justify-between mb-6 pt-2">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                AI Chat Heatmap
-              </h1>
-              <div className="flex items-center gap-2">
-                {isBookMode && hasData && (
-                  <button
-                    onClick={() => setFormOnRight((v) => !v)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-                    title={formOnRight ? "Move panel left" : "Move panel right"}
-                    aria-label={
-                      formOnRight ? "Move panel left" : "Move panel right"
-                    }
-                  >
-                    {formOnRight ? (
-                      <ChevronLeft size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
-                  </button>
-                )}
-                <SiteLinks />
-              </div>
-            </header>
-
-            <main
-              id="main-content"
-              tabIndex={-1}
-              className="outline-hidden rounded-2xl border border-zinc-200/80 bg-white/80 backdrop-blur-xs shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900/60 p-4"
+      {bar}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        aria-busy={streaming !== null}
+        className="mx-auto flex w-full max-w-6xl animate-fade-slide-up flex-col gap-5 px-5 pt-8 pb-16 outline-hidden sm:px-8"
+      >
+        {ready ? (
+          <>
+            {figures}
+            <section
+              id="calendar-section"
+              aria-labelledby="calendar-title"
+              className="flex flex-col gap-5"
             >
-              <HeatMapForm {...formProps} />
-            </main>
-
-            {isBookMode && hasData && (
-              <div id="book-nav" className="book-nav">
-                {yearNav}
-              </div>
-            )}
-          </div>
+              <h2 id="calendar-title" className="sr-only">
+                Prompts per day
+              </h2>
+              {controls}
+              {calendar}
+            </section>
+          </>
+        ) : (
+          empty
         )}
-
-        {/* Heatmap panel empty state: visible when folded but no data loaded */}
-        {!hasData && (
-          <div id="heatmap-panel" className="panel-heatmap">
-            <div className="h-full w-full flex items-center justify-center">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                Upload an export to see your heatmap
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Heatmap panel */}
-        {hasData && (
-          <div
-            id="heatmap-panel"
-            className="panel-heatmap animate-fade-slide-up"
-            aria-busy={streaming !== null}
-          >
-            {agg ? (
-              <CalendarHeatmap
-                id="calendar"
-                data={agg.data}
-                dayTitles={agg.dayTitles}
-                edges={agg.edges}
-                from={activeViewFrom || agg.from}
-                to={activeViewTo || agg.to}
-                firstDay={allStats?.span.from}
-                lastDay={allStats?.span.to}
-                vertical={useVerticalHeatmap}
-                fixedHeight
-                sweep={sweep}
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
-                  No prompts found in this export
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
-        {isTentMode && hasData && (
-          <div id="form-panel" className="panel-form">
-            <div className="tent-bottom">
-              <div className="tent-bottom__form">
-                <HeatMapForm {...formProps} />
-              </div>
-              <div className="tent-bottom__nav">{yearNav}</div>
-            </div>
-          </div>
-        )}
-      </div>
+      </main>
+      {drop}
     </div>
   );
 }

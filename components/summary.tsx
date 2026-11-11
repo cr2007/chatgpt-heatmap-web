@@ -40,7 +40,7 @@ function Figure({
   return (
     <div
       id={id}
-      className="min-w-0 border-zinc-200 sm:border-l sm:pl-4 sm:first:border-l-0 sm:first:pl-0 dark:border-zinc-800"
+      className="min-w-0 border-zinc-200 @xl:border-l @xl:pl-4 @xl:first:border-l-0 @xl:first:pl-0 dark:border-zinc-800"
     >
       <dt className="text-xs text-zinc-500 dark:text-zinc-400">{label}</dt>
       <dd className="mt-1 text-xl font-semibold tracking-tight">{value}</dd>
@@ -70,7 +70,9 @@ export function Summary({
     <section
       id="summary"
       aria-labelledby="summary-title"
-      className="flex flex-col gap-4"
+      // A container: the figures follow the room they get (a fold pane is
+      // half the window), not the window width.
+      className="@container flex flex-col gap-4"
     >
       <div>
         <h2
@@ -93,7 +95,7 @@ export function Summary({
       </div>
       <dl
         id="summary-figures"
-        className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-zinc-200 py-4 sm:grid-cols-4 dark:border-zinc-800"
+        className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-zinc-200 py-4 @xl:grid-cols-4 dark:border-zinc-800"
       >
         <Figure
           id="figure-active-days"

@@ -4,16 +4,13 @@ import type { Provider } from "./types";
 export interface ProviderInfo {
   key: Provider;
   label: string;
-  /** Where to find the export, shown in the "How to export" cards. */
-  steps: string;
   /** Tailwind classes for cards, badges and chips. */
   border: string;
   bg: string;
   text: string;
   dot: string;
-  /** Heatmap cell fills for low, medium and high activity. */
-  /** Numbered export steps for the welcome screen. `code` and **bold** spans
-   *  are styled (see components/welcome.tsx). */
+  /** Numbered export steps for the welcome screen and the "How to export"
+   *  popover. `code` and **bold** spans are styled (components/export-guide.tsx). */
   guide: readonly string[];
   /** Prefix of the heatmap shade classes in app/globals.css (`lv-g1` to `lv-g4`). */
   ramp: "g" | "o";
@@ -24,8 +21,6 @@ export const PROVIDERS: readonly ProviderInfo[] = [
   {
     key: "chatgpt",
     label: "ChatGPT",
-    steps:
-      "Settings → Data Controls → Export data. Multiple files are supported.",
     border: "border-(--g-line)",
     bg: "bg-(--g-wash)",
     text: "text-(--g-ink)",
@@ -41,8 +36,6 @@ export const PROVIDERS: readonly ProviderInfo[] = [
   {
     key: "claude",
     label: "Claude",
-    steps:
-      "Settings → Privacy → Export data. Open the file list from the email, download the conversations zip and unzip it.",
     border: "border-(--o-line)",
     bg: "bg-(--o-wash)",
     text: "text-(--o-ink)",

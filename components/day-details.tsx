@@ -18,10 +18,51 @@ const dateLabel = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
+/** What one day shows: its counts and its chats per provider. */
+export interface DayProps {
+  /** `YYYY-MM-DD`. */
+  day: string;
+  counts: CalHeatmapDay;
+  chats: DayTitleBreakdown | undefined;
+}
+
+/** One day's details: the date, the prompt count and the busiest chats per provider. */
+function DayDetails({ day, counts, chats }: DayProps) {
+  const [year, month, date] = day.split("-").map(Number);
+  const both = counts.chatgpt > 0 && counts.claude > 0;
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="text-[13px] font-semibold">
+          {dateLabel.format(new Date(year, month - 1, date))}
+        </span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          {plural(counts.chatgpt + counts.claude, "message")}
+        </span>
+      </div>
+      {PROVIDERS.filter((p) => counts[p.key] > 0).map((p) => (
+        <section key={p.key} className="mt-2">
+          <p
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-medium",
+              p.text,
+            )}
+          >
+            <span className={cn("size-1.5 rounded-full", p.dot)} />
+            {p.label}
+            {both && <span className="ml-auto pl-3">{counts[p.key]}</span>}
+          </p>
+          <ChatList chats={chats?.[p.key] ?? []} />
+        </section>
+      ))}
+    </>
+  );
+}
+
 /**
- * The details card for one heatmap day: the date, the prompt count and the
- * busiest chats per provider. The focused or tapped cell names it as its
- * description (`id`), so a screen reader also reads the chats.
+ * The day details as a card that floats by the cursor or the cell (flat
+ * screens). The focused or tapped cell names it as its description (`id`),
+ * so a screen reader also reads the chats.
  *
  * Step 1: Render next to the cursor (`x`, `y` are relative to the parent).
  * Step 2: Before paint, measure the card and flip it to the other side of
@@ -29,20 +70,10 @@ const dateLabel = new Intl.DateTimeFormat(undefined, {
  */
 export function DayTooltip({
   id,
-  day,
-  counts,
-  chats,
   x,
   y,
-}: {
-  id: string;
-  /** `YYYY-MM-DD`. */
-  day: string;
-  counts: CalHeatmapDay;
-  chats: DayTitleBreakdown | undefined;
-  x: number;
-  y: number;
-}) {
+  ...day
+}: DayProps & { id: string; x: number; y: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Step 2
@@ -60,10 +91,7 @@ export function DayTooltip({
       top = cy - CURSOR_GAP - height;
     el.style.left = `${Math.max(EDGE, left) - parent.left}px`;
     el.style.top = `${Math.max(EDGE, top) - parent.top}px`;
-  }, [x, y, day]);
-
-  const [year, month, date] = day.split("-").map(Number);
-  const both = counts.chatgpt > 0 && counts.claude > 0;
+  }, [x, y, day.day]);
 
   // Step 1
   return (
@@ -73,31 +101,43 @@ export function DayTooltip({
       role="tooltip"
       className="pointer-events-none absolute z-20 w-max max-w-[260px] rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-tooltip-in dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
     >
-      <div className="flex items-baseline justify-between gap-4">
-        <span className="text-[13px] font-semibold">
-          {dateLabel.format(new Date(year, month - 1, date))}
-        </span>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {plural(counts.chatgpt + counts.claude, "message")}
-        </span>
-      </div>
-
-      {PROVIDERS.filter((p) => counts[p.key] > 0).map((p) => (
-        <section key={p.key} className="mt-2">
-          <p
-            className={cn(
-              "flex items-center gap-1.5 text-xs font-medium",
-              p.text,
-            )}
-          >
-            <span className={cn("size-1.5 rounded-full", p.dot)} />
-            {p.label}
-            {both && <span className="ml-auto pl-3">{counts[p.key]}</span>}
-          </p>
-          <ChatList chats={chats?.[p.key] ?? []} />
-        </section>
-      ))}
+      <DayDetails {...day} />
     </div>
+  );
+}
+
+/**
+ * The day details in a pane beside the calendar, when a foldable is half
+ * open: the other screen half holds them, so nothing floats over the fold
+ * (Apple's overlay arrangement, Android's list and detail). The picked cell
+ * names the pane as its description.
+ */
+export function DayPane({
+  id,
+  day,
+}: {
+  id: string;
+  /** The picked day, or null before the first pick. */
+  day: DayProps | null;
+}) {
+  return (
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      aria-live="polite"
+      className="rounded-xl border border-zinc-200 bg-white/70 p-4 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50"
+    >
+      <h2 id={`${id}-title`} className="sr-only">
+        Day details
+      </h2>
+      {day ? (
+        <DayDetails {...day} />
+      ) : (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Tap a day to see its chats.
+        </p>
+      )}
+    </section>
   );
 }
 
