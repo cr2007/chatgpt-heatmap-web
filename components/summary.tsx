@@ -27,16 +27,21 @@ const range = (from: string, to: string) =>
 
 /** One figure: a small label, the value, and a note under it. */
 function Figure({
+  id,
   label,
   value,
   note,
 }: {
+  id: string;
   label: string;
   value: ReactNode;
   note: ReactNode;
 }) {
   return (
-    <div className="min-w-0 border-zinc-200 sm:border-l sm:pl-4 sm:first:border-l-0 sm:first:pl-0 dark:border-zinc-800">
+    <div
+      id={id}
+      className="min-w-0 border-zinc-200 sm:border-l sm:pl-4 sm:first:border-l-0 sm:first:pl-0 dark:border-zinc-800"
+    >
       <dt className="text-xs text-zinc-500 dark:text-zinc-400">{label}</dt>
       <dd className="mt-1 text-xl font-semibold tracking-tight">{value}</dd>
       <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
@@ -62,38 +67,55 @@ export function Summary({
   const both = stats.chatgpt > 0 && stats.claude > 0;
   const gptShare = Math.round((stats.chatgpt / stats.total) * 100);
   return (
-    <section aria-label="Summary" className="flex flex-col gap-4">
+    <section
+      id="summary"
+      aria-labelledby="summary-title"
+      className="flex flex-col gap-4"
+    >
       <div>
-        <p className="text-2xl font-semibold tracking-tight">
+        <h2
+          id="summary-title"
+          className="text-2xl font-semibold tracking-tight"
+        >
           {plural(stats.total, "prompt")}
           <span className="text-zinc-500 dark:text-zinc-400">
             {year === null
               ? ` in ${plural(stats.span.days, "day")}`
               : ` in ${year}`}
           </span>
-        </p>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        </h2>
+        <p
+          id="summary-range"
+          className="mt-1 text-sm text-zinc-500 dark:text-zinc-400"
+        >
           {range(stats.span.from, stats.span.to)}, counted in {timeZone} time
         </p>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-zinc-200 py-4 sm:grid-cols-4 dark:border-zinc-800">
+      <dl
+        id="summary-figures"
+        className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-zinc-200 py-4 sm:grid-cols-4 dark:border-zinc-800"
+      >
         <Figure
+          id="figure-active-days"
           label="Active days"
           value={count(stats.activeDays)}
           note={`${Math.round((stats.activeDays / stats.span.days) * 100)}% of the days`}
         />
         <Figure
+          id="figure-streak"
           label="Longest streak"
           value={plural(stats.streak.days, "day")}
           note={range(stats.streak.from, stats.streak.to)}
         />
         <Figure
+          id="figure-busiest-day"
           label="Busiest day"
           value={plural(stats.busiest.count, "prompt")}
           note={weekdayDate.format(local(stats.busiest.day))}
         />
         {both ? (
           <Figure
+            id="figure-providers"
             label="By provider"
             value={`${gptShare}% ChatGPT`}
             note={
@@ -114,6 +136,7 @@ export function Summary({
           />
         ) : (
           <Figure
+            id="figure-average"
             label="Per active day"
             value={plural(
               Math.round((stats.total / stats.activeDays) * 10) / 10,

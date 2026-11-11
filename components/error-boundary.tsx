@@ -22,7 +22,10 @@ export class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center p-8 text-center">
+        <div
+          id="error-screen"
+          className="flex min-h-screen items-center justify-center p-8 text-center"
+        >
           <div className="max-w-sm space-y-4">
             <p className="text-sm font-medium">Something went wrong.</p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">

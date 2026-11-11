@@ -5,10 +5,17 @@ import { PROVIDERS } from "@/lib/providers";
 /** The "How to export" block: tap cards when cramped, plain cards otherwise. */
 export function ExportSteps() {
   return (
-    <div className="form-grid__info flex flex-col gap-2">
-      <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">
+    <section
+      id="export-steps"
+      aria-labelledby="export-steps-title"
+      className="form-grid__info flex flex-col gap-2"
+    >
+      <h2
+        id="export-steps-title"
+        className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide"
+      >
         How to export
-      </p>
+      </h2>
 
       {/* Cramped panels (book mode, narrow windows): tap a card to reveal its steps. */}
       <div className="form-grid__info-compact flex flex-col gap-2">
@@ -54,16 +61,16 @@ export function ExportSteps() {
               p.bg,
             )}
           >
-            <p className={cn("flex items-center gap-2 font-medium", p.text)}>
+            <h3 className={cn("flex items-center gap-2 font-medium", p.text)}>
               <span
                 className={cn("h-1.5 w-1.5 rounded-full shrink-0", p.dot)}
               />
               {p.label}
-            </p>
+            </h3>
             <p className="mt-1 text-zinc-600 dark:text-zinc-400">{p.steps}</p>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

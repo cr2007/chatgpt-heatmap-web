@@ -44,7 +44,11 @@ export function Welcome({
           className="grid flex-1 grid-cols-[minmax(0,1fr)] items-start gap-10 outline-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:pt-10"
         >
           {/* Step 1 */}
-          <section aria-labelledby="welcome-title" className="flex flex-col">
+          <section
+            id="welcome-hero"
+            aria-labelledby="welcome-title"
+            className="flex flex-col"
+          >
             <h2
               id="welcome-title"
               className="max-w-[15ch] text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl"
@@ -88,7 +92,10 @@ export function Welcome({
               />
             </div>
 
-            <p className="mt-5 flex max-w-[46ch] gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <p
+              id="privacy-note"
+              className="mt-5 flex max-w-[46ch] gap-2 text-sm text-zinc-600 dark:text-zinc-400"
+            >
               <LockKeyhole
                 aria-hidden="true"
                 className="mt-0.5 size-4 shrink-0 text-zinc-500"
@@ -123,7 +130,10 @@ export function Welcome({
               className="mt-5 grid gap-8 sm:grid-cols-2"
             />
 
-            <figure className="mt-8 border-t border-zinc-200/80 pt-6 dark:border-zinc-800/80">
+            <figure
+              id="example-year"
+              className="mt-8 border-t border-zinc-200/80 pt-6 dark:border-zinc-800/80"
+            >
               {/* Decoration: the caption says what it shows, and the cells are not real data. inert keeps its cells out of the Tab order too. */}
               <div inert>
                 <CalendarHeatmap

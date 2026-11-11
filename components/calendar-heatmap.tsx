@@ -73,6 +73,8 @@ export interface CalendarHeatmapProps {
   fixedHeight?: boolean;
   /** Largest scale where the page scrolls (see `fitScale`). */
   maxScale?: number;
+  /** Id of the root; the day details get `${id}-tip`. */
+  id?: string;
 }
 
 /**
@@ -101,8 +103,10 @@ export function CalendarHeatmap({
   sweep = 0,
   fixedHeight = false,
   maxScale = 1,
+  id,
 }: CalendarHeatmapProps) {
   const uid = useId().replace(/:/g, "");
+  const tipId = `${id ?? uid}-tip`;
   const [outerRef, panel] = useElementSize<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>(null);
   /** The day whose details show, and where, relative to the grid. A tap
@@ -273,6 +277,7 @@ export function CalendarHeatmap({
   return (
     <div
       ref={outerRef}
+      id={id}
       className="flex h-full w-full items-center justify-center"
     >
       <div ref={containerRef} className="relative">
@@ -357,7 +362,7 @@ export function CalendarHeatmap({
                   claude,
                   outside,
                 )}
-                aria-describedby={tip?.day === day ? `${uid}-tip` : undefined}
+                aria-describedby={tip?.day === day ? tipId : undefined}
               />
             );
           })}
@@ -365,7 +370,7 @@ export function CalendarHeatmap({
 
         {tip && data[tip.day] && (
           <DayTooltip
-            id={`${uid}-tip`}
+            id={tipId}
             day={tip.day}
             counts={data[tip.day]}
             chats={dayTitles[tip.day]}

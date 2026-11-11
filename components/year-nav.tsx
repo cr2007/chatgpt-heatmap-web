@@ -26,7 +26,7 @@ export function YearNav({
   const activeIndex = activeYear == null ? -1 : years.indexOf(activeYear);
 
   return (
-    <>
+    <nav id="year-nav" aria-label="Years">
       <div className="tent-years">
         {years.map((year) => (
           <button
@@ -57,6 +57,6 @@ export function YearNav({
           <ChevronRight size={16} />
         </button>
       </div>
-    </>
+    </nav>
   );
 }

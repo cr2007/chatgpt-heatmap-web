@@ -7,6 +7,7 @@ export function SiteLinks() {
   return (
     <>
       <a
+        id="github-link"
         href="https://github.com/cr2007/chatgpt-heatmap-web"
         target="_blank"
         rel="noopener noreferrer"

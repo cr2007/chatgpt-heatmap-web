@@ -43,7 +43,10 @@ export function HeatLegend({
   providers: Provider[];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+    <div
+      id="heat-legend"
+      className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-500 dark:text-zinc-400"
+    >
       {PROVIDERS.filter((p) => providers.includes(p.key)).map((p) => {
         const r = ranges(edges[p.key]);
         return (

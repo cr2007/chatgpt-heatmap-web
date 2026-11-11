@@ -18,7 +18,8 @@ const LIST_ROOM = 320;
 /**
  * A searchable time zone field (the WAI-ARIA combobox pattern): type a city,
  * a zone, a time name ("Gulf Standard Time"), an abbreviation ("IST") or an
- * offset ("+5:30"); small typos still match. The input id is `${id}-tz`.
+ * offset ("+5:30"); small typos still match. The input id is
+ * `${id}-time-zone`; the list adds `-list`, an option `-option-N`.
  *
  * Step 1: On focus, empty the field (the current zone stays as the
  *         placeholder) and open the list. Selecting the text instead fails
@@ -48,7 +49,7 @@ export function TimeZonePicker({
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const inputId = `${id}-tz`;
+  const inputId = `${id}-time-zone`;
   const listId = `${inputId}-list`;
 
   // Build the index when the browser is idle, so the first open is instant.
@@ -112,7 +113,8 @@ export function TimeZonePicker({
     }
   }
 
-  const activeId = open && results[active] ? `${listId}-${active}` : undefined;
+  const activeId =
+    open && results[active] ? `${inputId}-option-${active}` : undefined;
 
   return (
     <div
@@ -190,7 +192,7 @@ export function TimeZonePicker({
                 // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- the combobox pattern: the input handles the keys and points at the option with aria-activedescendant
                 <li
                   key={e.zone}
-                  id={`${listId}-${i}`}
+                  id={`${inputId}-option-${i}`}
                   data-index={i}
                   // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- a native <option> cannot hold this layout
                   role="option"

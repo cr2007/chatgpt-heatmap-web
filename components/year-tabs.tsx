@@ -32,6 +32,7 @@ export function YearTabs({
   const button = (v: YearView, label: string, total?: number) => (
     <button
       key={String(v)}
+      id={`year-tab-${v}`}
       type="button"
       aria-pressed={view === v}
       onClick={() => onView(v)}
@@ -53,6 +54,7 @@ export function YearTabs({
   return (
     <fieldset
       ref={row}
+      id="year-tabs"
       className="flex max-w-full min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
     >
       <legend className="sr-only">Years to show</legend>

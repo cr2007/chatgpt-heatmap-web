@@ -78,6 +78,7 @@ export function DropZone({
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drop target; keyboard users reach the linked file input
     <label
       htmlFor={inputId}
+      id={`${inputId}-zone`}
       data-drag={phase}
       className={cn(
         "drop-zone group/drop relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed",

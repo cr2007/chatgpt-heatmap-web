@@ -21,14 +21,19 @@ export function LoadedFiles({
   onClear: (provider: Provider) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <ul
+      id="loaded-files"
+      aria-label="Loaded exports"
+      className="flex flex-col gap-2"
+    >
       {PROVIDERS.map((p) => {
         const info = loaded[p.key];
         if (!info) return null;
         const [head, tail] = splitName(info.name);
         return (
-          <div
+          <li
             key={p.key}
+            id={`loaded-file-${p.key}`}
             className={cn(
               "flex items-center gap-2 rounded-lg border py-2 pr-1.5 pl-3 text-xs",
               p.border,
@@ -64,9 +69,9 @@ export function LoadedFiles({
             >
               <X size={14} />
             </button>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

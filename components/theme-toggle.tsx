@@ -13,6 +13,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
+      id="theme-toggle"
       aria-label={label}
       title={`${label} (D)`}
       onClick={toggle}

@@ -271,33 +271,48 @@ export default function Home() {
                 year={view === "all" ? null : view}
                 timeZone={timeZone}
               />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <YearTabs
-                  years={dataYears}
-                  totals={yearTotals}
-                  view={view}
-                  onView={pickView}
-                />
-                <HeatLegend
+              <section
+                id="calendar-section"
+                aria-labelledby="calendar-title"
+                className="flex flex-col gap-5"
+              >
+                <h2 id="calendar-title" className="sr-only">
+                  Prompts per day
+                </h2>
+                <div
+                  id="calendar-controls"
+                  className="flex flex-wrap items-center justify-between gap-3"
+                >
+                  <YearTabs
+                    years={dataYears}
+                    totals={yearTotals}
+                    view={view}
+                    onView={pickView}
+                  />
+                  <HeatLegend
+                    edges={agg.edges}
+                    providers={[
+                      ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
+                      ...(allStats.claude ? (["claude"] as const) : []),
+                    ]}
+                  />
+                </div>
+                <CalendarHeatmap
+                  id="calendar"
+                  data={agg.data}
+                  dayTitles={agg.dayTitles}
                   edges={agg.edges}
-                  providers={[
-                    ...(allStats.chatgpt ? (["chatgpt"] as const) : []),
-                    ...(allStats.claude ? (["claude"] as const) : []),
-                  ]}
+                  from={view === "all" ? agg.from : new Date(view, 0, 1)}
+                  to={view === "all" ? agg.to : new Date(view, 11, 31)}
+                  firstDay={allStats.span.from}
+                  lastDay={allStats.span.to}
+                  vertical={useVerticalHeatmap}
+                  maxScale={
+                    useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3
+                  }
+                  sweep={sweep}
                 />
-              </div>
-              <CalendarHeatmap
-                data={agg.data}
-                dayTitles={agg.dayTitles}
-                edges={agg.edges}
-                from={view === "all" ? agg.from : new Date(view, 0, 1)}
-                to={view === "all" ? agg.to : new Date(view, 11, 31)}
-                firstDay={allStats.span.from}
-                lastDay={allStats.span.to}
-                vertical={useVerticalHeatmap}
-                maxScale={useVerticalHeatmap ? (view === "all" ? 1 : 1.6) : 1.3}
-                sweep={sweep}
-              />
+              </section>
             </>
           ) : (
             <p className="py-24 text-center text-sm text-zinc-500 dark:text-zinc-400">
@@ -320,7 +335,7 @@ export default function Home() {
       <div className={layoutClass}>
         {/* Form panel - hidden in tent mode when data is present (tent bottom replaces it) */}
         {(!isTentMode || !hasData) && (
-          <div className="panel-form">
+          <div id="form-panel" className="panel-form">
             <header className="flex items-center justify-between mb-6 pt-2">
               <h1 className="text-2xl font-semibold tracking-tight">
                 AI Chat Heatmap
@@ -354,13 +369,17 @@ export default function Home() {
               <HeatMapForm {...formProps} />
             </main>
 
-            {isBookMode && hasData && <div className="book-nav">{yearNav}</div>}
+            {isBookMode && hasData && (
+              <div id="book-nav" className="book-nav">
+                {yearNav}
+              </div>
+            )}
           </div>
         )}
 
         {/* Heatmap panel empty state: visible when folded but no data loaded */}
         {!hasData && (
-          <div className="panel-heatmap">
+          <div id="heatmap-panel" className="panel-heatmap">
             <div className="h-full w-full flex items-center justify-center">
               <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-6">
                 Upload an export to see your heatmap
@@ -372,11 +391,13 @@ export default function Home() {
         {/* Heatmap panel */}
         {hasData && (
           <div
+            id="heatmap-panel"
             className="panel-heatmap animate-fade-slide-up"
             aria-busy={streaming !== null}
           >
             {agg ? (
               <CalendarHeatmap
+                id="calendar"
                 data={agg.data}
                 dayTitles={agg.dayTitles}
                 edges={agg.edges}
@@ -400,7 +421,7 @@ export default function Home() {
 
         {/* Tent mode: bottom panel replaces form panel when landscape+folded */}
         {isTentMode && hasData && (
-          <div className="panel-form">
+          <div id="form-panel" className="panel-form">
             <div className="tent-bottom">
               <div className="tent-bottom__form">
                 <HeatMapForm {...formProps} />

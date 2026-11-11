@@ -44,6 +44,7 @@ export function Toaster() {
   return (
     <section
       ref={ref}
+      id="toasts"
       popover={HAS_POPOVER ? "manual" : undefined}
       aria-label="Notifications"
       className="pointer-events-none fixed inset-auto bottom-3 left-3 right-3 z-50 m-0 w-auto overflow-visible border-0 bg-transparent p-0 text-inherit sm:left-auto sm:right-4 sm:bottom-4"
