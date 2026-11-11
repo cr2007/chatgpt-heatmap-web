@@ -134,7 +134,13 @@ export function CalendarHeatmap({
     () => layoutCalendar(startYear, endYear, vertical),
     [startYear, endYear, vertical],
   );
-  const scale = fitScale(panel, layout, fixedHeight, maxScale);
+  // Very large screens grow the root font (app/globals.css); the calendar
+  // grows with it, so it keeps its share of the page.
+  const rem =
+    typeof document === "undefined"
+      ? 1
+      : parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
+  const scale = fitScale(panel, layout, fixedHeight, maxScale * rem);
   /** Each drawn day's readable name, made once per layout. */
   const names = useMemo(
     () =>

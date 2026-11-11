@@ -19,6 +19,7 @@ import { useFoldPosture } from "@/hooks/use-fold-posture";
 import { aggregateDateData } from "@/lib/aggregate";
 import {
   DESKTOP_QUERY,
+  EXPANDED_QUERY,
   WIDE_BAR_QUERY,
   getHeatmapOrientation,
   pickYearView,
@@ -88,6 +89,7 @@ export default function Home() {
   }, [swapped]);
 
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const isExpanded = useMediaQuery(EXPANDED_QUERY);
   const posture = useFoldPosture();
   // A fold pane is half the window: the full bar needs the whole width.
   const isWideBar = useMediaQuery(WIDE_BAR_QUERY) && !posture;
@@ -222,7 +224,9 @@ export default function Home() {
     </AppBar>
   );
   const ready = agg && viewStats && allStats;
-  const vertical = getHeatmapOrientation({ posture, isDesktop }) === "vertical";
+  const vertical =
+    getHeatmapOrientation({ posture, isWide: isDesktop || isExpanded }) ===
+    "vertical";
   const figures = ready && (
     <Summary
       stats={viewStats}

@@ -137,6 +137,20 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
+  /* Very large screens (a 1440p or 4K monitor at 1x, a TV): every rem size
+     grows, so the page keeps its proportions instead of becoming a narrow
+     column in empty space. A 4K screen at 2x is 1920 px wide and keeps 16 px. */
+  @media (min-width: 2400px) {
+    html {
+      font-size: 125%;
+    }
+  }
+  @media (min-width: 3200px) {
+    html {
+      font-size: 150%;
+    }
+  }
+
   body {
     font-family: "Archivo", system-ui, sans-serif;
     /* Equal-width digits, so dates and counts line up in labels and tooltips. */

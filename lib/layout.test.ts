@@ -5,10 +5,10 @@ describe("getHeatmapOrientation", () => {
   it.each([
     ["tent posture", "tent", false, "horizontal"],
     ["book posture", "book", true, "vertical"],
-    ["desktop window", undefined, true, "horizontal"],
+    ["desktop or expanded window", undefined, true, "horizontal"],
     ["phone or narrow window", undefined, false, "vertical"],
-  ] as const)("%s", (_name, posture, isDesktop, expected) => {
-    expect(getHeatmapOrientation({ posture, isDesktop })).toBe(expected);
+  ] as const)("%s", (_name, posture, isWide, expected) => {
+    expect(getHeatmapOrientation({ posture, isWide })).toBe(expected);
   });
 });
 

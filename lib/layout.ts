@@ -5,11 +5,16 @@
 export const DESKTOP_QUERY =
   "(orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine)";
 
+/** Matches an expanded window (Android window size classes: 840 dp and
+ *  wider), such as an open foldable or a tablet in landscape: a year fits
+ *  across, so the calendar runs horizontally, with or without a mouse. */
+export const EXPANDED_QUERY = "(min-width: 840px)";
+
 /** Matches a window wide enough for the full top bar once an export is
- *  loaded: the export chips, Add export and the time zone in one row.
- *  Below it, the bar keeps the name and the links, and a panel under it
- *  holds the rest. */
-export const WIDE_BAR_QUERY = "(min-width: 64rem)";
+ *  loaded: the export chips, Add export and the time zone in one row (about
+ *  1,030 px at 16 px text). Below it, the bar keeps the name and the links,
+ *  and a panel under it holds the rest. */
+export const WIDE_BAR_QUERY = "(min-width: 72rem)";
 
 /** Matches a half-open foldable: "folded" means half open and spanning the
  *  fold (W3C Device Posture). A closed device on its cover screen, or a
@@ -61,8 +66,8 @@ export function foldPosture(
 export interface HeatmapOrientationInput {
   /** The foldable posture, if any (see `foldPosture`). */
   posture: Posture | undefined;
-  /** `DESKTOP_QUERY` matches. */
-  isDesktop: boolean;
+  /** `DESKTOP_QUERY` or `EXPANDED_QUERY` matches. */
+  isWide: boolean;
 }
 
 /**
@@ -72,15 +77,15 @@ export interface HeatmapOrientationInput {
  *
  * Step 1: A foldable posture fixes it: a tent half is wide and short
  *         (horizontal), a book half is narrow (vertical).
- * Step 2: Otherwise the horizontal layout needs a desktop window; every
- *         narrower context gets the vertical one.
+ * Step 2: Otherwise the horizontal layout needs a desktop or an expanded
+ *         window; every narrower context gets the vertical one.
  */
 export function getHeatmapOrientation({
   posture,
-  isDesktop,
+  isWide,
 }: HeatmapOrientationInput): "vertical" | "horizontal" {
   if (posture) return posture === "tent" ? "horizontal" : "vertical"; // Step 1
-  return isDesktop ? "horizontal" : "vertical"; // Step 2
+  return isWide ? "horizontal" : "vertical"; // Step 2
 }
 
 /** What the calendar shows: every year, or one year. */
