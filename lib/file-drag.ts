@@ -66,4 +66,5 @@ export function subscribeFileDrag(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+/** The current drag state (for useSyncExternalStore). */
 export const getFileDrag = () => state;
