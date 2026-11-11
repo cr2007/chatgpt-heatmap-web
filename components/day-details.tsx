@@ -124,7 +124,6 @@ export function DayPane({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      aria-live="polite"
       className="rounded-xl border border-zinc-200 bg-white/70 p-4 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50"
     >
       <h2 id={`${id}-title`} className="sr-only">
