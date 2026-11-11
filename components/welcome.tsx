@@ -124,8 +124,8 @@ export function Welcome({
             />
 
             <figure className="mt-8 border-t border-zinc-200/80 pt-6 dark:border-zinc-800/80">
-              {/* Decoration: the caption says what it shows, and the cells are not real data. */}
-              <div aria-hidden="true" className="pointer-events-none">
+              {/* Decoration: the caption says what it shows, and the cells are not real data. inert keeps its cells out of the Tab order too. */}
+              <div inert>
                 <CalendarHeatmap
                   data={sample.data}
                   dayTitles={{}}
