@@ -3,7 +3,7 @@ import { LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PROVIDERS } from "@/lib/providers";
 import { sampleYear } from "@/lib/sample";
-import { useUpload } from "@/hooks/use-upload";
+import type { useUpload } from "@/hooks/use-upload";
 import { DropZone } from "@/components/drop-zone";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
@@ -11,7 +11,6 @@ import { AppBar } from "@/components/app-bar";
 import { ExportGuide } from "@/components/export-guide";
 import { FoldLayout } from "@/components/fold-layout";
 import type { Posture } from "@/lib/layout";
-import type { Exports } from "@/lib/upload";
 
 /**
  * The first screen, before any export is loaded: what the app does, the
@@ -26,21 +25,21 @@ import type { Exports } from "@/lib/upload";
  *         thumb reach) in tent posture.
  */
 export function Welcome({
-  onLoad,
-  onStream,
+  upload,
   timeZone,
   setTimeZone,
   fold,
 }: {
-  onLoad: (exports: Exports) => void;
-  onStream: (partial: Exports | null) => void;
+  /** The page's upload, so an upload keeps its progress and can be
+   *  cancelled after this screen gives way to the loaded one. */
+  upload: ReturnType<typeof useUpload>;
   timeZone: string;
   setTimeZone: (timeZone: string) => void;
   /** The posture of a half-open foldable, or undefined on a flat screen. */
   fold?: Posture;
 }) {
   const { progress, uploads, error, isShaking, resetShake, processFiles } =
-    useUpload({ onLoad, onStream });
+    upload;
   const sample = useMemo(() => sampleYear(), []);
 
   // Step 1

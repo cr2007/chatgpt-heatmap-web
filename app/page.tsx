@@ -72,12 +72,17 @@ export default function Home() {
   const [timeZone, setTimeZone] = useState(SYSTEM_ZONE);
   /** The view picked with the year tabs; null means the default for the layout. */
   const [picked, setPicked] = useState<YearView | null>(readView);
+  /** The phone's export panel is open (kept across a fold). */
+  const [panelOpen, setPanelOpen] = useState(false);
   /** The day in the day pane (half-open foldables). */
   const [pickedDay, setPickedDay] = useState<string | null>(null);
   /** Book posture: the controls on the right. Kept across visits. */
   const [swapped, setSwapped] = useState(() => {
     try {
-      return localStorage.getItem(SWAP_KEY) === "true";
+      // "form-on-right" is the key before the fold panes.
+      const saved =
+        localStorage.getItem(SWAP_KEY) ?? localStorage.getItem("form-on-right");
+      return saved === "true";
     } catch {
       return false;
     }
@@ -153,8 +158,7 @@ export default function Home() {
       <div className="relative">
         {background}
         <Welcome
-          onLoad={loadExports}
-          onStream={onStream}
+          upload={upload}
           timeZone={timeZone}
           setTimeZone={changeTimeZone}
           fold={posture}
@@ -186,6 +190,8 @@ export default function Home() {
             onFiles={upload.processFiles}
             timeZone={timeZone}
             setTimeZone={changeTimeZone}
+            open={panelOpen}
+            onOpen={setPanelOpen}
           />
         )
       }
