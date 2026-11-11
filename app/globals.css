@@ -9,10 +9,120 @@
 /* hooks/use-theme-toggle.ts puts the "dark" class on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Motion tokens. They also make utilities (`ease-out`, `ease-spring`).
+   The springs are CSS linear() samples of SwiftUI's
+   spring(duration:bounce:): 0.4 s with bounce 0.15, and 0.5 s with bounce
+   0.25 for rare moments. A spring needs its settle time as its duration
+   (--dur-spring, --dur-spring-bouncy). `static`: plain CSS below reads them. */
+@theme static {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: linear(
+    0,
+    0.0282,
+    0.0975,
+    0.1899,
+    0.2924,
+    0.396,
+    0.4948,
+    0.5855,
+    0.666,
+    0.7357,
+    0.7948,
+    0.8439,
+    0.8839,
+    0.9159,
+    0.9411,
+    0.9605,
+    0.9751,
+    0.9859,
+    0.9937,
+    0.999,
+    1.0025,
+    1.0047,
+    1.0058,
+    1.0063,
+    1.0062,
+    1.0059,
+    1.0053,
+    1.0047,
+    1.004,
+    1.0034,
+    1.0028,
+    1.0023,
+    1
+  );
+  --ease-spring-bouncy: linear(
+    0,
+    0.0262,
+    0.0925,
+    0.1834,
+    0.2868,
+    0.3938,
+    0.4981,
+    0.5952,
+    0.6826,
+    0.759,
+    0.8239,
+    0.8777,
+    0.921,
+    0.955,
+    0.9808,
+    0.9997,
+    1.0128,
+    1.0213,
+    1.0261,
+    1.0281,
+    1.0282,
+    1.0268,
+    1.0245,
+    1.0218,
+    1.0187,
+    1.0157,
+    1.0129,
+    1.0102,
+    1.0079,
+    1.0059,
+    1.0042,
+    1.0028,
+    1
+  );
+}
+
+/* Durations (Emil Kowalski's budgets): UI motion stays under 300 ms. */
+:root {
+  /** Press feedback (scale 0.97). */
+  --dur-press: 120ms;
+  /** Hover, color and other small state changes. */
+  --dur-micro: 150ms;
+  /** Tooltips, popovers, menus. */
+  --dur-ui: 200ms;
+  /** Content that enters; an exit takes about 20% less. */
+  --dur-enter: 240ms;
+  /** Settle times of the two springs. */
+  --dur-spring: 520ms;
+  --dur-spring-bouncy: 620ms;
+}
+
+/* Accent tokens (utilities: `ring-accent`, `text-accent-ink`, ...).
+   accent: focus rings, borders, icons (3:1 on the page).
+   accent-ink: accent text and links (4.5:1 on the page).
+   accent-fill: a filled button under white text (4.5:1). */
+@theme static {
+  --color-accent: oklch(60.6% 0.25 292.7);
+  --color-accent-ink: oklch(49.1% 0.27 292.6);
+  --color-accent-fill: oklch(54.1% 0.281 293);
+}
+.dark {
+  --color-accent: oklch(70.2% 0.183 293.5);
+  --color-accent-ink: oklch(81.1% 0.111 293.6);
+  --color-accent-fill: oklch(54.1% 0.281 293);
+}
+
 @layer base {
   :root {
     --panel-border: rgb(228 228 231);
-    --accent: 139 92 246;
   }
   .dark {
     --panel-border: rgb(39 39 42);
@@ -46,11 +156,11 @@
   }
 
   ::selection {
-    background-color: rgba(147, 130, 255, 0.25);
+    background-color: color-mix(in oklab, var(--color-accent) 25%, transparent);
     color: inherit;
   }
   .dark ::selection {
-    background-color: rgba(147, 130, 255, 0.35);
+    background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
     color: inherit;
   }
 
@@ -89,6 +199,16 @@
   --o2: oklch(81% 0.12 56);
   --o3: oklch(69% 0.18 47);
   --o4: oklch(54% 0.17 40);
+  /* Provider UI (lib/providers.ts): card line and wash, text, and the dot,
+     which matches level 3 of the calendar ramp. */
+  --g-line: oklch(87.1% 0.15 154.449);
+  --g-wash: oklch(98.2% 0.018 155.826);
+  --g-ink: oklch(52.7% 0.154 150.069);
+  --g-dot: var(--g3);
+  --o-line: oklch(83.7% 0.128 66.29);
+  --o-wash: oklch(98% 0.016 73.684);
+  --o-ink: oklch(55.3% 0.195 38.402);
+  --o-dot: var(--o3);
 }
 .dark {
   --cell-empty: oklch(24% 0.006 286);
@@ -100,6 +220,12 @@
   --o2: oklch(52% 0.12 47);
   --o3: oklch(68% 0.16 50);
   --o4: oklch(84% 0.12 62);
+  --g-line: oklch(39.3% 0.095 152.535 / 0.4);
+  --g-wash: oklch(26.6% 0.065 152.934 / 0.2);
+  --g-ink: oklch(79.2% 0.209 151.711);
+  --o-line: oklch(40.8% 0.123 38.172 / 0.4);
+  --o-wash: oklch(26.6% 0.079 36.259 / 0.2);
+  --o-ink: oklch(75% 0.183 55.934);
 }
 .lv-0 {
   fill: var(--cell-empty);
@@ -114,7 +240,7 @@
    works on SVG in every engine. */
 .heat-cell:focus-visible {
   outline: none;
-  stroke: rgb(var(--accent));
+  stroke: var(--color-accent);
   stroke-width: 2px;
 }
 .lv-g1 {
@@ -172,7 +298,7 @@
 
 /* While an upload streams in: a short color fade, spread over 240 ms. */
 .heat-cell {
-  transition: fill 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: fill 180ms var(--ease-out);
   transition-delay: calc(var(--t, 0) * 240ms);
 }
 
@@ -182,7 +308,7 @@
 .sweep-a,
 .sweep-b {
   transition-delay: calc(var(--t, 0) * 700ms + 130ms);
-  animation: 400ms cubic-bezier(0.23, 1, 0.32, 1) calc(var(--t, 0) * 700ms) both;
+  animation: 400ms var(--ease-out) calc(var(--t, 0) * 700ms) both;
 }
 .sweep-a {
   animation-name: sweep-a;
@@ -211,19 +337,19 @@
   pointer-events: none;
   background: radial-gradient(
     circle at var(--px, 50%) var(--py, 50%),
-    rgb(var(--accent) / 0.16),
+    color-mix(in oklab, var(--color-accent) 16%, transparent),
     transparent 60%
   );
   transform-origin: var(--px, 50%) var(--py, 50%);
   opacity: 0;
-  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 200ms var(--ease-out);
 }
 [data-drag="over"] > .drop-well {
   opacity: 1;
 }
 [data-drag="absorb"] > .drop-well {
   opacity: 1;
-  animation: well-absorb 220ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: well-absorb 220ms var(--ease-out) forwards;
 }
 @keyframes well-absorb {
   to {
@@ -232,7 +358,7 @@
   }
 }
 .drop-content {
-  transition: translate 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: translate 200ms var(--ease-out);
 }
 [data-drag="over"] > .drop-content {
   translate: var(--lx, 0) var(--ly, 0);
@@ -248,7 +374,7 @@
 }
 
 @utility animate-fade-slide-up {
-  animation: fadeSlideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: fadeSlideUp 0.4s var(--ease-out) forwards;
 }
 
 /* The day tooltip fades and grows in. Same frames as tw-animate-css's
@@ -271,7 +397,7 @@
   }
 }
 @utility animate-toast-in {
-  animation: toast-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: toast-in 220ms var(--ease-out);
 }
 
 @keyframes shake {
@@ -686,23 +812,20 @@
 }
 
 .tent-year-btn:hover {
-  background: rgb(var(--accent) / 0.1);
-  border-color: rgb(var(--accent));
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  border-color: var(--color-accent);
 }
 
 .tent-year-btn.tent-year-active {
-  /* rgb(var(--accent)) alone is only 4.23:1 against white text (below the
-     4.5:1 AA minimum for 14px text) - darken it slightly just for this
-     filled state rather than changing the shared accent everywhere else
-     it's used as a border/hover tint against non-white text. */
-  background: color-mix(in srgb, rgb(var(--accent)) 85%, black);
-  border-color: color-mix(in srgb, rgb(var(--accent)) 85%, black);
+  /* White text needs the fill token (4.5:1), not the plain accent. */
+  background: var(--color-accent-fill);
+  border-color: var(--color-accent-fill);
   color: #fff;
 }
 
 .tent-year-btn:focus-visible,
 .tent-arrow-btn:focus-visible {
-  outline: 2px solid rgb(139 92 246);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -728,8 +851,8 @@
 }
 
 .tent-arrow-btn:hover:not(:disabled) {
-  background: rgb(var(--accent) / 0.1);
-  border-color: rgb(var(--accent));
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  border-color: var(--color-accent);
 }
 
 .tent-arrow-btn:disabled {

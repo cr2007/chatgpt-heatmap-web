@@ -143,7 +143,7 @@ export function TimeZonePicker({
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="h-9 w-full rounded-md border border-neutral-200 bg-white pr-8 pl-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-950 dark:placeholder:text-zinc-500 dark:focus-visible:ring-violet-400"
+          className="h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 pl-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500"
           // Step 1
           onFocus={openList}
           onClick={() => !open && openList()}
@@ -217,7 +217,7 @@ export function TimeZonePicker({
                   <Check
                     aria-hidden="true"
                     className={cn(
-                      "size-4 shrink-0 text-violet-600 dark:text-violet-400",
+                      "size-4 shrink-0 text-accent",
                       e.zone !== timeZone && "invisible",
                     )}
                   />

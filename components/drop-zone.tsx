@@ -80,11 +80,11 @@ export function DropZone({
         hero ? "px-6 py-7" : "h-full justify-center px-4 py-4",
         "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
         // The file input is hidden, so the zone shows its keyboard focus.
-        "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet-500 dark:has-[input:focus-visible]:ring-violet-400",
+        "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent",
         phase === "over" || phase === "absorb"
-          ? "border-violet-500/70 scale-[1.01] dark:border-violet-400/70"
+          ? "border-accent/70 scale-[1.01]"
           : phase === "ready"
-            ? "border-violet-500/60 bg-violet-500/[0.03] dark:border-violet-400/60 dark:bg-violet-400/[0.03]"
+            ? "border-accent/60 bg-accent/[0.03]"
             : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
         error && phase === "idle" && "border-red-500/60 dark:border-red-400/60",
       )}
@@ -118,7 +118,7 @@ export function DropZone({
         {isReading ? (
           <LoaderCircle
             aria-hidden="true"
-            className="h-5 w-5 animate-spin text-violet-500 dark:text-violet-400"
+            className="h-5 w-5 animate-spin text-accent"
             strokeWidth={1.5}
           />
         ) : (
@@ -127,7 +127,7 @@ export function DropZone({
             className={cn(
               "h-5 w-5 transition-[translate,color] duration-200",
               phase === "over" || phase === "ready"
-                ? "-translate-y-0.5 text-violet-500 dark:text-violet-400"
+                ? "-translate-y-0.5 text-accent"
                 : "text-zinc-500 dark:text-zinc-400",
             )}
             strokeWidth={1.5}
@@ -145,7 +145,7 @@ export function DropZone({
                     : "Drop conversations.json here"}
             </p>
             {!isReading && (
-              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-[color-mix(in_srgb,rgb(var(--accent))_85%,black)] px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_srgb,rgb(var(--accent))_75%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
+              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-accent-fill px-4 text-sm font-semibold text-white shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_oklab,var(--color-accent-fill)_88%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
                 Choose export files
               </span>
             )}
@@ -190,7 +190,7 @@ export function DropZone({
         aria-valuenow={isReading ? Math.round(progress * 100) : undefined}
         aria-valuemin={isReading ? 0 : undefined}
         aria-valuemax={isReading ? 100 : undefined}
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-violet-500 transition-[scale,opacity] duration-200 ease-out dark:bg-violet-400"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-accent transition-[scale,opacity] duration-200 ease-out"
         style={{
           scale: `${progress ?? 1} 1`,
           opacity: isReading ? 1 : 0,

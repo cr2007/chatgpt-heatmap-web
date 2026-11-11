@@ -26,10 +26,10 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     label: "ChatGPT",
     steps:
       "Settings → Data Controls → Export data. Multiple files are supported.",
-    border: "border-green-300 dark:border-green-900/40",
-    bg: "bg-green-50 dark:bg-green-950/20",
-    text: "text-green-700 dark:text-green-400",
-    dot: "bg-green-500",
+    border: "border-(--g-line)",
+    bg: "bg-(--g-wash)",
+    text: "text-(--g-ink)",
+    dot: "bg-(--g-dot)",
     guide: [
       "Open **Settings** → **Data Controls**.",
       "Choose **Export data** and confirm.",
@@ -43,10 +43,10 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     label: "Claude",
     steps:
       "Settings → Privacy → Export data. Open the file list from the email, download the conversations zip and unzip it.",
-    border: "border-orange-300 dark:border-orange-900/40",
-    bg: "bg-orange-50 dark:bg-orange-950/20",
-    text: "text-orange-700 dark:text-orange-400",
-    dot: "bg-orange-500",
+    border: "border-(--o-line)",
+    bg: "bg-(--o-wash)",
+    text: "text-(--o-ink)",
+    dot: "bg-(--o-dot)",
     guide: [
       "Open **Settings** → **Privacy**.",
       "Choose **Export data**.",

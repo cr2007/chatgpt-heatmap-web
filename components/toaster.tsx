@@ -99,10 +99,10 @@ function ToastItem({ toast }: { toast: Toast }) {
       onFocus={stop}
       onBlur={start}
       className={cn(
-        "pointer-events-auto flex items-start gap-3 rounded-lg border bg-white p-4 text-sm shadow-lg dark:bg-neutral-950",
+        "pointer-events-auto flex items-start gap-3 rounded-lg border bg-white p-4 text-sm shadow-lg dark:bg-zinc-950",
         toast.kind === "error"
           ? "border-red-200 dark:border-red-900/60"
-          : "border-neutral-200 dark:border-neutral-800",
+          : "border-zinc-200 dark:border-zinc-800",
         leaving
           ? "translate-y-1 opacity-0 transition-[opacity,translate] duration-150 ease-in"
           : "animate-toast-in",
@@ -114,17 +114,17 @@ function ToastItem({ toast }: { toast: Toast }) {
           "mt-px size-4 shrink-0",
           toast.kind === "error"
             ? "text-red-600 dark:text-red-400"
-            : "text-neutral-900 dark:text-neutral-50",
+            : "text-zinc-900 dark:text-zinc-50",
         )}
       />
-      <p className="min-w-0 flex-1 break-words text-neutral-950 dark:text-neutral-50">
+      <p className="min-w-0 flex-1 break-words text-zinc-950 dark:text-zinc-50">
         {toast.text}
       </p>
       <button
         type="button"
         aria-label="Dismiss notification"
         onClick={() => setLeaving(true)}
-        className="-m-1 shrink-0 rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400"
+        className="-m-1 shrink-0 rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
       >
         <X aria-hidden="true" className="size-3.5" />
       </button>

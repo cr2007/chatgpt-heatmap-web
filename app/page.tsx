@@ -182,7 +182,7 @@ export default function Home() {
   return (
     <div className="relative">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-zinc-50 dark:bg-zinc-950" />
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,rgba(147,130,255,0.18),transparent)]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,color-mix(in_oklab,var(--color-accent)_7%,transparent),transparent)] dark:bg-[radial-gradient(ellipse_80%_40%_at_50%_-5%,color-mix(in_oklab,var(--color-accent)_18%,transparent),transparent)]" />
 
       {!hasData && !isFolded ? (
         <Welcome
@@ -204,7 +204,7 @@ export default function Home() {
                   {isBookMode && hasData && (
                     <button
                       onClick={() => setFormOnRight((v) => !v)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus-visible:ring-violet-400 transition-colors"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
                       title={
                         formOnRight ? "Move panel left" : "Move panel right"
                       }

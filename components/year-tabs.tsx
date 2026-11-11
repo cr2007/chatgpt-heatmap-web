@@ -36,7 +36,7 @@ export function YearTabs({
       aria-pressed={view === v}
       onClick={() => onView(v)}
       className={cn(
-        "flex h-8 shrink-0 items-baseline gap-1.5 rounded-md px-3 text-sm transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-hidden dark:focus-visible:ring-violet-400",
+        "flex h-8 shrink-0 items-baseline gap-1.5 rounded-md px-3 text-sm transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden",
         view === v
           ? "bg-white font-medium text-zinc-900 shadow-xs ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:ring-zinc-700"
           : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",

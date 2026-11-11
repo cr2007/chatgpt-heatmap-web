@@ -128,7 +128,7 @@ export function Welcome({
 
           <a
             href="#get-export"
-            className="mt-6 text-sm font-medium text-violet-700 underline-offset-4 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-hidden lg:hidden dark:text-violet-300"
+            className="mt-6 text-sm font-medium text-accent-ink underline-offset-4 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden lg:hidden"
           >
             No export yet? See how to get one.
           </a>

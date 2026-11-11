@@ -103,10 +103,10 @@ export function Summary({
                   className="mt-1 mb-1.5 flex h-1 overflow-hidden rounded-full"
                 >
                   <span
-                    className="bg-green-500"
+                    className="bg-(--g-dot)"
                     style={{ width: `${gptShare}%` }}
                   />
-                  <span className="flex-1 bg-orange-500" />
+                  <span className="flex-1 bg-(--o-dot)" />
                 </span>
                 {count(stats.chatgpt)} ChatGPT, {count(stats.claude)} Claude
               </>
