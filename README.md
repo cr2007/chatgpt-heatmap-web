@@ -26,7 +26,7 @@ A web application to visualize your ChatGPT and Claude conversation activity as 
 - The chats of any day: hover a day, tap it on a phone, or move with the arrow keys
 - Find your time zone by city, time name ("Pacific Time"), abbreviation ("IST") or offset ("+5:30"); small typos still match
 - Light and dark theme: follows your computer until you flip it with the theme button or the D key
-- Responsive layout tuned for desktop, mobile, and foldable devices (book/tent posture)
+- Works on phones, tablets, laptops and large screens (a 4K screen at 1x scales up), and uses a half-open foldable as two screens: the calendar on one half, the figures and the chats of a day on the other
 - Built with React and [Tailwind CSS](https://tailwindcss.com/), with no UI component library
 - Fully client-side: no data leaves your browser. The built page has a Content-Security-Policy that blocks every network request from the page.
 
