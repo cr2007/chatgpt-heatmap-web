@@ -11,10 +11,11 @@ export const DESKTOP_QUERY =
 export const EXPANDED_QUERY = "(min-width: 840px)";
 
 /** Matches a window wide enough for the full top bar once an export is
- *  loaded: the export chips, Add export and the time zone in one row (about
- *  1,030 px at 16 px text). Below it, the bar keeps the name and the links,
- *  and a panel under it holds the rest. */
-export const WIDE_BAR_QUERY = "(min-width: 72rem)";
+ *  loaded: the export chips with their counts, Add export and the time zone
+ *  in one row (1,146 px measured, about 1,180 px with five-digit counts).
+ *  Below it, the bar keeps the name and the links, and a panel under it
+ *  holds the rest. */
+export const WIDE_BAR_QUERY = "(min-width: 76rem)";
 
 /** Matches a half-open foldable: "folded" means half open and spanning the
  *  fold (W3C Device Posture). A closed device on its cover screen, or a

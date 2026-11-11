@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Globe } from "lucide-react";
 import { cn, plural } from "@/lib/utils";
 import {
   buildIndex,
@@ -33,6 +33,7 @@ export function TimeZonePicker({
   timeZone,
   setTimeZone,
   inline = false,
+  compact = false,
   label = inline ? "Days start at midnight in" : "Time zone",
 }: {
   id: string;
@@ -40,7 +41,10 @@ export function TimeZonePicker({
   setTimeZone: (timeZone: string) => void;
   /** Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen. */
   inline?: boolean;
-  /** The label text; the top bar says "Time zone" in the inline layout. */
+  /** The top bar: the label is for screen readers only, and a globe in the
+   *  field marks it, so the bar keeps its room. */
+  compact?: boolean;
+  /** The label text. */
   label?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -119,22 +123,37 @@ export function TimeZonePicker({
   return (
     <div
       className={
-        inline
-          ? "flex flex-wrap items-center gap-x-2 gap-y-1"
-          : "flex flex-col gap-2"
+        compact
+          ? "flex items-center"
+          : inline
+            ? "flex flex-wrap items-center gap-x-2 gap-y-1"
+            : "flex flex-col gap-2"
       }
     >
       <label
         htmlFor={inputId}
         className={
-          inline
-            ? "text-sm text-zinc-600 dark:text-zinc-400"
-            : "text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
+          compact
+            ? "sr-only"
+            : inline
+              ? "text-sm text-zinc-600 dark:text-zinc-400"
+              : "text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400"
         }
       >
         {label}
       </label>
-      <div className={cn("relative", inline ? "w-64 max-w-full" : "w-full")}>
+      <div
+        className={cn(
+          "relative",
+          compact ? "w-52" : inline ? "w-64 max-w-full" : "w-full",
+        )}
+      >
+        {compact && (
+          <Globe
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-zinc-400"
+          />
+        )}
         <input
           ref={inputRef}
           id={inputId}
@@ -148,7 +167,10 @@ export function TimeZonePicker({
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 pl-3 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500"
+          className={cn(
+            "h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500",
+            compact ? "pl-8" : "pl-3",
+          )}
           // Step 1
           onFocus={openList}
           onClick={() => !open && openList()}
@@ -171,7 +193,7 @@ export function TimeZonePicker({
           <div
             className={cn(
               "absolute right-0 left-0 z-30 animate-tooltip-in overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg shadow-zinc-950/10 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40",
-              inline && "min-w-80",
+              (inline || compact) && "min-w-80",
               up
                 ? "bottom-full mb-1 origin-bottom"
                 : "top-full mt-1 origin-top",

@@ -207,8 +207,7 @@ export default function Home() {
           <div className="ml-auto">
             <TimeZonePicker
               id="bar"
-              inline
-              label="Time zone"
+              compact
               timeZone={timeZone}
               setTimeZone={changeTimeZone}
             />

@@ -6,8 +6,8 @@ import type { Provider } from "@/lib/types";
 import type { LoadedInfo } from "@/components/loaded-files";
 
 /**
- * One loaded export in the top bar: the provider, its conversation count on
- * hover, on keyboard focus or on a tap, and a remove button.
+ * One loaded export in the top bar: the provider and its chat count, the
+ * file name on hover, on keyboard focus or on a tap, and a remove button.
  *
  * Step 1: The chip button's accessible name holds the count and the file
  *         name, so a screen reader hears them without the tip.
@@ -25,7 +25,6 @@ function Chip({
 }) {
   const [pinned, setPinned] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
-  const conversations = plural(info.count, "conversation");
 
   // Step 2: an outside tap or Escape unpins.
   useEffect(() => {
@@ -58,10 +57,11 @@ function Chip({
           className={cn("size-2.5 rounded-[3px]", p.dot)}
         />
         {p.label}
-        {/* Step 1 */}
-        <span className="sr-only">
-          , {conversations} from {info.name}
+        <span className="font-normal text-zinc-500 tabular-nums dark:text-zinc-400">
+          {plural(info.count, "chat")}
         </span>
+        {/* Step 1 */}
+        <span className="sr-only">, from {info.name}</span>
       </button>
       <button
         type="button"
@@ -79,10 +79,7 @@ function Chip({
         data-pinned={pinned || undefined}
         className="pointer-events-none absolute top-full left-0 z-30 mt-2 flex max-w-72 origin-top-left scale-[0.97] flex-col rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs whitespace-nowrap opacity-0 shadow-lg shadow-zinc-950/10 transition-[opacity,scale] duration-(--dur-micro) ease-out group-focus-within/chip:scale-100 group-focus-within/chip:opacity-100 group-hover/chip:scale-100 group-hover/chip:opacity-100 group-hover/chip:delay-150 data-pinned:scale-100 data-pinned:opacity-100 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40"
       >
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          {conversations}
-        </span>
-        <span className="truncate text-zinc-500 dark:text-zinc-400">
+        <span className="truncate text-zinc-600 dark:text-zinc-300">
           {info.name}
         </span>
       </span>
@@ -102,7 +99,7 @@ export function ExportChips({
     <ul
       id="loaded-exports"
       aria-label="Loaded exports"
-      className="flex min-w-0 items-center gap-1.5"
+      className="flex shrink-0 items-center gap-1.5"
     >
       {PROVIDERS.map((p) => {
         const info = loaded[p.key];
