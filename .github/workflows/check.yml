@@ -1,5 +1,6 @@
 # Tests, lint, types, format, audit and the size budget. Pull requests run
-# it directly; deploy.yml calls it and deploys only when it passes.
+# it directly; deploy.yml calls it for a release (a vX.Y.Z tag) and deploys
+# only when it passes.
 name: Check
 
 on:

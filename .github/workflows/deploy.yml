@@ -1,15 +1,13 @@
-# After one check run, deploys dist/ to GitHub Pages and publishes the Docker
-# image to ghcr.io. The two jobs run in parallel.
+# A release: a pushed version tag (vX.Y.Z, made by `bun pm version X.Y.Z`)
+# runs the full check once, and checks that the tag matches package.json.
+# Only when both pass, it deploys dist/ to GitHub Pages and publishes the
+# Docker image to ghcr.io, in parallel. Pushes to a branch deploy nothing.
 
 name: Deploy
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    tags: ["v*.*.*"]
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -27,9 +25,23 @@ jobs:
   check:
     uses: ./.github/workflows/check.yml
 
+  # The tag must be the version in package.json, so a release cannot ship a
+  # different version than it says.
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tag matches package.json
+        run: |
+          want="v$(jq -r .version package.json)"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($want)."
+            exit 1
+          fi
+
   # Build job
   build:
-    needs: check
+    needs: [check, version]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -64,9 +76,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
-  # Docker image on ghcr.io: runs in parallel with the Pages build, after the same check.
+  # Docker image on ghcr.io: runs in parallel with the Pages build, after the same checks.
   docker:
-    needs: check
+    needs: [check, version]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -90,12 +102,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # v1.2.3 gives 1.2.3, 1.2 and latest; a pre-release (v1.3.0-rc.1) gives only its own tag.
+      - name: Image tags and labels from the version
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.IMAGE }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
