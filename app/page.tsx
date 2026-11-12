@@ -46,6 +46,36 @@ function clearOldViewHash() {
     history.replaceState(null, "", location.pathname + location.search);
 }
 
+/** Ends the running scroll hold, if any. */
+let unhold = () => {};
+
+/**
+ * Keeps the page at least as tall as it is scrolled, before a view change:
+ * one year after "All years" is about 400 px shorter, and the browser would
+ * pull a scrolled page down at once, so the tabs jumped and the morph slid
+ * the year down from where it was. The hold ends once the page's own
+ * content is tall enough again (the user scrolled up, or the window grew).
+ */
+function holdScroll() {
+  unhold();
+  const root = document.documentElement;
+  root.style.minHeight = `${scrollY + innerHeight}px`;
+  // A new hold replaces this one in the same task, so the page never clamps in between.
+  unhold = () => {
+    root.style.minHeight = "";
+    removeEventListener("scroll", release);
+    removeEventListener("resize", release);
+    unhold = () => {};
+  };
+  const release = () => {
+    if (scrollY + innerHeight <= document.body.scrollHeight + 1) unhold();
+  };
+  addEventListener("scroll", release, { passive: true });
+  addEventListener("resize", release);
+  // A view that is not shorter needs no hold: drop it after the new view draws.
+  requestAnimationFrame(release);
+}
+
 /**
  * Root page: owns the loaded exports, an upload in progress, the time zone,
  * the year view and the picked day, and arranges the screen for the window
@@ -166,6 +196,7 @@ export default function Home() {
         : document.querySelector<SVGSVGElement>("#calendar svg"),
       dir,
     );
+    holdScroll();
     setPicked(next);
   }
   const upload = useUpload({ onLoad: loadExports, onStream });
