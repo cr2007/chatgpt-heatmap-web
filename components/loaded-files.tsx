@@ -5,7 +5,12 @@ import type { Provider } from "@/lib/types";
 
 export interface LoadedInfo {
   name: string;
+  /** Chats in the export. */
   count: number;
+  /** Prompts that count on the heatmap (the README count rule). */
+  prompts: number;
+  /** Every file in the export, in upload order. */
+  files: string[];
 }
 
 /**

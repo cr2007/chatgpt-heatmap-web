@@ -29,7 +29,7 @@ import {
 } from "@/lib/layout";
 import { summarize } from "@/lib/stats";
 import { SYSTEM_ZONE } from "@/lib/time-zones";
-import type { Provider } from "@/lib/types";
+import type { LoadedExport, Provider } from "@/lib/types";
 import type { Exports as PartialExports } from "@/lib/upload";
 import { loadTestData, type Exports } from "@/app/dev-data";
 
@@ -180,15 +180,17 @@ export default function Home() {
   if (!hasData) return <>{welcome}</>;
 
   // Step 3
+  /** A loaded export as the bar shows it; the prompts are the heatmap's count. */
+  const info = (e: LoadedExport | null) =>
+    e && {
+      name: e.name,
+      files: e.files,
+      count: e.chats.length,
+      prompts: e.chats.reduce((n, c) => n + c.times.length, 0),
+    };
   const loaded = {
-    chatgpt: exports.chatgpt && {
-      name: exports.chatgpt.name,
-      count: exports.chatgpt.chats.length,
-    },
-    claude: exports.claude && {
-      name: exports.claude.name,
-      count: exports.claude.chats.length,
-    },
+    chatgpt: info(exports.chatgpt),
+    claude: info(exports.claude),
   };
   const bar = (
     <AppBar

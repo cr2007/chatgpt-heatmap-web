@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { cn, plural } from "@/lib/utils";
+import { cn, plural, splitName } from "@/lib/utils";
 import { PROVIDERS, type ProviderInfo } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import type { LoadedInfo } from "@/components/loaded-files";
 
+/** The tip lists this many file names at most; the rest are counted. */
+const MAX_FILES = 4;
+
 /**
- * One loaded export in the top bar: the provider and its chat count, the
- * file name on hover, on keyboard focus or on a tap, and a remove button.
+ * One loaded export in the top bar: the provider and its chat count; on
+ * hover, keyboard focus or a tap, the prompt count and the file names; and
+ * a remove button.
  *
- * Step 1: The chip button's accessible name holds the count and the file
- *         name, so a screen reader hears them without the tip.
+ * Step 1: The chip button's accessible name holds the counts and the file
+ *         names, so a screen reader hears them without the tip.
  * Step 2: The tip shows on hover (after a short delay) and on focus; a click
  *         or a tap pins it until the next click, a tap outside or Escape.
  */
@@ -61,7 +65,9 @@ function Chip({
           {plural(info.count, "chat")}
         </span>
         {/* Step 1 */}
-        <span className="sr-only">, from {info.name}</span>
+        <span className="sr-only">
+          , {plural(info.prompts, "prompt")}, from {info.files.join(", ")}
+        </span>
       </button>
       <button
         type="button"
@@ -74,15 +80,30 @@ function Chip({
         <X aria-hidden="true" size={14} />
       </button>
       {/* Step 2: for the eye only; the button's name already says it. */}
-      <span
+      <div
         aria-hidden="true"
         data-pinned={pinned || undefined}
-        className="pointer-events-none absolute top-full left-0 z-30 mt-2 flex max-w-72 origin-top-left scale-[0.97] flex-col rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs whitespace-nowrap opacity-0 shadow-lg shadow-zinc-950/10 transition-[opacity,scale] duration-(--dur-micro) ease-out group-focus-within/chip:scale-100 group-focus-within/chip:opacity-100 group-hover/chip:scale-100 group-hover/chip:opacity-100 group-hover/chip:delay-150 data-pinned:scale-100 data-pinned:opacity-100 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40"
+        className="pointer-events-none absolute top-full left-0 z-30 mt-2 flex w-max max-w-72 origin-top-left scale-[0.97] flex-col gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs opacity-0 shadow-lg shadow-zinc-950/10 transition-[opacity,scale] duration-(--dur-micro) ease-out group-focus-within/chip:scale-100 group-focus-within/chip:opacity-100 group-hover/chip:scale-100 group-hover/chip:opacity-100 group-hover/chip:delay-150 data-pinned:scale-100 data-pinned:opacity-100 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40"
       >
-        <span className="truncate text-zinc-600 dark:text-zinc-300">
-          {info.name}
-        </span>
-      </span>
+        <p className="font-medium whitespace-nowrap text-zinc-900 dark:text-zinc-100">
+          {plural(info.prompts, "prompt")} in {plural(info.count, "chat")}
+        </p>
+        <ul className="flex flex-col text-zinc-500 dark:text-zinc-400">
+          {info.files.slice(0, MAX_FILES).map((f, i) => {
+            // Cut in the middle: the end of the name (with the extension) stays.
+            const [head, tail] = splitName(f);
+            return (
+              <li key={i} className="flex min-w-0 whitespace-pre">
+                <span className="truncate">{head}</span>
+                <span className="shrink-0">{tail}</span>
+              </li>
+            );
+          })}
+          {info.files.length > MAX_FILES && (
+            <li>and {plural(info.files.length - MAX_FILES, "more file")}</li>
+          )}
+        </ul>
+      </div>
     </li>
   );
 }

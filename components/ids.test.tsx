@@ -27,8 +27,8 @@ describe("ids on the loaded screen", () => {
     const agg = aggregateDateData(chats, chats, "UTC")!;
     const stats = summarize(agg.data)!;
     const loaded = {
-      chatgpt: { name: "conversations.json", count: 2 },
-      claude: { name: "conversations.json", count: 2 },
+      chatgpt: { name: "a.json", count: 2, prompts: 3, files: ["a.json"] },
+      claude: { name: "b.json", count: 2, prompts: 3, files: ["b.json"] },
     };
     // The parts that share the wide screen; LoadedFiles stands in for the
     // phone panel's rows, which never show with the chips but must not

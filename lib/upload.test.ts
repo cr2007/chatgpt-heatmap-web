@@ -13,6 +13,10 @@ describe("loadExports", () => {
     ]);
     if (!r.ok) throw new Error(r.error);
     expect(r.exports.chatgpt?.name).toBe("2 files");
+    expect(r.exports.chatgpt?.files).toEqual([
+      "chatgpt-export.json",
+      "chatgpt-export-2.json",
+    ]);
     expect(r.exports.chatgpt?.chats).toHaveLength(6);
     expect(r.exports.claude?.name).toBe("claude-export.json");
     expect(r.exports.claude?.chats).toHaveLength(3);

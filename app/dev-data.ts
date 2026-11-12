@@ -20,7 +20,7 @@ export function loadTestData(): Exports {
       if (!json) return null;
       const raw = JSON.parse(json) as unknown[];
       const parse = detectFormat(raw) === "claude" ? parseClaude : parseChatGPT;
-      return { name: "Test data", chats: parse(raw) };
+      return { name: "Test data", files: ["Test data"], chats: parse(raw) };
     };
     return { chatgpt: read("test-chatgpt"), claude: read("test-claude") };
   } catch {

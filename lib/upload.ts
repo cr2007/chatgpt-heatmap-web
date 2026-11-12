@@ -49,10 +49,13 @@ function toExports(states: FileState[]): Exports {
     ...(gpt.length && {
       chatgpt: {
         name: gpt.length === 1 ? gpt[0].name : `${gpt.length} files`,
+        files: gpt.map((s) => s.name),
         chats: gpt.length === 1 ? gpt[0].chats : gpt.flatMap((s) => s.chats),
       },
     }),
-    ...(claude && { claude: { name: claude.name, chats: claude.chats } }),
+    ...(claude && {
+      claude: { name: claude.name, files: [claude.name], chats: claude.chats },
+    }),
   };
 }
 

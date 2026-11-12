@@ -106,6 +106,23 @@ describe.skipIf(!hasJq)("app counts match jq", () => {
   }
 });
 
+// The export chip's hover shows the prompts of each export: the sum of its
+// chats' prompt times, so the same rule as the cells.
+describe.skipIf(!hasJq)("export prompt count matches jq", () => {
+  for (const file of files) {
+    test(file.split("/").pop()!, async () => {
+      const raw = await Bun.file(file).json();
+      const program = detectFormat(raw) === "claude" ? JQ_CLAUDE : JQ_CHATGPT;
+      const r = await loadExports([Bun.file(file)]);
+      if (!r.ok) throw new Error(r.error);
+      const chats = (r.exports.chatgpt ?? r.exports.claude)!.chats;
+      expect(chats.reduce((n, c) => n + c.times.length, 0)).toBe(
+        await jqCounts<number>(`${program} | [.[]] | add // 0`, file, "UTC"),
+      );
+    });
+  }
+});
+
 describe.skipIf(!hasJq)("figures match jq", () => {
   for (const file of files) {
     for (const tz of TIME_ZONES) {

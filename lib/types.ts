@@ -4,6 +4,8 @@ export type Provider = "chatgpt" | "claude";
 export interface LoadedExport {
   /** File name, or "N files" for a merged ChatGPT upload. */
   name: string;
+  /** Every file in the export, in upload order (ChatGPT files can merge). */
+  files: string[];
   /** One summary per conversation, in export order. */
   chats: ConversationSummary[];
 }
