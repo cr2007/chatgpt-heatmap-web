@@ -74,7 +74,7 @@ export interface CalendarHeatmapProps {
   fixedHeight?: boolean;
   /** Largest scale where the page scrolls (see `fitScale`). */
   maxScale?: number;
-  /** Id of the root; the day details get `${id}-tip`. */
+  /** Id of the root; the day details get `${id}-tip` and the drawing `${id}-svg`. */
   id?: string;
   /** Half-open foldables: show the day details in this pane (DayPane) in
    *  place of a floating card. `onPick` gets each picked day. */
@@ -308,6 +308,7 @@ export function CalendarHeatmap({
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the key handler moves the roving tab stop between the focusable cells */}
         <svg
           ref={svgRef}
+          id={`${id ?? uid}-svg`}
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
           role="group"
           aria-label={`Calendar heatmap of AI chat activity from ${startYear} to ${endYear}. Use the arrow keys to move between days.`}
