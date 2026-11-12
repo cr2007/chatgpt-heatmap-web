@@ -168,15 +168,22 @@
     background-color: var(--color-zinc-950);
   }
 
-  /* Very large screens (a 1440p or 4K monitor at 1x, a TV): every rem size
-     grows, so the page keeps its proportions instead of becoming a narrow
-     column in empty space. A 4K screen at 2x is 1920 px wide and keeps 16 px. */
-  @media (min-width: 2400px) {
+  /* Wide windows (a 1080p, 1440p or 4K monitor at 1x, a TV): every rem size
+     grows, so the page keeps its proportions instead of becoming a small
+     column in empty space. At 1904 px the owner zoomed to 125% to read it,
+     so 1800 px and wider is 125%. Media queries use the initial 16 px, so
+     these steps do not move each other. */
+  @media (min-width: 1600px) {
+    html {
+      font-size: 112.5%;
+    }
+  }
+  @media (min-width: 1800px) {
     html {
       font-size: 125%;
     }
   }
-  @media (min-width: 3200px) {
+  @media (min-width: 2800px) {
     html {
       font-size: 150%;
     }
