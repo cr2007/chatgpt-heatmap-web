@@ -20,10 +20,24 @@ export function ranges([a, b, c]: Edges): string[] {
   ];
 }
 
-/** A small square in the calendar's own shade classes. */
-function Swatch({ className, title }: { className: string; title?: string }) {
+/** A small square in the calendar's own shade classes. It is sized in em
+ *  (10 px at 12 px text), so it grows with the text on wide screens. */
+function Swatch({
+  className,
+  title,
+  id,
+}: {
+  className: string;
+  title?: string;
+  id?: string;
+}) {
   return (
-    <svg width="10" height="10" aria-hidden="true" className="shrink-0">
+    <svg
+      id={id}
+      viewBox="0 0 10 10"
+      aria-hidden="true"
+      className="size-[0.8333em] shrink-0"
+    >
       {title && <title>{title}</title>}
       <rect x="0.5" y="0.5" width="9" height="9" rx="2" className={className} />
     </svg>
@@ -64,7 +78,11 @@ export function HeatLegend({
       })}
       {providers.length > 1 && (
         <span className="flex items-center gap-1">
-          <svg width="10" height="10" aria-hidden="true" className="shrink-0">
+          <svg
+            viewBox="0 0 10 10"
+            aria-hidden="true"
+            className="size-[0.8333em] shrink-0"
+          >
             <rect x="0.5" y="0.5" width="4.5" height="9" className="lv-g3" />
             <rect x="5" y="0.5" width="4.5" height="9" className="lv-o3" />
           </svg>
@@ -72,7 +90,8 @@ export function HeatLegend({
         </span>
       )}
       <span className="flex items-center gap-1">
-        <Swatch className="lv-out" />
+        {/* A stronger outline than the calendar's hollow days (app/globals.css). */}
+        <Swatch id="heat-legend-outside" className="lv-out" />
         Outside the export
       </span>
       <span>Stronger shades mean more prompts</span>

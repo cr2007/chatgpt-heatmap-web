@@ -297,6 +297,14 @@
   stroke: var(--cell-empty);
   stroke-width: 1.5px;
 }
+/* The legend's hollow swatch: the empty-day grey is 1.1:1 on the page, too
+   faint to see at legend size, so the swatch takes a stronger grey. */
+#heat-legend-outside .lv-out {
+  stroke: var(--color-zinc-400);
+}
+.dark #heat-legend-outside .lv-out {
+  stroke: var(--color-zinc-500);
+}
 /* Keyboard focus on a day: an accent outline drawn with the stroke, which
    works on SVG in every engine. */
 .heat-cell:focus-visible {
