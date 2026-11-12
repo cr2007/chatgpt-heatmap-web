@@ -38,10 +38,12 @@ const NO_YEARS: number[] = [];
 /** localStorage key: book posture with the controls on the right. */
 const SWAP_KEY = "fold-swap";
 
-/** The view in the address (#all or #2025), so a view can be shared and kept. */
-function readView(): YearView | null {
-  const h = location.hash.slice(1);
-  return h === "all" ? "all" : /^\d{4}$/.test(h) ? Number(h) : null;
+/** An older version kept the view in the address (#all, #2025). The view
+ *  is no longer kept, so such a hash is cleared, and every visit starts on
+ *  "All years". Other hashes (the skip link's) stay. */
+function clearOldViewHash() {
+  if (/^#(all|\d{4})$/.test(location.hash))
+    history.replaceState(null, "", location.pathname + location.search);
 }
 
 /**
@@ -78,8 +80,11 @@ export default function Home() {
   /** Counts time zone changes since the last upload; each one runs the heatmap sweep. */
   const [sweep, setSweep] = useState(0);
   const [timeZone, setTimeZone] = useState(SYSTEM_ZONE);
-  /** The view picked with the year tabs; null means the default for the layout. */
-  const [picked, setPicked] = useState<YearView | null>(readView);
+  /** The view picked with the year tabs; null means the start view, "All years". */
+  const [picked, setPicked] = useState<YearView | null>(() => {
+    clearOldViewHash();
+    return null;
+  });
   /** The phone's export panel is open (kept across a fold). */
   const [panelOpen, setPanelOpen] = useState(false);
   /** The day in the day pane (half-open foldables). */
@@ -125,7 +130,7 @@ export default function Home() {
     () => dataYears.map((y) => (agg && summarize(agg.data, y)?.total) || 0),
     [agg, dataYears],
   );
-  const view = pickYearView(picked, dataYears, isDesktop);
+  const view = pickYearView(picked, dataYears);
   const viewStats = useMemo(
     () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
     [agg, allStats, view],
@@ -147,12 +152,11 @@ export default function Home() {
     setTimeZone(tz);
     setSweep((n) => n + 1);
   };
-  /** Picks a view and keeps it in the address; the calendar morphs to it,
+  /** Picks a view; the calendar morphs to it,
    *  except after a keyboard pick (no motion on a keyboard action). */
   function pickView(next: YearView, how: "pointer" | "key") {
     if (how !== "key") prepareMorph(document.querySelector("#calendar svg"));
     setPicked(next);
-    history.replaceState(null, "", `#${next}`);
   }
   const upload = useUpload({ onLoad: loadExports, onStream });
 

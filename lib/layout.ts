@@ -104,18 +104,16 @@ export function getHeatmapOrientation({
 export type YearView = "all" | number;
 
 /**
- * The calendar view from the year tabs, the address and the layout.
+ * The calendar view from the year tabs. Every visit starts on "All years"
+ * (the owner's choice, 2026-11-12); the view is not kept in the address.
  *
  * Step 1: A picked year that the data has wins; "all" wins when there is
  *         more than one year (one year shows as that year).
- * Step 2: With nothing valid picked, a desktop window shows every year;
- *         phones and foldables show the latest year, so the first screen
- *         is one year, not a long scroll through all of them.
+ * Step 2: With nothing valid picked: every year, or the one year there is.
  */
 export function pickYearView(
   picked: YearView | null,
   years: readonly number[],
-  isDesktop: boolean,
 ): YearView {
   const latest = years[years.length - 1];
   if (latest === undefined) return "all";
@@ -123,5 +121,5 @@ export function pickYearView(
   if (picked === "all") return years.length > 1 ? "all" : latest;
   if (picked !== null && years.includes(picked)) return picked;
   // Step 2
-  return isDesktop && years.length > 1 ? "all" : latest;
+  return years.length > 1 ? "all" : latest;
 }
