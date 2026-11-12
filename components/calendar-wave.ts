@@ -53,7 +53,7 @@ export interface WaveSnapshot {
 
 /** A pose: `lift` is the share of the jump (1 touches the ceiling, negative
  *  is a dip); `v` and `h` scale each cell along and across the jump. */
-interface Pose {
+export interface Pose {
   lift: number;
   v: number;
   h?: number;
@@ -152,11 +152,22 @@ export function snapshotWave(svg: SVGSVGElement): WaveSnapshot {
  * `span` long. The column keeps to the surface it is near (the ceiling above
  * half the jump, else the floor): a squash packs the cells toward it.
  */
-function shape(along: number, span: number, p: Pose) {
+export function shape(along: number, span: number, p: Pose) {
   const len = Math.min(span, BODY) * COLUMN * (1 - p.v);
   const share = along / span;
   const up = p.lift * JUMP + (p.lift > 0.5 ? len * share : -len * (1 - share));
   return `translate(0px, ${-up}px) scale(${p.h ?? 1}, ${p.v})`;
+}
+
+/**
+ * When column `column` of `columns` starts (ms), counted in travel order:
+ * 1 is a later year (left to right), -1 an earlier one. The starts spread
+ * over SPREAD whatever the number of columns, so 53 week columns and the 7
+ * weekday columns of a vertical calendar take as long.
+ */
+export function startDelay(column: number, columns: number, dir: number) {
+  const nth = dir > 0 ? column : columns - 1 - column;
+  return (nth * SPREAD) / Math.max(1, columns - 1);
 }
 
 /** Keyframes for a look that is `from` until the swap, then blends to `to` (ease-out). */
@@ -184,8 +195,7 @@ export function playWave(svg: SVGSVGElement, was: WaveSnapshot, dir: number) {
   const size = Number(cells[0].getAttribute("width"));
   const span = Math.max(...ys) - top + size;
   const column = (r: Element) => xs.indexOf(Number(r.getAttribute("x")));
-  const delayOf = (c: number) =>
-    ((dir > 0 ? c : n - 1 - c) * SPREAD) / Math.max(1, n - 1);
+  const delayOf = (c: number) => startDelay(c, n, dir);
   // The old gradients, for split days, until the wave is over.
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   defs.setAttribute("data-ghost", "");

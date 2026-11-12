@@ -61,9 +61,12 @@ export const project = (v: number) => (v * DECELERATION) / (1 - DECELERATION);
  *   Step 2.1: Past the first or the last tab the pill is rubber-banded.
  *   Step 2.2: Between two tabs the magnet holds it near each tab, and its
  *             width blends from one tab to the other.
- * Step 3: On release, pick the tab the flick points at, spring the pill to
- *         it and change the view; the click that follows a drag is
+ * Step 3: On release, pick the year the flick points at, spring the pill
+ *         to it and change the view; the click that follows a drag is
  *         swallowed. A cancelled pointer puts the pill back with no change.
+ * Step 4: A pick by click, tap or key (a radio's change) changes the view;
+ *         a pick by key marks the row (`data-instant`), so the pill moves
+ *         there at once, and Step 1 clears the mark on the next frame.
  */
 export function YearTabs({
   years,
@@ -324,7 +327,7 @@ export function YearTabs({
               e.preventDefault();
             }}
             onChange={() => {
-              // A keyboard pick moves the pill at once (see app/globals.css).
+              // Step 4: a keyboard pick moves the pill at once (see app/globals.css).
               if (via.current === "key")
                 row.current?.setAttribute("data-instant", "");
               onView(v, via.current);
