@@ -231,6 +231,10 @@
    (-line, -wash, -ink, -dot) serve lib/providers.ts. */
 :root {
   --cell-empty: oklch(93.6% 0.003 70);
+  /* The empty colour at zero alpha, for days outside the export. Not the
+     keyword transparent: Chromium blends oklch with transparent through
+     black (measured: rgb(1, 0, 0) at the start of the year morph). */
+  --cell-out: oklch(93.6% 0.003 70 / 0);
   --g1: oklch(85% 0.085 175);
   --g2: oklch(76% 0.1 175);
   --g3: oklch(63% 0.124 175);
@@ -250,6 +254,7 @@
 }
 .dark {
   --cell-empty: oklch(24% 0.006 70);
+  --cell-out: oklch(24% 0.006 70 / 0);
   --g1: oklch(36% 0.07 185);
   --g2: oklch(50% 0.085 185);
   --g3: oklch(64% 0.115 185);
@@ -270,7 +275,7 @@
 }
 /* Outside the export: an outline, so it does not read as a day with no prompts. */
 .lv-out {
-  fill: transparent;
+  fill: var(--cell-out);
   stroke: var(--cell-empty);
   stroke-width: 1.5px;
 }
