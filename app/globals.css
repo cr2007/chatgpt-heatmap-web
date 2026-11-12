@@ -410,6 +410,198 @@
   }
 }
 
+/* Mail slot (components/mail-slot.tsx, mail-motion.ts): the welcome drop
+   zone drawn as the top of a round post box, a cap and a brim over the
+   mouth, and a flap hung on its top edge. The body is a pale tint of the
+   accent; only the cap and the brim carry more of it, so the box reads as
+   a post box without pulling the eye from the page. mail-motion.ts moves
+   the cards, the flap and the shade (transform and opacity only). */
+.mail-slot {
+  /* The dark inside of the box; the shade uses it too. */
+  --hole: var(--color-zinc-900);
+  --box: color-mix(in oklab, var(--color-accent) 12%, var(--color-zinc-100));
+  --cap: color-mix(in oklab, var(--color-accent) 42%, var(--color-zinc-100));
+  --box-edge: color-mix(
+    in oklab,
+    var(--color-accent) 22%,
+    var(--color-zinc-300)
+  );
+}
+.dark .mail-slot {
+  --hole: color-mix(in oklab, var(--color-zinc-950) 55%, black);
+  --box: color-mix(in oklab, var(--color-accent) 16%, var(--color-zinc-800));
+  --cap: color-mix(in oklab, var(--color-accent) 40%, var(--color-zinc-800));
+  --box-edge: color-mix(
+    in oklab,
+    var(--color-accent) 20%,
+    var(--color-zinc-700)
+  );
+}
+/* The mouth: 200 x 18 px, with room above for the cap and below for the body. */
+.mail-plate {
+  position: relative;
+  width: 200px;
+  height: 18px;
+  margin: 56px 0 46px;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+/* Press: the box gives a little, like a button. */
+.mail-slot label:active .mail-plate {
+  transform: scale(0.97);
+}
+.mail {
+  position: absolute;
+  inset: 0;
+  perspective: 260px;
+}
+.mail > span {
+  position: absolute;
+}
+/* Round: darker at the sides, a light band left of the middle. */
+.mail-body,
+.mail-hood {
+  --round: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--tone) 90%, black),
+    var(--tone) 16%,
+    color-mix(in oklab, var(--tone) 70%, white) 40%,
+    var(--tone) 66%,
+    color-mix(in oklab, var(--tone) 90%, black)
+  );
+}
+.mail-body {
+  --tone: var(--box);
+  inset: -34px -30px -28px;
+  border: 1px solid var(--box-edge);
+  border-radius: 6px 6px 12px 12px;
+  background: var(--round);
+  box-shadow: 0 12px 22px -16px rgb(0 0 0 / 0.4);
+}
+/* The cap: a little wider than the body, with a shadow under its rim. */
+.mail-body::before {
+  --tone: var(--cap);
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: -8px;
+  right: -8px;
+  height: 18px;
+  border-radius: 14px 14px 4px 4px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.25), transparent 60%),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--tone) 90%, black),
+      var(--tone) 16%,
+      color-mix(in oklab, var(--tone) 70%, white) 40%,
+      var(--tone) 66%,
+      color-mix(in oklab, var(--tone) 90%, black)
+    );
+  box-shadow: 0 3px 4px -1px rgb(0 0 0 / 0.3);
+}
+/* The mouth: dark, with an inner shadow under its top edge for depth. */
+.mail-hole {
+  inset: 0;
+  border-radius: 3px;
+  background: var(--hole);
+  box-shadow: inset 0 5px 6px -2px rgb(0 0 0 / 0.7);
+}
+/* The flap hangs on its top edge, 2 px short of the bottom, so a dark line
+   shows under it. A hover (fine pointers) lifts it a little. */
+.mail-flap {
+  inset: -3px -4px 2px;
+  border-radius: 3px;
+  transform-origin: 50% 0;
+  transform: rotateX(0deg);
+  background: linear-gradient(
+    color-mix(in oklab, var(--box) 60%, white),
+    var(--box)
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 1px 1px rgb(0 0 0 / 0.15);
+  transition: transform var(--dur-ui) var(--ease-out);
+}
+.dark .mail-flap {
+  background: linear-gradient(
+    color-mix(in oklab, var(--box) 85%, white),
+    var(--box)
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 1px 1px rgb(0 0 0 / 0.4);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mail-slot[data-phase="idle"] label:hover .mail-flap {
+    transform: rotateX(-35deg);
+  }
+}
+/* The brim over the mouth. */
+.mail-hood {
+  --tone: var(--cap);
+  top: -12px;
+  left: -14px;
+  right: -14px;
+  height: 10px;
+  border-radius: 6px 6px 2px 2px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.3), transparent), var(--round);
+  box-shadow: 0 5px 5px -2px rgb(0 0 0 / 0.35);
+}
+/* Over the mouth, under the line a card goes in through (mail-motion.ts
+   places it): the part of a card that is inside is in the dark. */
+.mail-shade {
+  position: absolute;
+  z-index: 25;
+  background: linear-gradient(
+    color-mix(in oklab, var(--hole) 60%, transparent),
+    var(--hole)
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+/* The read progress, under the body. */
+.mail-progress {
+  position: absolute;
+  top: calc(100% + 38px);
+  left: 24px;
+  right: 24px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--color-zinc-200);
+  transition: opacity var(--dur-ui) var(--ease-out);
+}
+.dark .mail-progress {
+  background: var(--color-zinc-700);
+}
+.mail-progress-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: var(--color-accent);
+  transition: transform var(--dur-ui) var(--ease-out);
+}
+.mail-cards {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+/* Covers the slot; mail-motion.ts cuts it at the mouth's bottom edge when a card goes in. */
+.mail-card-clip {
+  position: absolute;
+  inset: 0;
+}
+/* No movement: the border, the copy and the progress still change; mail-motion.ts shows no cards. */
+@media (prefers-reduced-motion: reduce) {
+  .mail-flap,
+  .mail-plate {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 @utility animate-shake {
   animation: shake 0.35s ease;
 }

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { PROVIDERS } from "@/lib/providers";
 import { sampleYear } from "@/lib/sample";
 import type { useUpload } from "@/hooks/use-upload";
-import { DropZone } from "@/components/drop-zone";
+import { MailSlot } from "@/components/mail-slot";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
 import { AppBar } from "@/components/app-bar";
@@ -29,6 +29,7 @@ export function Welcome({
   timeZone,
   setTimeZone,
   fold,
+  onPosting,
 }: {
   /** The page's upload, so an upload keeps its progress and can be
    *  cancelled after this screen gives way to the loaded one. */
@@ -37,6 +38,8 @@ export function Welcome({
   setTimeZone: (timeZone: string) => void;
   /** The posture of a half-open foldable, or undefined on a flat screen. */
   fold?: Posture;
+  /** True while dropped files go into the post box; the page waits for it. */
+  onPosting: (posting: boolean) => void;
 }) {
   const { progress, uploads, error, isShaking, resetShake, processFiles } =
     upload;
@@ -74,13 +77,13 @@ export function Welcome({
       </p>
 
       <div className="mt-8">
-        <DropZone
-          hero
+        <MailSlot
           inputId="welcome-file"
           progress={progress}
           uploads={uploads}
           error={error}
           onFiles={processFiles}
+          onPosting={onPosting}
         />
         {error && (
           // No role="alert": the error toast already announces it once.

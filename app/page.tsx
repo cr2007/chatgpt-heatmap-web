@@ -57,11 +57,14 @@ function readView(): YearView | null {
  * Step 3: Build the parts once: the top bar, the figures, the year tabs and
  *         the legend, the calendar.
  * Step 4: Arrange them:
- *   Step 4.1: Nothing loaded: the welcome screen.
+ *   Step 4.1: Nothing loaded, or files still going into the welcome
+ *             screen's post box: the welcome screen.
  *   Step 4.2: A half-open foldable: the bar, the figures, the tabs and the
  *             day pane on one screen half, the calendar on the other.
  *   Step 4.3: Otherwise: the bar, then the figures, the tabs and the
  *             calendar at full width.
+ *   Step 4.4: While the post box flap shuts, draw the loaded screen
+ *             hidden under the welcome screen.
  *   A file dragged anywhere over a loaded page shows one drop target.
  */
 export default function Home() {
@@ -69,6 +72,9 @@ export default function Home() {
   const [exports, setExports] = useState<Exports>(loadTestData);
   /** What an upload in progress has read so far; null when idle. */
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
+  /** Files are going into the welcome screen's post box: keep that screen
+   *  until its flap is shut, and draw no partial result meanwhile. */
+  const [posting, setPosting] = useState(false);
   /** Counts time zone changes since the last upload; each one runs the heatmap sweep. */
   const [sweep, setSweep] = useState(0);
   const [timeZone, setTimeZone] = useState(SYSTEM_ZONE);
@@ -103,14 +109,16 @@ export default function Home() {
   const isWideBar = useMediaQuery(WIDE_BAR_QUERY) && !posture;
 
   // Step 2
+  // While files go into the post box, the welcome screen shows: skip the partials.
+  const live = posting ? null : streaming;
   const agg = useMemo(() => {
-    const shown = { ...exports, ...streaming };
+    const shown = { ...exports, ...live };
     return aggregateDateData(
       shown.chatgpt?.chats ?? null,
       shown.claude?.chats ?? null,
       timeZone,
     );
-  }, [exports, streaming, timeZone]);
+  }, [exports, live, timeZone]);
   const dataYears = agg?.years ?? NO_YEARS;
   const allStats = useMemo(() => agg && summarize(agg.data), [agg]);
   const yearTotals = useMemo(
@@ -157,18 +165,19 @@ export default function Home() {
   // Step 4.1
   const hasData =
     exports.chatgpt !== null || exports.claude !== null || agg !== null;
-  if (!hasData)
-    return (
-      <div className="relative">
-        {background}
-        <Welcome
-          upload={upload}
-          timeZone={timeZone}
-          setTimeZone={changeTimeZone}
-          fold={posture}
-        />
-      </div>
-    );
+  const welcome = (!hasData || posting) && (
+    <div className="relative">
+      {background}
+      <Welcome
+        upload={upload}
+        timeZone={timeZone}
+        setTimeZone={changeTimeZone}
+        fold={posture}
+        onPosting={setPosting}
+      />
+    </div>
+  );
+  if (!hasData) return <>{welcome}</>;
 
   // Step 3
   const loaded = {
@@ -297,64 +306,61 @@ export default function Home() {
   );
 
   // Step 4.2
-  if (posture)
-    return (
-      <div className="relative">
-        {background}
-        <FoldLayout
-          posture={posture}
-          swap={swapped}
-          controls={
-            <>
-              {bar}
-              <main
-                id="main-content"
-                tabIndex={-1}
-                aria-busy={streaming !== null}
-                className="flex flex-col gap-5 px-5 pt-6 pb-8 outline-hidden"
-              >
-                {ready ? (
-                  <>
-                    {figures}
-                    {controls}
-                    <DayPane
-                      id="day-pane"
-                      day={
-                        pickedDay && agg.data[pickedDay]
-                          ? {
-                              day: pickedDay,
-                              counts: agg.data[pickedDay],
-                              chats: agg.dayTitles[pickedDay],
-                            }
-                          : null
-                      }
-                    />
-                  </>
-                ) : (
-                  empty
-                )}
-              </main>
-            </>
-          }
-          content={
-            <section
-              id="calendar-section"
-              aria-labelledby="calendar-title"
-              className="h-full p-4"
+  const screen = posture ? (
+    <div className="relative">
+      {background}
+      <FoldLayout
+        posture={posture}
+        swap={swapped}
+        controls={
+          <>
+            {bar}
+            <main
+              id="main-content"
+              tabIndex={-1}
+              aria-busy={streaming !== null}
+              className="flex flex-col gap-5 px-5 pt-6 pb-8 outline-hidden"
             >
-              <h2 id="calendar-title" className="sr-only">
-                Prompts per day
-              </h2>
-              {calendar}
-            </section>
-          }
-        />
-        {drop}
-      </div>
-    );
-
-  // Step 4.3
-  return (
+              {ready ? (
+                <>
+                  {figures}
+                  {controls}
+                  <DayPane
+                    id="day-pane"
+                    day={
+                      pickedDay && agg.data[pickedDay]
+                        ? {
+                            day: pickedDay,
+                            counts: agg.data[pickedDay],
+                            chats: agg.dayTitles[pickedDay],
+                          }
+                        : null
+                    }
+                  />
+                </>
+              ) : (
+                empty
+              )}
+            </main>
+          </>
+        }
+        content={
+          <section
+            id="calendar-section"
+            aria-labelledby="calendar-title"
+            className="h-full p-4"
+          >
+            <h2 id="calendar-title" className="sr-only">
+              Prompts per day
+            </h2>
+            {calendar}
+          </section>
+        }
+      />
+      {drop}
+    </div>
+  ) : (
+    // Step 4.3
     <div className="relative min-h-dvh">
       {background}
       {bar}
@@ -385,5 +391,21 @@ export default function Home() {
       </main>
       {drop}
     </div>
+  );
+  // Step 4.4: while the welcome screen's flap shuts, the loaded screen is
+  // already drawn, hidden, so it shows at once when the flap is shut. The
+  // two stay at the same place in the tree, so neither is drawn again.
+  return (
+    <>
+      {welcome}
+      <div
+        className={
+          posting ? "invisible fixed inset-0 overflow-hidden" : "contents"
+        }
+        inert={posting}
+      >
+        {screen}
+      </div>
+    </>
   );
 }

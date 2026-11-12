@@ -19,8 +19,10 @@
  *  the star link (90.1 kB); JS to 92 kB for the year morph (91.3 kB); JS to 99 kB for
  *  the tzdata places of 437 zones, which rank the nearest zones first and
  *  find a zone by its country (98.2 kB; country names cost nothing, they
- *  come from Intl.DisplayNames). */
-const BUDGET = { js: 99_000, css: 11_000 } as const;
+ *  come from Intl.DisplayNames); JS to 103 kB and CSS to 12 kB for the
+ *  post box drop zone on the welcome screen: the card motion and the box
+ *  (102.2 and 11.7 kB). */
+const BUDGET = { js: 103_000, css: 12_000 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

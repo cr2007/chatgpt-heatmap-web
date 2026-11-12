@@ -41,9 +41,11 @@ export function useUpload({
    * Step 2: stream the files; each progress step shows the partial result.
    * Step 3: on success, keep the exports and toast each provider; on an
    *         error, drop the partial result and show why.
+   * Resolves true when the exports loaded (the mail slot pushes its card
+   * in), false on an error or a newer upload.
    */
   const processFiles = useCallback(
-    async (fileList: FileList) => {
+    async (fileList: FileList): Promise<boolean> => {
       // Step 1
       uploadRef.current?.abort(
         new DOMException("A newer upload started", "AbortError"),
@@ -64,7 +66,10 @@ export function useUpload({
         });
         // Step 3
         onStream(null);
-        if (!result.ok) return showError(result.error);
+        if (!result.ok) {
+          showError(result.error);
+          return false;
+        }
         onLoad(result.exports);
         for (const p of PROVIDERS) {
           const chats = result.exports[p.key]?.chats;
@@ -85,12 +90,14 @@ export function useUpload({
                 : ""),
           );
         }
+        return true;
       } catch (e) {
-        if (upload.signal.aborted) return; // the newer upload owns the state now
+        if (upload.signal.aborted) return false; // the newer upload owns the state now
         onStream(null);
         showError(
           `Could not read the file: ${e instanceof Error ? e.message : String(e)}`,
         );
+        return false;
       } finally {
         if (uploadRef.current === upload) setProgress(null);
       }

@@ -16,7 +16,7 @@ export function PageDrop({
 }: {
   progress: number | null;
   uploads: number;
-  onFiles: (files: FileList) => Promise<void>;
+  onFiles: (files: FileList) => Promise<unknown>;
 }) {
   const drag = useSyncExternalStore(subscribeFileDrag, getFileDrag);
   const [holding, setHolding] = useState(false);
@@ -27,11 +27,9 @@ export function PageDrop({
       className="fixed inset-0 z-40 animate-fade-in bg-zinc-50/75 p-4 backdrop-blur-sm sm:p-8 dark:bg-zinc-950/75"
     >
       <DropZone
-        page
         inputId="page-drop-file"
         progress={progress}
         uploads={uploads}
-        error=""
         onFiles={(files) => {
           setHolding(true);
           setTimeout(() => setHolding(false), HOLD);

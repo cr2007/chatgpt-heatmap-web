@@ -9,10 +9,10 @@ const LEAN = 6;
 const ABSORB = 220;
 
 /**
- * The drop target and file picker, with a spinner and a progress line while
- * reading. `hero` is the large form on the welcome screen, with a button;
- * `page` fills its parent (the overlay that takes a drop anywhere on the
- * loaded page).
+ * The drop target of the overlay that takes a drop anywhere on the loaded
+ * page (components/page-drop.tsx): it fills its parent, with a spinner and
+ * a progress line while reading. The welcome screen has the post box
+ * (components/mail-slot.tsx) instead.
  *
  * Step 1: Files over the page: the zone says it is ready and how many files
  *         there are (lib/file-drag.ts).
@@ -25,20 +25,14 @@ export function DropZone({
   inputId,
   progress,
   uploads,
-  error,
   onFiles,
-  hero = false,
-  page = false,
 }: {
   inputId: string;
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
   /** Upload count; a new value restarts the progress line. */
   uploads: number;
-  error: string;
-  onFiles: (files: FileList) => Promise<void>;
-  hero?: boolean;
-  page?: boolean;
+  onFiles: (files: FileList) => Promise<unknown>;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [absorbing, setAbsorbing] = useState(false);
@@ -81,12 +75,7 @@ export function DropZone({
       id={`${inputId}-zone`}
       data-drag={phase}
       className={cn(
-        "drop-zone group/drop relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed",
-        hero
-          ? "px-6 py-7"
-          : page
-            ? "h-full items-center justify-center bg-white/70 px-6 dark:bg-zinc-900/70"
-            : "h-full justify-center px-4 py-4",
+        "drop-zone relative flex h-full flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-white/70 px-6 dark:bg-zinc-900/70",
         "cursor-pointer select-none transition-[border-color,background-color,scale] duration-200",
         // The file input is hidden, so the zone shows its keyboard focus.
         "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent",
@@ -95,7 +84,6 @@ export function DropZone({
           : phase === "ready"
             ? "border-accent/60 bg-accent/[0.03]"
             : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 hover:bg-zinc-50/40 dark:hover:bg-zinc-800/30",
-        error && phase === "idle" && "border-red-500/60 dark:border-red-400/60",
       )}
       onDragOver={(e) => {
         e.preventDefault();
@@ -118,12 +106,7 @@ export function DropZone({
       }}
     >
       <span aria-hidden="true" className="drop-well" />
-      <span
-        className={cn(
-          "drop-content relative flex flex-col gap-2",
-          hero ? "items-start text-left" : "items-center text-center",
-        )}
-      >
+      <span className="drop-content relative flex flex-col items-center gap-2 text-center">
         {isReading ? (
           <LoaderCircle
             aria-hidden="true"
@@ -142,58 +125,23 @@ export function DropZone({
             strokeWidth={1.5}
           />
         )}
-        {hero || page ? (
-          <>
-            <p
-              aria-live="polite"
-              className={cn("font-semibold", page ? "text-lg" : "text-base")}
-            >
-              {isReading
-                ? "Reading files..."
-                : phase === "over"
-                  ? `Release to read ${files}`
-                  : phase === "ready"
-                    ? `Drop ${files} here`
-                    : "Drop conversations.json here"}
-            </p>
-            {hero && !isReading && (
-              <span className="mt-1 inline-flex h-10 items-center rounded-lg bg-accent-fill px-4 text-sm font-semibold text-accent-on shadow-xs transition-[background-color,scale,opacity] duration-150 group-hover/drop:bg-[color-mix(in_oklab,var(--color-accent-fill)_88%,black)] group-active/drop:scale-[0.97] group-data-[drag=over]/drop:opacity-40 group-data-[drag=ready]/drop:opacity-40">
-                Choose export files
-              </span>
-            )}
-            <p
-              aria-hidden={isReading}
-              className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
-            >
-              {isReading
-                ? `${Math.round(progress * 100)}%`
-                : page
-                  ? "A new export replaces the one from the same provider."
-                  : "Add one export or both. More than one ChatGPT file is fine."}
-            </p>
-          </>
-        ) : (
-          <div>
-            <p aria-live="polite" className="text-xs font-medium leading-tight">
-              {isReading
-                ? "Reading files..."
-                : phase === "over"
-                  ? `Release to read ${files}`
-                  : phase === "ready"
-                    ? `Drop ${files} here`
-                    : "Drop export files here"}
-            </p>
-            {/* The percentage is for the eye; the progress bar carries it for screen readers. */}
-            <p
-              aria-hidden={isReading}
-              className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-tight tabular-nums"
-            >
-              {isReading
-                ? `${Math.round(progress * 100)}%`
-                : "or click to browse"}
-            </p>
-          </div>
-        )}
+        <p aria-live="polite" className="text-lg font-semibold">
+          {isReading
+            ? "Reading files..."
+            : phase === "over"
+              ? `Release to read ${files}`
+              : phase === "ready"
+                ? `Drop ${files} here`
+                : "Drop conversations.json here"}
+        </p>
+        <p
+          aria-hidden={isReading}
+          className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+        >
+          {isReading
+            ? `${Math.round(progress * 100)}%`
+            : "A new export replaces the one from the same provider."}
+        </p>
       </span>
       {/* Thin line on the bottom edge. A new key per upload starts it empty;
           at the end it stays full and fades out. */}
