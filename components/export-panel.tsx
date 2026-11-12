@@ -25,7 +25,7 @@ export function ExportPanel({
   loaded: Record<Provider, LoadedInfo | null>;
   onClear: (provider: Provider) => void;
   progress: number | null;
-  onFiles: (files: FileList) => Promise<void>;
+  onFiles: (files: FileList) => Promise<unknown>;
   timeZone: string;
   setTimeZone: (timeZone: string) => void;
   open: boolean;

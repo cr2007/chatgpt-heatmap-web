@@ -10,6 +10,12 @@ const HAS_POPOVER =
   typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 /** Gap in px between the help button and its popover. */
 const GAP = 8;
+/** A mouse rests this long (ms) on the help button before the help opens,
+ *  so a pointer that only passes over it opens nothing. */
+const HOVER_OPEN = 300;
+/** The help stays this long (ms) after the mouse leaves, so the pointer can
+ *  cross the gap into it. */
+const HOVER_CLOSE = 200;
 
 /**
  * The "Add export" file button and the "How to export" popover, once an
@@ -22,6 +28,11 @@ const GAP = 8;
  *         outside click close it). Before it opens, it is placed under the
  *         button, right edges aligned, inside the button's fold pane (or
  *         the window), so it never lies across a fold.
+ * Step 3: A mouse that rests on the help button opens the help too, and it
+ *         closes when the mouse leaves the button and the help. A click on
+ *         the button while it is open this way keeps it open (as if
+ *         clicked open), so the click never closes what the user is
+ *         reading. Touch and the keyboard open it by a tap or a press only.
  */
 export function AddExport({
   progress,
@@ -31,12 +42,17 @@ export function AddExport({
 }: {
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
-  onFiles: (files: FileList) => Promise<void>;
+  onFiles: (files: FileList) => Promise<unknown>;
   /** The providers that have an export. */
   loaded: Provider[];
   className?: string;
 }) {
   const help = useRef<HTMLButtonElement>(null);
+  /** Step 3: the help is open because a mouse rests on it (not clicked open). */
+  const byHover = useRef(false);
+  /** Step 3: about to open the help (by a programmatic click), so the click is not a pin. */
+  const opening = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reading = progress !== null;
   const order = [...PROVIDERS].sort(
     (a, b) => Number(loaded.includes(a.key)) - Number(loaded.includes(b.key)),
@@ -53,6 +69,40 @@ export function AddExport({
     el.style.top = `${b.bottom + GAP}px`;
     el.style.right = `${width - Math.min(b.right, right - GAP)}px`;
     el.style.maxWidth = `${right - left - 2 * GAP}px`;
+  }
+
+  // Step 3
+  /** A mouse came onto the button or the help: open it after a rest, or keep it open. */
+  function hoverIn(e: React.PointerEvent) {
+    if (e.pointerType !== "mouse") return;
+    clearTimeout(timer.current);
+    const pop = document.getElementById("export-help");
+    if (pop?.matches(":popover-open")) return;
+    timer.current = setTimeout(() => {
+      // A click opens it through the button, so the button stays its
+      // invoker: a later click on the button is inside, not a light dismiss.
+      byHover.current = true;
+      opening.current = true;
+      help.current?.click();
+      opening.current = false;
+    }, HOVER_OPEN);
+  }
+  /** The mouse left the button or the help: close a hover-opened help after a moment. */
+  function hoverOut(e: React.PointerEvent) {
+    if (e.pointerType !== "mouse") return;
+    clearTimeout(timer.current);
+    if (!byHover.current) return;
+    timer.current = setTimeout(() => {
+      const pop = document.getElementById("export-help");
+      if (pop?.matches(":popover-open")) pop.hidePopover();
+    }, HOVER_CLOSE);
+  }
+  /** A real click on a hover-opened help keeps it open, as if clicked open. */
+  function pin(e: React.MouseEvent) {
+    clearTimeout(timer.current);
+    if (opening.current || !byHover.current) return;
+    e.preventDefault(); // cancels the popover toggle, which would close it
+    byHover.current = false;
   }
 
   return (
@@ -90,7 +140,11 @@ export function AddExport({
       {HAS_POPOVER && (
         <button
           ref={help}
+          id="export-help-button"
           type="button"
+          onPointerEnter={hoverIn}
+          onPointerLeave={hoverOut}
+          onClick={pin}
           popoverTarget="export-help"
           aria-label="How to export"
           title="How to export"
@@ -109,6 +163,13 @@ export function AddExport({
           popover="auto"
           aria-labelledby="export-help-title"
           onBeforeToggle={place}
+          onToggle={(e) => {
+            if (e.newState === "open") return;
+            byHover.current = false;
+            clearTimeout(timer.current);
+          }}
+          onPointerEnter={hoverIn}
+          onPointerLeave={hoverOut}
           className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
         >
           <h2 id="export-help-title" className="text-base font-semibold">
