@@ -12,6 +12,11 @@
  *         from its recorded look. A cell matches by date, or between two
  *         single years by month and day; a cell with no match (29 Feb,
  *         the other years of "All years") grows in.
+ *   Step 2.1: From "All years" to one year, the years that leave stay where
+ *             they were, as one group, and fade out (`fadeLeaving`).
+ *   Step 2.2: The drawing does not clip while the morph runs: the new view
+ *             can be shorter than the old one, and the year that stays
+ *             moves up from below its new edge.
  * Reduced motion: no snapshot, so the change is instant.
  */
 
@@ -22,7 +27,17 @@ interface Look {
   w: number;
   fill: string;
 }
+/** Where a drawing is: its top left in screen px, and SVG units per screen px. */
+interface Box {
+  x: number;
+  y: number;
+  unit: number;
+}
 interface Snapshot {
+  /** Several years only: the old cells and labels as one group, for the years that leave. */
+  layer: SVGGElement | null;
+  /** Where the old drawing was on screen. */
+  box: Box;
   cells: Map<string, Look>;
   labels: Map<string, Look>;
   /** The snapshot showed one year (so a month and day names one cell). */
@@ -46,11 +61,23 @@ function look(el: Element, fill = ""): Look {
   return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, fill };
 }
 
+/** Where `svg` is drawn. A CSS transform on an SVG element is in SVG units. */
+function boxOf(svg: SVGSVGElement): Box {
+  const b = svg.getBoundingClientRect();
+  return { x: b.x, y: b.y, unit: svg.viewBox.baseVal.width / b.width };
+}
+
+/** A duration token in ms: the built CSS may write "520ms" as ".52s". */
+function ms(root: CSSStyleDeclaration, name: string, fallback: number) {
+  const v = root.getPropertyValue(name).trim();
+  return (parseFloat(v) || fallback / 1000) * (v.endsWith("ms") ? 1 : 1000);
+}
+
 /** A label key with its year taken out: "m20243" is month 3 of any year. */
 const anyYear = (key: string) => key.replace(/\d{4}/, "");
 
 /** Step 1: records the calendar `svg` before a view change. */
-export function prepareMorph(svg: Element | null) {
+export function prepareMorph(svg: SVGSVGElement | null) {
   pending = null;
   if (!svg || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const cells = new Map<string, Look>();
@@ -62,7 +89,26 @@ export function prepareMorph(svg: Element | null) {
   const labels = new Map<string, Look>();
   for (const t of svg.querySelectorAll<SVGTextElement>("text[data-key]"))
     labels.set(t.dataset.key!, look(t));
-  pending = { cells, labels, oneYear: years.size === 1 };
+  // Only "All years" has years that can leave; a clone is cheap, a ghost per cell is not.
+  let layer: SVGGElement | null = null;
+  if (years.size > 1) {
+    layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    for (const el of svg.querySelectorAll<SVGElement>(
+      "rect[data-day], text[data-key]",
+    )) {
+      const c = el.cloneNode(el.tagName === "text") as SVGElement;
+      // The clone keeps its shade when the gradients of its year are gone.
+      if (el.dataset.day) c.style.fill = cells.get(el.dataset.day)!.fill;
+      layer.append(c);
+    }
+  }
+  pending = {
+    cells,
+    labels,
+    oneYear: years.size === 1,
+    layer,
+    box: boxOf(svg),
+  };
 }
 
 /** Step 2: plays the motion from the recorded look to the calendar `svg` now. */
@@ -72,14 +118,13 @@ export function playMorph(svg: SVGSVGElement) {
   if (!was) return;
   for (const a of svg.getAnimations({ subtree: true }))
     if (a.id === ID) a.cancel();
+  svg.querySelector("[data-ghost]")?.remove();
 
   const root = getComputedStyle(document.documentElement);
   const easing = root.getPropertyValue("--ease-spring").trim() || "ease-out";
-  // The built CSS may write "520ms" as ".52s".
-  const dur = root.getPropertyValue("--dur-spring").trim();
-  const duration = (parseFloat(dur) || 0.52) * (dur.endsWith("ms") ? 1 : 1000);
-  // SVG units per screen px: a CSS transform on an SVG element is in SVG units.
-  const unit = svg.viewBox.baseVal.width / svg.getBoundingClientRect().width;
+  const duration = ms(root, "--dur-spring", 520);
+  const box = boxOf(svg);
+  const { unit } = box;
   const cells = [...svg.querySelectorAll<SVGRectElement>("rect[data-day]")];
   const oneYear =
     new Set(cells.map((r) => r.dataset.day!.slice(0, 4))).size === 1;
@@ -125,6 +170,9 @@ export function playMorph(svg: SVGSVGElement) {
       run(r, { transform: "scale(0.6)", opacity: 0 }, delay);
     }
 
+  // Step 2.1
+  if (was.layer && oneYear) fadeLeaving(svg, was.layer, was.box, box, root);
+
   // Labels: the same key, or between two single years the same month or
   // weekday; a label with no match (a new year) rolls in.
   const kinds = new Map<string, Look>();
@@ -145,4 +193,51 @@ export function playMorph(svg: SVGSVGElement) {
         0,
       );
   }
+
+  // Step 2.2: a newer morph cancels these animations and sets it again.
+  const all = svg.getAnimations({ subtree: true }).filter((a) => a.id === ID);
+  svg.style.overflow = "visible";
+  Promise.all(all.map((a) => a.finished)).then(
+    () => (svg.style.overflow = ""),
+    () => {},
+  );
+}
+
+/**
+ * Step 2.1: shows the cells and labels of `layer` (the old "All years"
+ * drawing at `was`) that the new view of `svg` (at `now`) does not have,
+ * where they were, and fades them out as one group.
+ */
+function fadeLeaving(
+  svg: SVGSVGElement,
+  layer: SVGGElement,
+  was: Box,
+  now: Box,
+  root: CSSStyleDeclaration,
+) {
+  for (const el of [...layer.children] as SVGElement[]) {
+    const { day, key } = el.dataset;
+    const stays = day
+      ? svg.querySelector(`rect[data-day="${day}"]`)
+      : svg.querySelector(`text[data-key="${key}"]`);
+    if (stays) el.remove();
+    else
+      for (const a of ["data-day", "data-key", "tabindex"])
+        el.removeAttribute(a);
+  }
+  layer.setAttribute("data-ghost", "");
+  layer.setAttribute("aria-hidden", "true");
+  // The old SVG units in the new ones: the same place on screen.
+  layer.setAttribute(
+    "transform",
+    `translate(${(was.x - now.x) * now.unit} ${(was.y - now.y) * now.unit}) scale(${now.unit / was.unit})`,
+  );
+  svg.prepend(layer);
+  const a = layer.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: ms(root, "--dur-ui", 200),
+    easing: root.getPropertyValue("--ease-out").trim() || "ease-out",
+    fill: "forwards",
+  });
+  a.id = ID;
+  a.finished.then(() => layer.remove()).catch(() => {});
 }
