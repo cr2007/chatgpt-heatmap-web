@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import { cn, count } from "@/lib/utils";
 import type { YearView } from "@/lib/layout";
 
-/** How a view change came: a click or a tap, the keyboard (Enter or Space), or a drag of the pill. */
+/** How a view change came: a click or a tap, the keyboard (the arrow keys or Space), or a drag of the pill. */
 export type How = "pointer" | "key" | "drag";
 
 /** Movement (px) before a press turns into a drag: Motion uses 3 px for a mouse, Vaul and Embla 10 px for a finger. */
@@ -37,22 +37,26 @@ export const magnet = (t: number, share: number) =>
 export const project = (v: number) => (v * DECELERATION) / (1 - DECELERATION);
 
 /**
- * A row of toggle buttons that picks the calendar view: "All years" or one
- * year with its total. A pill marks the picked button; it lies over the
- * buttons and holds a copy of their labels, moved against the pill so each
- * label sits on its button. The pill clips that copy, so a label takes the
- * pill's colours exactly at its edge (as the iOS 26 lens does). The buttons
- * stay the click and focus targets; the pill takes no pointer.
+ * The calendar view picker: one choice, "All years" or one year with its
+ * total, as a native radio group in a fieldset (WAI-ARIA APG radio group):
+ * Tab enters at the picked year, the arrow keys pick the next or the
+ * previous one, Space picks the focused one. Each year is a label around a
+ * visually hidden radio. A pill marks the picked year; it lies over the
+ * labels and holds a copy of them, moved against the pill so each sits on
+ * its label. The pill clips that copy, so a label takes the pill's colours
+ * exactly at its edge (as the iOS 26 lens does). The labels stay the click
+ * targets; the pill takes no pointer. A keyboard pick moves the pill at
+ * once (`data-instant`): no motion on a keyboard action.
  *
- * The pill can be dragged: press the picked button and slide. While held
- * the row has `data-state` ("pressed", "dragging") and the pill is accent
- * glass (app/globals.css, `.year-pill`).
+ * The pill can be dragged: press the picked year and slide. While held the
+ * row has `data-state` ("pressed", "dragging") and the pill is accent glass
+ * (app/globals.css, `.year-pill`).
  *
- * Step 1: On a phone the row scrolls sideways (it clips only when its tabs
- *         do not fit): keep the picked button in
- *         view (the row only, never the page). Place the pill on it, again
- *         when the row resizes; it slides only after its first placement.
- * Step 2: A press on the picked button may become a drag: past START px it
+ * Step 1: On a phone the row scrolls sideways (it clips only when its years
+ *         do not fit): keep the picked year in view (the row only, never
+ *         the page). Place the pill on it, again when the row resizes; it
+ *         slides only after its first placement.
+ * Step 2: A press on the picked year may become a drag: past START px it
  *         captures the pointer, and the pill follows.
  *   Step 2.1: Past the first or the last tab the pill is rubber-banded.
  *   Step 2.2: Between two tabs the magnet holds it near each tab, and its
@@ -72,7 +76,7 @@ export function YearTabs({
   /** Prompts per year, in the order of `years`. */
   totals: number[];
   view: YearView;
-  /** `key` when the keyboard made the click, so the page can skip the motion. */
+  /** `key` for a keyboard pick, so the page can skip the motion. */
   onView: (view: YearView, how: How) => void;
 }) {
   const row = useRef<HTMLFieldSetElement>(null);
@@ -90,11 +94,15 @@ export function YearTabs({
     track: { t: number; x: number }[];
   } | null>(null);
   const swallow = useRef(false);
+  /** What made the last input: a pick from the keyboard gets no motion. */
+  const via = useRef<"pointer" | "key">("pointer");
+  const name = useId();
 
   const tabs = () => [
-    ...(row.current?.querySelectorAll<HTMLButtonElement>("button") ?? []),
+    ...(row.current?.querySelectorAll<HTMLLabelElement>(":scope > label") ??
+      []),
   ];
-  const viewOf = (b: HTMLButtonElement) =>
+  const viewOf = (b: HTMLElement) =>
     (b.dataset.view === "all" ? "all" : Number(b.dataset.view)) as YearView;
   /** Draws the pill at `left` px in the row, `width` px wide; its label copy moves the other way, so the labels stay on their buttons. */
   const paint = (left: number, width: number) => {
@@ -127,7 +135,7 @@ export function YearTabs({
   // Step 1
   useLayoutEffect(() => {
     const el = row.current;
-    const on = el?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    const on = el?.querySelector<HTMLElement>(":scope > label[data-picked]");
     if (!el || !on || drag.current?.on) return;
     /** The row clips (and scrolls) only when its tabs do not fit, so a pill
      *  pulled past an end, and its shadow, can show past the row's edge. */
@@ -141,6 +149,8 @@ export function YearTabs({
     fit();
     el.scrollLeft = on.offsetLeft + on.offsetWidth / 2 - el.clientWidth / 2;
     placeOn(on);
+    // A keyboard pick placed the pill at once; later moves slide again.
+    requestAnimationFrame(() => el.removeAttribute("data-instant"));
     const resize = new ResizeObserver(() => {
       if (drag.current?.on) return;
       fit();
@@ -187,10 +197,12 @@ export function YearTabs({
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLFieldSetElement>) {
-    // One pointer at a time, and only from the picked button.
+    via.current = "pointer";
+    row.current?.removeAttribute("data-keys");
+    // One pointer at a time, and only from the picked year.
     if (drag.current || e.button !== 0) return;
-    const on = (e.target as Element).closest<HTMLButtonElement>(
-      'button[aria-pressed="true"]',
+    const on = (e.target as Element).closest<HTMLLabelElement>(
+      "label[data-picked]",
     );
     if (!on) return;
     drag.current = {
@@ -264,6 +276,7 @@ export function YearTabs({
       {total !== undefined && (
         <span className="year-count text-xs text-zinc-600 dark:text-zinc-400">
           {count(total)}
+          <span className="sr-only"> prompts</span>
         </span>
       )}
     </>
@@ -280,36 +293,53 @@ export function YearTabs({
     >
       <legend className="sr-only">Years to show</legend>
       {items.map(({ v, label, total }) => (
-        <button
+        <label
           key={String(v)}
           id={`year-tab-${v}`}
-          type="button"
           data-view={v}
-          aria-pressed={view === v}
-          onClick={(e) => {
-            if (swallow.current && e.detail > 0) {
-              swallow.current = false;
-              return;
-            }
-            // detail is 0 for a click the keyboard made.
-            onView(v, e.detail === 0 ? "key" : "pointer");
-          }}
+          data-picked={view === v || undefined}
           className={cn(
             LABEL,
-            "relative transition-[color,scale] duration-(--dur-press) ease-out select-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.97]",
+            "relative cursor-pointer transition-[color,scale] duration-(--dur-press) ease-out select-none has-focus-visible:ring-2 has-focus-visible:ring-accent has-focus-visible:outline-hidden active:scale-[0.97]",
             view === v
               ? "year-tab-grab font-medium text-zinc-900 dark:text-zinc-50"
               : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
           )}
         >
+          <input
+            type="radio"
+            name={name}
+            value={String(v)}
+            checked={view === v}
+            onKeyDown={() => {
+              via.current = "key";
+              // WebKit drops :focus-visible when an arrow key moves focus in a
+              // radio group; the row keeps the keyboard's focus ring on (app/globals.css).
+              row.current?.setAttribute("data-keys", "");
+            }}
+            onClick={(e) => {
+              // The click that ends a drag (same task) must not pick the year under it.
+              if (!swallow.current) return;
+              swallow.current = false;
+              e.preventDefault();
+            }}
+            onChange={() => {
+              // A keyboard pick moves the pill at once (see app/globals.css).
+              if (via.current === "key")
+                row.current?.setAttribute("data-instant", "");
+              onView(v, via.current);
+            }}
+            className="sr-only"
+          />
           {content(label, total)}
-        </button>
+        </label>
       ))}
       {/* The pill, over the buttons: its own copy of the labels, in the pill's colours. */}
       <span
         ref={pill}
         aria-hidden="true"
-        className="year-pill pointer-events-none absolute top-0.5 left-0 h-8 rounded-md bg-white shadow-xs ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
+        // ring-zinc-500: the picked year must differ from the row by 3:1 (WCAG 1.4.11; 4.4:1 light, 3.7:1 dark).
+        className="year-pill pointer-events-none absolute top-0.5 left-0 h-8 rounded-md bg-white shadow-xs ring-1 ring-zinc-500 dark:bg-zinc-800"
       >
         <span
           ref={copy}

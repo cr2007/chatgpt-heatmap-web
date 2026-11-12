@@ -469,6 +469,43 @@
 .year-tabs[data-state="dragging"] * {
   cursor: grabbing;
 }
+/* A keyboard pick moves the pill at once: no motion on a keyboard action. */
+.year-tabs[data-instant] .year-pill,
+.year-tabs[data-instant] .year-pill-labels {
+  transition: none;
+}
+/* The picked year has keyboard focus: its label lies under the pill, so the
+   ring goes on the pill (WCAG 2.4.11, focus not hidden). WebKit drops
+   :focus-visible when an arrow key moves focus in a radio group, so the row
+   marks keyboard use (data-keys) and plain :focus counts then. */
+.year-tabs:has(input:checked:focus-visible) .year-pill,
+.year-tabs[data-keys]:has(input:checked:focus) .year-pill {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+}
+/* Forced colours (Windows contrast themes): the picked year takes the
+   system Highlight colours, as a native selection does, and focus outlines
+   stay inside the 2 px gaps, so the pill never covers a neighbour's. */
+@media (forced-colors: active) {
+  .year-tabs .year-pill,
+  .year-tabs[data-state] .year-pill {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    background-image: none;
+    box-shadow: none;
+  }
+  .year-tabs .year-pill-labels,
+  .year-tabs[data-state] .year-pill-labels .year-count {
+    color: HighlightText;
+  }
+  .year-tabs label {
+    outline-offset: 0;
+  }
+  .year-tabs:has(input:checked:focus-visible) .year-pill,
+  .year-tabs[data-keys]:has(input:checked:focus) .year-pill {
+    outline-color: CanvasText;
+  }
+}
 
 /* Heatmap cells. `--t` is the cell's place in the date range, 0 to 1, so
    every change runs from the first date to the last. The reduced-motion
