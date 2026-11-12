@@ -25,7 +25,8 @@ export function YearTabs({
   /** Prompts per year, in the order of `years`. */
   totals: number[];
   view: YearView;
-  onView: (view: YearView) => void;
+  /** `key` when the keyboard made the click (Enter or Space), so the page can skip the motion. */
+  onView: (view: YearView, how: "pointer" | "key") => void;
 }) {
   const row = useRef<HTMLFieldSetElement>(null);
   // A total that grows (a time zone change, a streaming upload) widens its
@@ -65,7 +66,8 @@ export function YearTabs({
       id={`year-tab-${v}`}
       type="button"
       aria-pressed={view === v}
-      onClick={() => onView(v)}
+      // detail is 0 for a click the keyboard made.
+      onClick={(e) => onView(v, e.detail === 0 ? "key" : "pointer")}
       className={cn(
         "relative flex h-8 shrink-0 items-baseline gap-1.5 rounded-md px-3 text-sm transition-[color,scale] duration-(--dur-press) ease-out focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.97]",
         view === v

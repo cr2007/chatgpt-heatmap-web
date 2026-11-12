@@ -147,9 +147,10 @@ export default function Home() {
     setTimeZone(tz);
     setSweep((n) => n + 1);
   };
-  /** Picks a view and keeps it in the address; the calendar morphs to it. */
-  function pickView(next: YearView) {
-    prepareMorph(document.querySelector("#calendar svg"));
+  /** Picks a view and keeps it in the address; the calendar morphs to it,
+   *  except after a keyboard pick (no motion on a keyboard action). */
+  function pickView(next: YearView, how: "pointer" | "key") {
+    if (how !== "key") prepareMorph(document.querySelector("#calendar svg"));
     setPicked(next);
     history.replaceState(null, "", `#${next}`);
   }
