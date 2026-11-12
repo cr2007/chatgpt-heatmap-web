@@ -1,13 +1,16 @@
 /**
- * The year change as one motion. Every day cell moves from where its date
- * was drawn to where it is drawn now, and its shade turns into the new one,
- * in a wave in date order; the month labels move with their weeks. So 2023
- * becomes 2024 in place, with no blank frame and no jump.
+ * The year change as one motion. Between two single years it is the column
+ * wave of `calendar-wave.ts`. To or from "All years" it is a morph: every
+ * day cell moves from where its date was drawn to where it is drawn now,
+ * and its shade turns into the new one, in a wave in date order; the month
+ * labels move with their weeks.
  *
- * Step 1: `prepareMorph`, just before the view changes: record each cell and
- *         label as it looks now (a running morph included, so a fast second
- *         click goes on from where the cells are).
- * Step 2: `playMorph`, after the new view is drawn: stop a running morph,
+ * Step 1: `prepareMorph`, just before the view changes: with a direction
+ *         (two single years), take the wave's snapshot; else record each
+ *         cell and label as it looks now (a running morph included, so a
+ *         fast second click goes on from where the cells are). Then stop a
+ *         running wave in both cases: its cells are about to go.
+ * Step 2: `playMorph`, after the new view is drawn: play the wave if one\n *         was prepared; else stop a running morph,
  *         then give each cell a FLIP animation (transform and fill only)
  *         from its recorded look. A cell matches by date, or between two
  *         single years by month and day; a cell with no match (29 Feb,
@@ -19,6 +22,13 @@
  *             moves up from below its new edge.
  * Reduced motion: no snapshot, so the change is instant.
  */
+
+import {
+  playWave,
+  snapshotWave,
+  stopWave,
+  type WaveSnapshot,
+} from "@/components/calendar-wave";
 
 /** How a cell or a label looked: its centre and width in screen px, and its fill. */
 interface Look {
@@ -54,6 +64,8 @@ const MAX_ENTER = 400;
 const ID = "year-morph";
 
 let pending: Snapshot | null = null;
+/** A prepared wave: its snapshot and direction. */
+let wave: { was: WaveSnapshot; dir: number } | null = null;
 
 /** The centre and width of an element on screen. */
 function look(el: Element, fill = ""): Look {
@@ -76,10 +88,19 @@ function ms(root: CSSStyleDeclaration, name: string, fallback: number) {
 /** A label key with its year taken out: "m20243" is month 3 of any year. */
 const anyYear = (key: string) => key.replace(/\d{4}/, "");
 
-/** Step 1: records the calendar `svg` before a view change. */
-export function prepareMorph(svg: SVGSVGElement | null) {
+/**
+ * Step 1: records the calendar `svg` before a view change. `dir` is set
+ * only between two single years: 1 to a later year, -1 to an earlier one.
+ * With no `svg` (a keyboard change) or reduced motion, nothing plays.
+ */
+export function prepareMorph(svg: SVGSVGElement | null, dir?: number) {
   pending = null;
-  if (!svg || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  wave = null;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (svg && !reduced && dir) wave = { was: snapshotWave(svg), dir };
+  // After the snapshot (it reads the looks on screen): the cells of a running wave are about to go.
+  stopWave();
+  if (!svg || reduced || dir) return;
   const cells = new Map<string, Look>();
   const years = new Set<string>();
   for (const r of svg.querySelectorAll<SVGRectElement>("rect[data-day]")) {
@@ -113,6 +134,11 @@ export function prepareMorph(svg: SVGSVGElement | null) {
 
 /** Step 2: plays the motion from the recorded look to the calendar `svg` now. */
 export function playMorph(svg: SVGSVGElement) {
+  if (wave) {
+    playWave(svg, wave.was, wave.dir);
+    wave = null;
+    return;
+  }
   const was = pending;
   pending = null;
   if (!was) return;

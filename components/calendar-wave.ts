@@ -1,0 +1,301 @@
+/**
+ * The year change between two single years: a wave of columns (Hit). Each
+ * week column dips, rises and slows into an invisible ceiling, squashes
+ * softly against it as its cells take their new shades, falls back, lands
+ * and hops a little. Columns start one after another, so a wave runs left
+ * to right to a later year and right to left to an earlier one. The jump is
+ * short against the time between columns, so the column at the front
+ * stands above its neighbours, like one pressed piano key. A vertical
+ * calendar (phones) has 7 weekday columns, so its wave is 7 columns.
+ * Changes to or from "All years" use the morph (`calendar-morph.ts`).
+ *
+ * The timings come from a lab study of real hits (a split-flap board, piano
+ * hammers, a filmed and a hand-drawn bouncing ball) and the owner's feel
+ * checks, so they are constants here, not `--dur-*` tokens.
+ *
+ * Step 1: `snapshotWave`, just before the view changes, by each cell's place
+ *         in the grid (x, y in SVG units): its look (fill and outline), its
+ *         transform if a running wave moved it, a copy of its gradient if it
+ *         is a split day (the new view drops the old gradients), and the
+ *         cell itself, for a ghost.
+ * Step 2: `playWave`, after the new view is drawn:
+ *   Step 2.1: Stop the running wave from its own list (`stopWave`): its
+ *             cells are gone (cells are keyed by date), so the svg cannot
+ *             find their animations, and they would run on and, at their
+ *             end, remove this wave's nodes. Find each cell's column (its x)
+ *             and its place along the column (its y).
+ *   Step 2.2: Per cell: the jump, and its look: the old one until the
+ *             swap, then a short blend to the new one. A cell that a new
+ *             change caught in the air first settles from where it stood.
+ *   Step 2.3: Cells new to the grid come in at their swap; cells that left
+ *             it are drawn again as ghosts and go at theirs.
+ *   Step 2.4: Labels move to their new place after their column's swap; the
+ *             year title changes at once.
+ */
+
+/** A cell's look: what the wave swaps. A split day's fill is a url(#gradient). */
+interface Look {
+  fill: string;
+  stroke: string;
+  strokeWidth: string;
+}
+
+/** What `snapshotWave` records. */
+export interface WaveSnapshot {
+  looks: Map<string, Look>;
+  /** Where a cell stood if a running wave had moved it (its transform), by place. */
+  poses: Map<string, string>;
+  cells: Map<string, SVGRectElement>;
+  /** Copies of the old split days' gradients, with new ids. */
+  gradients: SVGElement[];
+  labels: Map<string, { x: number; y: number }>;
+}
+
+/** A pose: `lift` is the share of the jump (1 touches the ceiling, negative
+ *  is a dip); `v` and `h` scale each cell along and across the jump. */
+interface Pose {
+  lift: number;
+  v: number;
+  h?: number;
+}
+
+/** Animation id, so a new change can tell the wave's animations apart. */
+const ID = "year-wave";
+/** The jump (SVG units): about 12 px at the calendar's usual scale. */
+const JUMP = 9;
+/** A column squashes or stretches as a whole too, by this share of its
+ *  cells' change, so the cells pack up under the ceiling. */
+const COLUMN = 0.3;
+/** The column length that squashes: 7 cells, also in a vertical calendar,
+ *  whose column is a year long. */
+const BODY = 7 * 13;
+/** Slow at both ends. */
+const EASE_IN_OUT = "cubic-bezier(0.45, 0, 0.55, 1)";
+/** The rise leaves fast and slows into the top, so the eye can follow the hit. */
+const RISE = "cubic-bezier(0.22, 1, 0.36, 1)";
+/** A squash, a landing and a label stop softly (the value of --ease-out). */
+const SOFT = "cubic-bezier(0.23, 1, 0.32, 1)";
+/** One column's jump (ms) and its keys: the time, the pose, the curve to the next key. */
+const HIT: [ms: number, pose: Pose, easing?: string][] = [
+  [0, { lift: 0, v: 1 }, EASE_IN_OUT],
+  [30, { lift: -0.05, v: 0.97, h: 1.015 }, RISE], // dip (anticipation)
+  [130, { lift: 1, v: 1.02 }, SOFT], // top: touches the ceiling
+  [155, { lift: 1, v: 0.96, h: 1.02 }, EASE_IN_OUT], // soft squash
+  [240, { lift: 0, v: 0.98, h: 1.01 }, SOFT], // land
+  [270, { lift: 0.06, v: 1 }, EASE_IN_OUT], // hop
+  [300, { lift: 0, v: 1 }],
+];
+const DURATION = 300;
+/** The new look blends over this long (ms, ease-out), from the top key (130 ms). */
+const BLEND = 100;
+/** Where the new look is half way in, as a share of DURATION. */
+const SWAP = (130 + BLEND / 2) / DURATION;
+/** Columns start over this long (ms) in travel order, so 53 columns and 7 take as long: 900 ms in all. */
+const SPREAD = 600;
+/** A cell that a new change catches in the air settles back over this long (ms). */
+const SETTLE = 150;
+
+/** The running wave: its animations and the nodes it added (ghosts, old gradients). */
+let running: { anims: Animation[]; nodes: Element[] } | null = null;
+
+/** Stops the running wave, if any: cancels its animations and removes its nodes. */
+export function stopWave() {
+  running?.anims.forEach((a) => a.cancel());
+  running?.nodes.forEach((n) => n.remove());
+  running = null;
+}
+
+const place = (r: Element) => `${r.getAttribute("x")},${r.getAttribute("y")}`;
+const lookOf = (r: Element): Look => {
+  const s = getComputedStyle(r);
+  return { fill: s.fill, stroke: s.stroke, strokeWidth: s.strokeWidth };
+};
+
+/** Step 1: records the calendar `svg` before a view change. */
+export function snapshotWave(svg: SVGSVGElement): WaveSnapshot {
+  const looks = new Map<string, Look>();
+  const poses = new Map<string, string>();
+  const cells = new Map<string, SVGRectElement>();
+  const gradients: SVGElement[] = [];
+  for (const r of svg.querySelectorAll<SVGRectElement>("rect[data-day]")) {
+    const look = lookOf(r);
+    // A split day: keep its gradient under a new id, as the new view removes the old one.
+    const id = /url\("?#([^")]+)"?\)/.exec(look.fill)?.[1];
+    const g = id && svg.getElementById(id);
+    if (g) {
+      const copy = g.cloneNode(true) as SVGElement;
+      copy.id = `${id}-was`;
+      gradients.push(copy);
+      look.fill = `url("#${copy.id}")`;
+    }
+    looks.set(place(r), look);
+    const pose = getComputedStyle(r).transform;
+    if (pose !== "none") poses.set(place(r), pose);
+    const ghost = r.cloneNode() as SVGRectElement;
+    ghost.removeAttribute("fill");
+    ghost.style.fill = look.fill;
+    cells.set(place(r), ghost);
+  }
+  const labels = new Map<string, { x: number; y: number }>();
+  // Month and weekday labels match across years; the year title does not.
+  for (const t of svg.querySelectorAll<SVGTextElement>(
+    "text[data-key]:not([data-key^=y])",
+  )) {
+    const b = t.getBBox();
+    labels.set(t.dataset.key!.replace(/\d{4}/, ""), { x: b.x, y: b.y });
+  }
+  return { looks, poses, cells, gradients, labels };
+}
+
+/**
+ * A cell's transform in a pose, `along` SVG units below the top of a column
+ * `span` long. The column keeps to the surface it is near (the ceiling above
+ * half the jump, else the floor): a squash packs the cells toward it.
+ */
+function shape(along: number, span: number, p: Pose) {
+  const len = Math.min(span, BODY) * COLUMN * (1 - p.v);
+  const share = along / span;
+  const up = p.lift * JUMP + (p.lift > 0.5 ? len * share : -len * (1 - share));
+  return `translate(0px, ${-up}px) scale(${p.h ?? 1}, ${p.v})`;
+}
+
+/** Keyframes for a look that is `from` until the swap, then blends to `to` (ease-out). */
+function swapKeys(from: Keyframe, to: Keyframe): Keyframe[] {
+  const half = BLEND / 2 / DURATION;
+  return [
+    { offset: 0, ...from },
+    { offset: SWAP - half, ...from, easing: SOFT },
+    { offset: SWAP + half, ...to },
+    { offset: 1, ...to },
+  ];
+}
+
+/** Step 2: plays the wave from `was` to the calendar `svg` now; `dir` is 1 to a later year, -1 to an earlier one. */
+export function playWave(svg: SVGSVGElement, was: WaveSnapshot, dir: number) {
+  // Step 2.1
+  stopWave();
+  const cells = [...svg.querySelectorAll<SVGRectElement>("rect[data-day]")];
+  if (!cells.length) return;
+  const xs = [...new Set(cells.map((r) => Number(r.getAttribute("x"))))].sort(
+    (a, b) => a - b,
+  );
+  const ys = cells.map((r) => Number(r.getAttribute("y")));
+  const [top, n] = [Math.min(...ys), xs.length];
+  const size = Number(cells[0].getAttribute("width"));
+  const span = Math.max(...ys) - top + size;
+  const column = (r: Element) => xs.indexOf(Number(r.getAttribute("x")));
+  const delayOf = (c: number) =>
+    ((dir > 0 ? c : n - 1 - c) * SPREAD) / Math.max(1, n - 1);
+  // The old gradients, for split days, until the wave is over.
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  defs.setAttribute("data-ghost", "");
+  defs.append(...was.gradients.map((g) => g.cloneNode(true)));
+  svg.prepend(defs);
+  const mine = { anims: [] as Animation[], nodes: [defs as Element] };
+  running = mine;
+
+  const run = (
+    el: Element,
+    keys: Keyframe[],
+    delay: number,
+    fill: FillMode = "backwards",
+    timing: KeyframeAnimationOptions = {},
+  ) => {
+    const a = el.animate(keys, { duration: DURATION, delay, fill, ...timing });
+    a.id = ID;
+    mine.anims.push(a);
+    return a;
+  };
+  // Before its start a cell rests where it is drawn (no fill); only its look needs the old value.
+  const jump = (r: Element, delay: number) => {
+    const along = Number(r.getAttribute("y")) - top + size / 2;
+    run(
+      r,
+      HIT.map(([ms, pose, easing]) => ({
+        offset: ms / DURATION,
+        transform: shape(along, span, pose),
+        ...(easing && { easing }),
+      })),
+      delay,
+      "none",
+    );
+  };
+
+  // Step 2.2
+  const kept = new Set<string>();
+  for (const r of cells) {
+    const key = place(r);
+    const delay = delayOf(column(r));
+    const old = was.looks.get(key);
+    kept.add(key);
+    jump(r, delay);
+    const pose = was.poses.get(key);
+    if (pose)
+      run(r, [{ transform: pose }, { transform: "none" }], 0, "none", {
+        duration: SETTLE,
+        easing: SOFT,
+        composite: "add",
+      });
+    if (!old) {
+      // Step 2.3: new to the grid.
+      run(r, swapKeys({ opacity: 0 }, { opacity: 1 }), delay);
+      continue;
+    }
+    const now = lookOf(r);
+    if (
+      old.fill === now.fill &&
+      old.stroke === now.stroke &&
+      old.strokeWidth === now.strokeWidth
+    )
+      continue;
+    // A gradient does not blend with a colour: it changes in the middle of the blend.
+    run(r, swapKeys({ ...old }, { ...now }), delay);
+  }
+
+  // Step 2.3: cells that left the grid.
+  const layer = cells[0].parentNode!;
+  for (const [key, ghost] of was.cells) {
+    if (kept.has(key)) continue;
+    ghost.setAttribute("data-ghost", "");
+    ghost.removeAttribute("tabindex");
+    ghost.removeAttribute("data-day");
+    ghost.removeAttribute("id");
+    ghost.setAttribute("aria-hidden", "true");
+    layer.append(ghost);
+    mine.nodes.push(ghost);
+    const delay = delayOf(column(ghost));
+    run(ghost, swapKeys({ opacity: 1 }, { opacity: 0 }), delay, "both");
+    jump(ghost, delay);
+  }
+
+  // Step 2.4
+  for (const t of svg.querySelectorAll<SVGTextElement>("text[data-key]")) {
+    const from = was.labels.get(t.dataset.key!.replace(/\d{4}/, ""));
+    const b = t.getBBox();
+    // The year title (no match) is information: it shows at once.
+    if (!from || Math.abs(from.x - b.x) + Math.abs(from.y - b.y) < 0.5)
+      continue;
+    const delay = delayOf(
+      Math.max(
+        0,
+        xs.findIndex((v) => v >= b.x - 1),
+      ),
+    );
+    const at = `translate(${from.x - b.x}px, ${from.y - b.y}px)`;
+    run(
+      t,
+      [
+        { offset: 0, transform: at },
+        { offset: SWAP, transform: at, easing: SOFT },
+        { offset: 1, transform: "none" },
+      ],
+      delay,
+    );
+  }
+
+  // Its nodes go when the wave is over, if no newer change has stopped it first.
+  Promise.all(mine.anims.map((a) => a.finished)).then(
+    () => running === mine && stopWave(),
+    () => {},
+  );
+}
