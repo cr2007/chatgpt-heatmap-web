@@ -21,8 +21,10 @@
  *  find a zone by its country (98.2 kB; country names cost nothing, they
  *  come from Intl.DisplayNames); JS to 103 kB and CSS to 12 kB for the
  *  post box drop zone on the welcome screen: the card motion and the box
- *  (102.2 and 11.7 kB). */
-const BUDGET = { js: 103_000, css: 12_000 } as const;
+ *  (102.2 and 11.7 kB); JS to 106 kB and CSS to 12.5 kB for the year
+ *  change wave between single years and the draggable glass pill of the
+ *  year tabs (105.3 and 12.0 kB). */
+const BUDGET = { js: 106_000, css: 12_500 } as const;
 
 // Step 1
 const totals = { js: 0, css: 0 };

@@ -12,7 +12,7 @@ import { PageDrop } from "@/components/page-drop";
 import { Summary } from "@/components/summary";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 import { Welcome } from "@/components/welcome";
-import { YearTabs } from "@/components/year-tabs";
+import { YearTabs, type How as YearTabsHow } from "@/components/year-tabs";
 import { prepareMorph } from "@/components/calendar-morph";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUpload } from "@/hooks/use-upload";
@@ -152,10 +152,20 @@ export default function Home() {
     setTimeZone(tz);
     setSweep((n) => n + 1);
   };
-  /** Picks a view; the calendar morphs to it,
-   *  except after a keyboard pick (no motion on a keyboard action). */
-  function pickView(next: YearView, how: "pointer" | "key") {
-    if (how !== "key") prepareMorph(document.querySelector("#calendar svg"));
+  /** Picks a view. Between two single years the
+   *  calendar waves to it, to or from "All years" it morphs; after a
+   *  keyboard pick nothing moves (no motion on a keyboard action), but a
+   *  running wave still stops. */
+  function pickView(next: YearView, how: YearTabsHow) {
+    if (next === view) return;
+    const dir =
+      view !== "all" && next !== "all" ? (next > view ? 1 : -1) : undefined;
+    prepareMorph(
+      how === "key"
+        ? null
+        : document.querySelector<SVGSVGElement>("#calendar svg"),
+      dir,
+    );
     setPicked(next);
   }
   const upload = useUpload({ onLoad: loadExports, onStream });

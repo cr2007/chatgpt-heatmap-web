@@ -335,6 +335,123 @@
   stop-color: var(--o4);
 }
 
+/* Year tabs (components/year-tabs.tsx). The pill lies over the buttons and
+   clips its copy of their labels, so a label takes the pill's colours
+   exactly at its edge. The row has data-ready after its first frame (no
+   motion on load) and data-state ("pressed", "dragging") while the pill is
+   held. The global reduced-motion rule makes all of it instant. */
+/* Tabs that fit need no scrolling: the row does not clip (year-tabs.tsx sets data-fits). */
+.year-tabs[data-fits] {
+  overflow: visible;
+}
+.year-pill {
+  z-index: 10;
+  overflow: hidden;
+}
+.year-pill-labels {
+  width: max-content;
+  /* At rest the copy is the picked button's label. */
+  color: var(--color-zinc-900);
+}
+.dark .year-pill-labels {
+  color: var(--color-zinc-50);
+}
+/* A move is the app's spring; the copy moves with it the other way, so the
+   labels stay put. The colour and the release are quick. */
+.year-tabs[data-ready] .year-pill {
+  transition:
+    translate var(--dur-spring) var(--ease-spring),
+    width var(--dur-spring) var(--ease-spring),
+    scale var(--dur-press) var(--ease-out),
+    background-color var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out);
+}
+.year-tabs[data-ready] .year-pill-labels {
+  transition:
+    translate var(--dur-spring) var(--ease-spring),
+    color var(--dur-press) var(--ease-out);
+}
+/* Pressed: the pill lifts with a small bounce (the iOS 26 lens). */
+.year-tabs[data-ready][data-state="pressed"] .year-pill {
+  transition:
+    translate var(--dur-spring) var(--ease-spring),
+    width var(--dur-spring) var(--ease-spring),
+    scale var(--dur-spring-bouncy) var(--ease-spring-bouncy),
+    background-color var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out);
+}
+/* Dragged: the pill and its labels follow the pointer with no lag. */
+.year-tabs[data-ready][data-state="dragging"] .year-pill {
+  transition:
+    scale var(--dur-press) var(--ease-out),
+    background-color var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out);
+}
+.year-tabs[data-ready][data-state="dragging"] .year-pill-labels {
+  transition: color var(--dur-press) var(--ease-out);
+}
+/* Held: accent glass. The accent fill (labels 6.6:1 light, 5.3:1 dark), lit
+   as Liquid Glass: a lighter top and rim, a glow from under the pointer
+   (--gx, set on the pill only) and a deeper shadow. The light ends above
+   the labels, so they keep their contrast. The track under the pill is
+   flat, so a blur would show nothing: none. */
+.year-tabs[data-state] .year-pill {
+  background-color: var(--color-accent-fill);
+  background-image:
+    radial-gradient(
+      60% 55% at var(--gx, 50%) 0%,
+      color-mix(in oklab, var(--color-white) 26%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-white) 18%, transparent),
+      transparent 33%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--color-white) 45%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--color-white) 14%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--color-zinc-950) 16%, transparent),
+    0 6px 16px -6px
+      color-mix(in oklab, var(--color-accent-fill) 65%, transparent),
+    0 1px 2px color-mix(in oklab, var(--color-zinc-950) 18%, transparent);
+}
+.year-tabs[data-state] .year-pill-labels,
+.year-tabs[data-state] .year-pill-labels .year-count {
+  color: var(--color-accent-on);
+}
+/* Reduce Transparency and Increase Contrast: a solid pill (Apple: glass
+   turns "frostier", or "predominantly black or white ... with a
+   contrasting border"). Only Chromium has the first query; the second
+   works in every engine. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .year-tabs[data-state] .year-pill {
+    background-image: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .year-tabs[data-state] .year-pill {
+    box-shadow: 0 0 0 1.5px var(--color-zinc-950);
+  }
+  .dark .year-tabs[data-state] .year-pill {
+    box-shadow: 0 0 0 1.5px var(--color-zinc-50);
+  }
+}
+/* The picked button is the handle. A sideways drag on it is the pill's; an
+   up or down swipe still scrolls the page. */
+@media (pointer: fine) {
+  .year-tab-grab {
+    cursor: grab;
+  }
+}
+.year-tab-grab {
+  touch-action: pan-y pinch-zoom;
+}
+.year-tabs[data-state="dragging"],
+.year-tabs[data-state="dragging"] * {
+  cursor: grabbing;
+}
+
 /* Heatmap cells. `--t` is the cell's place in the date range, 0 to 1, so
    every change runs from the first date to the last. The reduced-motion
    rule above makes all of it instant. */

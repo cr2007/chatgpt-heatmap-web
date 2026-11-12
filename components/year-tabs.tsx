@@ -2,17 +2,64 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { cn, count } from "@/lib/utils";
 import type { YearView } from "@/lib/layout";
 
+/** How a view change came: a click or a tap, the keyboard (Enter or Space), or a drag of the pill. */
+export type How = "pointer" | "key" | "drag";
+
+/** Movement (px) before a press turns into a drag: Motion uses 3 px for a mouse, Vaul and Embla 10 px for a finger. */
+const START = { mouse: 3, touch: 10 };
+/** WWDC18 "Designing Fluid Interfaces": a flick comes to rest v * d / (1 - d) px further, v in px/ms. 0.99 is UIKit's fast rate. */
+const DECELERATION = 0.99;
+/** The held pill lifts, as the iOS 26 lens does; 1.04 keeps it inside the row's 2 px padding. */
+const HELD = 1.04;
+/** Between two tabs the pill holds on a tab for this share of the way at each end. */
+const MAGNET = 0.22;
+/** Velocity is measured over this many of the last moves. */
+const TRACK = 6;
+/** The layout of a tab: a button and its copy in the pill must match to the pixel. */
+const LABEL =
+  "flex h-8 shrink-0 items-baseline gap-1.5 rounded-md px-3 text-sm";
+/** The row's padding (px, p-0.5): where the first tab starts. */
+const PAD = 2;
+
+/** iOS rubber band: past an end, the pill moves less the further you pull (`d` is the room it may use). */
+export const rubber = (x: number, d: number) =>
+  (1 - 1 / ((x * 0.55) / d + 1)) * d;
+
 /**
- * A row of buttons that picks the calendar view: "All years" scrolls
- * through every year; a year button shows that year and its total.
+ * The magnet between two tabs: `t` is the pointer's way from one tab (0) to
+ * the next (1); the pill stays on a tab for the first and last `share` of
+ * that way and crosses the rest faster. Continuous, so the pill never jumps.
+ */
+export const magnet = (t: number, share: number) =>
+  Math.min(1, Math.max(0, (t - share) / (1 - 2 * share)));
+
+/** How far (px) a release at `v` px/ms carries on. */
+export const project = (v: number) => (v * DECELERATION) / (1 - DECELERATION);
+
+/**
+ * A row of toggle buttons that picks the calendar view: "All years" or one
+ * year with its total. A pill marks the picked button; it lies over the
+ * buttons and holds a copy of their labels, moved against the pill so each
+ * label sits on its button. The pill clips that copy, so a label takes the
+ * pill's colours exactly at its edge (as the iOS 26 lens does). The buttons
+ * stay the click and focus targets; the pill takes no pointer.
  *
- * Step 1: On a phone the row scrolls sideways: keep the picked button in
- *         view. This moves only the row, never the page.
- * Step 2: One pill behind the picked button marks it. It moves to the new
- *         pick with the spring (translate and width, measured), so the eye
- *         follows the change; it is placed again when the row resizes.
- * Step 3: The pill slides only after its first placement, so the first
- *         paint does not animate.
+ * The pill can be dragged: press the picked button and slide. While held
+ * the row has `data-state` ("pressed", "dragging") and the pill is accent
+ * glass (app/globals.css, `.year-pill`).
+ *
+ * Step 1: On a phone the row scrolls sideways (it clips only when its tabs
+ *         do not fit): keep the picked button in
+ *         view (the row only, never the page). Place the pill on it, again
+ *         when the row resizes; it slides only after its first placement.
+ * Step 2: A press on the picked button may become a drag: past START px it
+ *         captures the pointer, and the pill follows.
+ *   Step 2.1: Past the first or the last tab the pill is rubber-banded.
+ *   Step 2.2: Between two tabs the magnet holds it near each tab, and its
+ *             width blends from one tab to the other.
+ * Step 3: On release, pick the tab the flick points at, spring the pill to
+ *         it and change the view; the click that follows a drag is
+ *         swallowed. A cancelled pointer puts the pill back with no change.
  */
 export function YearTabs({
   years,
@@ -25,80 +72,260 @@ export function YearTabs({
   /** Prompts per year, in the order of `years`. */
   totals: number[];
   view: YearView;
-  /** `key` when the keyboard made the click (Enter or Space), so the page can skip the motion. */
-  onView: (view: YearView, how: "pointer" | "key") => void;
+  /** `key` when the keyboard made the click, so the page can skip the motion. */
+  onView: (view: YearView, how: How) => void;
 }) {
   const row = useRef<HTMLFieldSetElement>(null);
+  const pill = useRef<HTMLSpanElement>(null);
+  const copy = useRef<HTMLSpanElement>(null);
   // A total that grows (a time zone change, a streaming upload) widens its
   // button but not the scrolling row, so the labels are part of the key.
   const labels = `${years.join()}|${totals.join()}`;
-  const pill = useRef<HTMLSpanElement>(null);
+  /** The drag in progress, if any. */
+  const drag = useRef<{
+    id: number;
+    x0: number;
+    left0: number;
+    on: boolean;
+    track: { t: number; x: number }[];
+  } | null>(null);
+  const swallow = useRef(false);
 
+  const tabs = () => [
+    ...(row.current?.querySelectorAll<HTMLButtonElement>("button") ?? []),
+  ];
+  const viewOf = (b: HTMLButtonElement) =>
+    (b.dataset.view === "all" ? "all" : Number(b.dataset.view)) as YearView;
+  /** Draws the pill at `left` px in the row, `width` px wide; its label copy moves the other way, so the labels stay on their buttons. */
+  const paint = (left: number, width: number) => {
+    pill.current!.style.translate = `${left}px 0`;
+    pill.current!.style.width = `${width}px`;
+    copy.current!.style.translate = `${PAD - left}px 0`;
+  };
+  /** Puts the pill on a button (the CSS spring moves it unless a drag holds it). */
+  const placeOn = (b: HTMLElement) => paint(b.offsetLeft, b.offsetWidth);
+  /** Pressed or dragging, or none (rest). */
+  const setState = (s?: "pressed" | "dragging") => {
+    if (s) row.current!.dataset.state = s;
+    else delete row.current!.dataset.state;
+  };
+  /** The glow starts under the pointer: its place in the pill, set on the pill only, so no other element restyles. */
+  const glow = (e: React.PointerEvent) => {
+    const r = pill.current!.getBoundingClientRect();
+    pill.current!.style.setProperty(
+      "--gx",
+      `${((e.clientX - r.left) / r.width) * 100}%`,
+    );
+  };
+  /** The tab whose middle is nearest to `x`. */
+  const nearest = (x: number) => {
+    const mid = (b: HTMLElement) =>
+      Math.abs(b.offsetLeft + b.offsetWidth / 2 - x);
+    return tabs().reduce((best, b) => (mid(b) < mid(best) ? b : best));
+  };
+
+  // Step 1
   useLayoutEffect(() => {
     const el = row.current;
     const on = el?.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (!el || !on) return;
-    // Step 1
-    el.scrollLeft = on.offsetLeft + on.offsetWidth / 2 - el.clientWidth / 2;
-    // Step 2
-    const place = () => {
-      if (!pill.current) return;
-      pill.current.style.width = `${on.offsetWidth}px`;
-      pill.current.style.translate = `${on.offsetLeft}px 0`;
+    if (!el || !on || drag.current?.on) return;
+    /** The row clips (and scrolls) only when its tabs do not fit, so a pill
+     *  pulled past an end, and its shadow, can show past the row's edge. */
+    const fit = () => {
+      const last = tabs().at(-1)!;
+      el.toggleAttribute(
+        "data-fits",
+        last.offsetLeft + last.offsetWidth + PAD <= el.clientWidth + 0.5,
+      );
     };
-    place();
-    const resize = new ResizeObserver(place);
+    fit();
+    el.scrollLeft = on.offsetLeft + on.offsetWidth / 2 - el.clientWidth / 2;
+    placeOn(on);
+    const resize = new ResizeObserver(() => {
+      if (drag.current?.on) return;
+      fit();
+      placeOn(on);
+    });
     resize.observe(el);
     return () => resize.disconnect();
   }, [view, labels]);
-
-  // Step 3
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
-      pill.current?.setAttribute("data-ready", ""),
+      row.current?.setAttribute("data-ready", ""),
     );
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const button = (v: YearView, label: string, total?: number) => (
-    <button
-      key={String(v)}
-      id={`year-tab-${v}`}
-      type="button"
-      aria-pressed={view === v}
-      // detail is 0 for a click the keyboard made.
-      onClick={(e) => onView(v, e.detail === 0 ? "key" : "pointer")}
-      className={cn(
-        "relative flex h-8 shrink-0 items-baseline gap-1.5 rounded-md px-3 text-sm transition-[color,scale] duration-(--dur-press) ease-out focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.97]",
-        view === v
-          ? "font-medium text-zinc-900 dark:text-zinc-50"
-          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
-      )}
-    >
+  /** Step 2.1 and 2.2: draws the pill for a pointer that would put its left edge at `x` (px in the row). */
+  function follow(x: number) {
+    const bs = tabs();
+    const first = bs[0];
+    const last = bs.at(-1)!;
+    // Step 2.1
+    if (x <= first.offsetLeft || x >= last.offsetLeft) {
+      const end = x < first.offsetLeft ? first : last;
+      paint(
+        end === first
+          ? first.offsetLeft -
+              rubber(first.offsetLeft - x, first.offsetWidth / 2)
+          : last.offsetLeft + rubber(x - last.offsetLeft, last.offsetWidth / 2),
+        end.offsetWidth,
+      );
+      return;
+    }
+    // Step 2.2
+    const i = bs.findLastIndex((b) => b.offsetLeft <= x);
+    const [a, b] = [bs[i], bs[i + 1]];
+    const t = magnet(
+      (x - a.offsetLeft) / (b.offsetLeft - a.offsetLeft),
+      MAGNET,
+    );
+    paint(
+      a.offsetLeft + (b.offsetLeft - a.offsetLeft) * t,
+      a.offsetWidth + (b.offsetWidth - a.offsetWidth) * t,
+    );
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLFieldSetElement>) {
+    // One pointer at a time, and only from the picked button.
+    if (drag.current || e.button !== 0) return;
+    const on = (e.target as Element).closest<HTMLButtonElement>(
+      'button[aria-pressed="true"]',
+    );
+    if (!on) return;
+    drag.current = {
+      id: e.pointerId,
+      x0: e.clientX,
+      left0: on.offsetLeft,
+      on: false,
+      track: [],
+    };
+    pill.current!.style.scale = String(HELD);
+    glow(e);
+    setState("pressed");
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLFieldSetElement>) {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x0;
+    // Step 2
+    if (!d.on) {
+      const start = e.pointerType === "mouse" ? START.mouse : START.touch;
+      if (Math.abs(dx) < start) return;
+      d.on = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setState("dragging");
+    }
+    d.track.push({ t: e.timeStamp, x: e.clientX });
+    if (d.track.length > TRACK) d.track.shift();
+    follow(d.left0 + dx);
+    glow(e);
+  }
+  function end(e: React.PointerEvent<HTMLFieldSetElement>, cancel: boolean) {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    drag.current = null;
+    pill.current!.style.scale = "";
+    setState();
+    if (!d.on) return; // a press with no drag: the click does the rest
+    // The click that ends a drag comes in this task; any later click is real.
+    swallow.current = true;
+    setTimeout(() => (swallow.current = false));
+    // Step 3
+    const [a, b] = [d.track[0], d.track.at(-1)!];
+    const v = a && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0;
+    const target = cancel
+      ? tabs().find((t) => viewOf(t) === view)!
+      : nearest(
+          d.left0 +
+            e.clientX -
+            d.x0 +
+            project(v) +
+            pill.current!.offsetWidth / 2,
+        );
+    placeOn(target);
+    if (viewOf(target) !== view) onView(viewOf(target), "drag");
+  }
+
+  const items = [
+    ...(years.length > 1
+      ? [{ v: "all" as YearView, label: "All years", total: undefined }]
+      : []),
+    ...years.map((y, i) => ({
+      v: y as YearView,
+      label: String(y),
+      total: totals[i],
+    })),
+  ];
+  /** A tab's label and count; a button and its copy in the pill share it, so both lay out the same. */
+  const content = (label: string, total: number | undefined) => (
+    <>
       <span className="leading-8">{label}</span>
       {total !== undefined && (
-        <span className="text-xs text-zinc-600 dark:text-zinc-400">
+        <span className="year-count text-xs text-zinc-600 dark:text-zinc-400">
           {count(total)}
         </span>
       )}
-    </button>
+    </>
   );
   return (
     <fieldset
       ref={row}
       id="year-tabs"
-      className="relative isolate flex max-w-full min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => end(e, false)}
+      onPointerCancel={(e) => end(e, true)}
+      className="year-tabs relative isolate flex max-w-full min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
     >
       <legend className="sr-only">Years to show</legend>
+      {items.map(({ v, label, total }) => (
+        <button
+          key={String(v)}
+          id={`year-tab-${v}`}
+          type="button"
+          data-view={v}
+          aria-pressed={view === v}
+          onClick={(e) => {
+            if (swallow.current && e.detail > 0) {
+              swallow.current = false;
+              return;
+            }
+            // detail is 0 for a click the keyboard made.
+            onView(v, e.detail === 0 ? "key" : "pointer");
+          }}
+          className={cn(
+            LABEL,
+            "relative transition-[color,scale] duration-(--dur-press) ease-out select-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.97]",
+            view === v
+              ? "year-tab-grab font-medium text-zinc-900 dark:text-zinc-50"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
+          )}
+        >
+          {content(label, total)}
+        </button>
+      ))}
+      {/* The pill, over the buttons: its own copy of the labels, in the pill's colours. */}
       <span
         ref={pill}
         aria-hidden="true"
-        // A small, absolutely placed marker: its width may animate with no
-        // layout cost to anything else.
-        className="pointer-events-none absolute top-0.5 left-0 -z-10 h-8 rounded-md bg-white shadow-xs ring-1 ring-zinc-200 data-ready:transition-[translate,width] data-ready:duration-(--dur-spring) data-ready:ease-spring dark:bg-zinc-800 dark:ring-zinc-700"
-      />
-      {years.length > 1 && button("all", "All years")}
-      {years.map((y, i) => button(y, String(y), totals[i]))}
+        className="year-pill pointer-events-none absolute top-0.5 left-0 h-8 rounded-md bg-white shadow-xs ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
+      >
+        <span
+          ref={copy}
+          inert
+          className="year-pill-labels absolute top-0 left-0 flex gap-0.5"
+        >
+          {items.map(({ v, label, total }) => (
+            <span
+              key={String(v)}
+              className={cn(LABEL, view === v && "font-medium")}
+            >
+              {content(label, total)}
+            </span>
+          ))}
+        </span>
+      </span>
     </fieldset>
   );
 }
