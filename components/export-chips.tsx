@@ -91,7 +91,7 @@ function Chip({
         className="pointer-events-none absolute top-full left-0 z-30 mt-2 flex w-max max-w-72 origin-top-left scale-[0.97] flex-col gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs opacity-0 shadow-lg shadow-zinc-950/10 transition-[opacity,scale] duration-(--dur-micro) ease-out group-focus-within/chip:scale-100 group-focus-within/chip:opacity-100 group-hover/chip:scale-100 group-hover/chip:opacity-100 group-hover/chip:delay-150 data-pinned:scale-100 data-pinned:opacity-100 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/40"
       >
         <p className="font-medium whitespace-nowrap text-zinc-900 dark:text-zinc-100">
-          {plural(info.prompts, "prompt")} in {plural(info.count, "chat")}
+          {plural(info.prompts, "prompt")}
         </p>
         <ul className="flex flex-col text-zinc-500 dark:text-zinc-400">
           {info.files.slice(0, MAX_FILES).map((f, i) => {
