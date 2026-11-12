@@ -13,6 +13,10 @@ Rules for anyone who changes this repo, people and coding agents alike. `CLAUDE.
 - Commits are signed via SSH (`gpg.format=ssh`), not GPG - running `git commit` in a shell command is fine.
 - Never add `Co-Authored-By` or `Claude-Session` footers to commit messages.
 - Large changes land as multiple small, logically grouped Conventional Commits, not one big commit.
+- Pull requests: a short body in ASD-STE100 (what changed, why, how to test), with no attribution or "generated with" lines. Show a UI change with images or a video uploaded to GitHub's attachment store, never committed (do not commit `.github/pr-assets`):
+  1. Record the proof with synthetic data (`/test.html`) and the UTC time zone (Playwright `timezoneId: "UTC"`), never a real export or the computer's zone. Convert a Playwright webm first: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
+  2. Upload each file: `curl -s "https://uploads.github.com/user-attachments/assets?name=<file>&content_type=<mime>&repository_id=<id>" -X POST -H "Authorization: Bearer $(gh auth token)" -H "Accept: application/json" --data-binary @<file>` (`<id>` is `gh api repos/<owner>/<repo> --jq .id`; video types `video/mp4` or `video/webm`). A 422 means the type is not allowed; a 404, a wrong repository id or no push access.
+  3. Put the returned `url` in the body: an image as `![what it shows](url)`, a video as the bare URL on its own line (GitHub shows a player; image syntax does not).
 
 ## Toolchain
 
