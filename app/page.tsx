@@ -13,7 +13,7 @@ import { Summary } from "@/components/summary";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 import { Welcome } from "@/components/welcome";
 import { YearTabs, type How as YearTabsHow } from "@/components/year-tabs";
-import { prepareMorph } from "@/components/calendar-morph";
+import { keepInPlace, prepareMorph } from "@/components/calendar-morph";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUpload } from "@/hooks/use-upload";
 import { useFoldPosture } from "@/hooks/use-fold-posture";
@@ -44,36 +44,6 @@ const SWAP_KEY = "fold-swap";
 function clearOldViewHash() {
   if (/^#(all|\d{4})$/.test(location.hash))
     history.replaceState(null, "", location.pathname + location.search);
-}
-
-/** Ends the running scroll hold, if any. */
-let unhold = () => {};
-
-/**
- * Keeps the page at least as tall as it is scrolled, before a view change:
- * one year after "All years" is about 400 px shorter, and the browser would
- * pull a scrolled page down at once, so the tabs jumped and the morph slid
- * the year down from where it was. The hold ends once the page's own
- * content is tall enough again (the user scrolled up, or the window grew).
- */
-function holdScroll() {
-  unhold();
-  const root = document.documentElement;
-  root.style.minHeight = `${scrollY + innerHeight}px`;
-  // A new hold replaces this one in the same task, so the page never clamps in between.
-  unhold = () => {
-    root.style.minHeight = "";
-    removeEventListener("scroll", release);
-    removeEventListener("resize", release);
-    unhold = () => {};
-  };
-  const release = () => {
-    if (scrollY + innerHeight <= document.body.scrollHeight + 1) unhold();
-  };
-  addEventListener("scroll", release, { passive: true });
-  addEventListener("resize", release);
-  // A view that is not shorter needs no hold: drop it after the new view draws.
-  requestAnimationFrame(release);
 }
 
 /**
@@ -188,15 +158,12 @@ export default function Home() {
    *  running wave still stops. */
   function pickView(next: YearView, how: YearTabsHow) {
     if (next === view) return;
+    const svg = document.querySelector<SVGSVGElement>("#calendar svg");
     const dir =
       view !== "all" && next !== "all" ? (next > view ? 1 : -1) : undefined;
-    prepareMorph(
-      how === "key"
-        ? null
-        : document.querySelector<SVGSVGElement>("#calendar svg"),
-      dir,
-    );
-    holdScroll();
+    // The calendar stays where it is on screen, whatever changes above it.
+    keepInPlace(svg);
+    prepareMorph(how === "key" ? null : svg, dir);
     setPicked(next);
   }
   const upload = useUpload({ onLoad: loadExports, onStream });

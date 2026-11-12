@@ -67,6 +67,76 @@ let pending: Snapshot | null = null;
 /** A prepared wave: its snapshot and direction. */
 let wave: { was: WaveSnapshot; dir: number } | null = null;
 
+/** The calendar's top on screen before a view change (`keepInPlace`). */
+let anchor: number | null = null;
+/** Ends the running page hold, if any. */
+let unhold = () => {};
+
+/**
+ * Holds the page at least `height` px tall, so the browser cannot pull a
+ * scrolled page down when the view gets shorter. The hold ends once the
+ * page's own content is tall enough again (the user scrolled up, or the
+ * window grew), or when a new hold replaces it (in the same task, so the
+ * page never clamps in between).
+ */
+function hold(height: number) {
+  unhold();
+  const root = document.documentElement;
+  root.style.minHeight = `${height}px`;
+  const release = () => {
+    if (scrollY + innerHeight <= document.body.scrollHeight + 1) unhold();
+  };
+  unhold = () => {
+    root.style.minHeight = "";
+    removeEventListener("scroll", release);
+    removeEventListener("resize", release);
+    unhold = () => {};
+  };
+  addEventListener("scroll", release, { passive: true });
+  addEventListener("resize", release);
+  // A view that needs no hold drops it after it is drawn.
+  requestAnimationFrame(release);
+}
+
+/**
+ * Before any view change (a keyboard one too): the calendar is to stay
+ * where it is on screen. Records its top and holds the page as tall as it
+ * is scrolled. Two things would move it: a shorter view (one year after
+ * "All years" is about 400 px shorter, and the browser pulls a scrolled
+ * page down) and the figures above it, whose text can wrap onto a
+ * different number of lines for one year than for all of them.
+ */
+export function keepInPlace(svg: SVGSVGElement | null) {
+  anchor = svg ? svg.getBoundingClientRect().top : null;
+  hold(scrollY + innerHeight);
+}
+
+/**
+ * After the new view is drawn, puts the calendar back where it was:
+ *
+ * Step 1: Drop the padding a previous change added, and measure how far
+ *         the calendar moved.
+ * Step 2: Scroll by that much (the hold keeps the page tall enough).
+ * Step 3: What scrolling cannot make up (the figures above got shorter
+ *         while the page is at its top) becomes padding above the
+ *         calendar, until the next view change.
+ */
+function restore(svg: SVGSVGElement) {
+  if (anchor === null) return;
+  // Step 1
+  const box = svg.parentElement!;
+  box.style.paddingTop = "";
+  const moved = svg.getBoundingClientRect().top - anchor;
+  anchor = null;
+  if (Math.abs(moved) < 0.5) return;
+  // Step 2
+  const by = Math.max(-scrollY, moved);
+  hold(scrollY + by + innerHeight);
+  scrollBy({ top: by, behavior: "instant" });
+  // Step 3
+  if (moved - by < -0.5) box.style.paddingTop = `${by - moved}px`;
+}
+
 /** The centre and width of an element on screen. */
 function look(el: Element, fill = ""): Look {
   const b = el.getBoundingClientRect();
@@ -134,6 +204,8 @@ export function prepareMorph(svg: SVGSVGElement | null, dir?: number) {
 
 /** Step 2: plays the motion from the recorded look to the calendar `svg` now. */
 export function playMorph(svg: SVGSVGElement) {
+  // First, so the motion starts from where the cells are on screen now.
+  restore(svg);
   if (wave) {
     playWave(svg, wave.was, wave.dir);
     wave = null;
