@@ -157,6 +157,17 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
+  html {
+    /* Keep the scrollbar's room when the page does not scroll: a classic
+       scrollbar (15 px) that went away when the view got shorter moved the
+       centred page 7.5 px sideways. The room shows the page colour. */
+    scrollbar-gutter: stable;
+    background-color: var(--color-zinc-50);
+  }
+  .dark {
+    background-color: var(--color-zinc-950);
+  }
+
   /* Very large screens (a 1440p or 4K monitor at 1x, a TV): every rem size
      grows, so the page keeps its proportions instead of becoming a narrow
      column in empty space. A 4K screen at 2x is 1920 px wide and keeps 16 px. */
