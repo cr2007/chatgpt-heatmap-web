@@ -1,7 +1,12 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-/** Joins class names and lets a later Tailwind class win over an earlier one. */
+/**
+ * Joins class names and lets a later Tailwind class win over an earlier one.
+ *
+ * @param inputs - Class names, arrays or condition maps, as `clsx` takes them.
+ * @returns One class string with Tailwind conflicts resolved.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -9,10 +14,21 @@ export function cn(...inputs: ClassValue[]) {
 /** Formats counts in the reader's locale, for example "1,284". */
 const number = new Intl.NumberFormat();
 
-/** Formats a count in the reader's locale. */
+/**
+ * Formats a count in the reader's locale.
+ *
+ * @param n - The count.
+ * @returns The formatted count, for example "1,284".
+ */
 export const count = (n: number) => number.format(n);
 
-/** "1 message", "1,284 messages": the count and the word, plural when not 1. */
+/**
+ * Writes a count with its word, plural when the count is not 1.
+ *
+ * @param n - The count.
+ * @param word - The singular word; the plural adds "s".
+ * @returns For example "1 message" or "1,284 messages".
+ */
 export function plural(n: number, word: string): string {
   return `${count(n)} ${word}${n === 1 ? "" : "s"}`;
 }
@@ -20,6 +36,12 @@ export function plural(n: number, word: string): string {
 /**
  * Splits a file name so its end (with the extension) stays visible when the
  * start is cut: "conversations (2) - Work laptop.json" keeps "laptop.json".
+ *
+ * @param name - The file name.
+ * @param tail - Characters to keep at the end. A name of at most twice this
+ *   length is not split.
+ * @returns The start and the end; the end is "" when the name is not split.
+ * @defaultValue `tail` is 11.
  */
 export function splitName(name: string, tail = 11): [string, string] {
   return name.length <= tail * 2

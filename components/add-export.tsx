@@ -5,7 +5,11 @@ import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
 
-/** Safari before 17 has no Popover API: the help would show all the time. */
+/**
+ * Safari before 17 has no Popover API: the help would show all the time.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
+ */
 const HAS_POPOVER =
   typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 /** Gap in px between the help button and its popover. */
@@ -18,21 +22,12 @@ const HOVER_OPEN = 300;
 const HOVER_CLOSE = 200;
 
 /**
- * The "Add export" file button and the "How to export" popover, once an
- * export is loaded. A provider that is not loaded yet comes first in the
- * steps.
+ * The "Add export" file button and the "How to export" popover.
  *
- * Step 1: The label opens the file picker; while files stream in it shows
- *         the share read.
- * Step 2: The help button opens a native popover (top layer, Escape and an
- *         outside click close it). Before it opens, it is placed under the
- *         button, right edges aligned, inside the button's fold pane (or
- *         the window), so it never lies across a fold.
- * Step 3: A mouse that rests on the help button opens the help too, and it
- *         closes when the mouse leaves the button and the help. A click on
- *         the button while it is open this way keeps it open (as if
- *         clicked open), so the click never closes what the user is
- *         reading. Touch and the keyboard open it by a tap or a press only.
+ * It shows once an export is loaded. A provider that is not loaded yet comes
+ * first in the steps.
+ *
+ * @see {@link ExportGuide} for the steps in the popover.
  */
 export function AddExport({
   progress,
@@ -42,15 +37,18 @@ export function AddExport({
 }: {
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
+  /** Reads the picked files; the input clears after it settles. */
   onFiles: (files: FileList) => Promise<unknown>;
   /** The providers that have an export. */
   loaded: Provider[];
+  /** Classes for the row that holds the button and the help. */
   className?: string;
 }) {
   const help = useRef<HTMLButtonElement>(null);
-  /** Step 3: the help is open because a mouse rests on it (not clicked open). */
+  /** The help is open because a mouse rests on it (not clicked open). */
   const byHover = useRef(false);
-  /** Step 3: about to open the help (by a programmatic click), so the click is not a pin. */
+  /** About to open the help (by a programmatic click), so the click is not
+   *  a pin. */
   const opening = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reading = progress !== null;
@@ -58,7 +56,13 @@ export function AddExport({
     (a, b) => Number(loaded.includes(a.key)) - Number(loaded.includes(b.key)),
   );
 
-  // Step 2
+  // Step 2: The help is a native popover, placed under the button, right edges
+  // aligned, inside the button's fold pane (or the window), never across a fold.
+  /**
+   * Places the help {@link GAP} px under its button before it opens.
+   *
+   * @param e - The help's toggle event; only a change to "open" places it.
+   */
   function place(e: React.ToggleEvent<HTMLDivElement>) {
     if (e.newState !== "open" || !help.current) return;
     const b = help.current.getBoundingClientRect();
@@ -71,8 +75,14 @@ export function AddExport({
     el.style.maxWidth = `${right - left - 2 * GAP}px`;
   }
 
-  // Step 3
-  /** A mouse came onto the button or the help: open it after a rest, or keep it open. */
+  // Step 3: A mouse that rests on the help button opens it too. Touch and the
+  // keyboard open it by a press only.
+  /**
+   * Opens the help after a mouse rests on the button or the help for
+   * {@link HOVER_OPEN} ms, or keeps it open.
+   *
+   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   */
   function hoverIn(e: React.PointerEvent) {
     if (e.pointerType !== "mouse") return;
     clearTimeout(timer.current);
@@ -87,7 +97,13 @@ export function AddExport({
       opening.current = false;
     }, HOVER_OPEN);
   }
-  /** The mouse left the button or the help: close a hover-opened help after a moment. */
+  // Step 3.1: It closes when the mouse leaves the button and the help.
+  /**
+   * Closes a hover-opened help {@link HOVER_CLOSE} ms after the mouse leaves
+   * the button or the help.
+   *
+   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   */
   function hoverOut(e: React.PointerEvent) {
     if (e.pointerType !== "mouse") return;
     clearTimeout(timer.current);
@@ -97,7 +113,12 @@ export function AddExport({
       if (pop?.matches(":popover-open")) pop.hidePopover();
     }, HOVER_CLOSE);
   }
-  /** A real click on a hover-opened help keeps it open, as if clicked open. */
+  // Step 3.2: A click keeps it open, so it never closes what the user reads.
+  /**
+   * Keeps a hover-opened help open after a real click, as if clicked open.
+   *
+   * @param e - The click on the help button.
+   */
   function pin(e: React.MouseEvent) {
     clearTimeout(timer.current);
     if (opening.current || !byHover.current) return;
@@ -107,7 +128,8 @@ export function AddExport({
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      {/* Step 1 */}
+      {/* Step 1: The label opens the file picker; while files stream in, it
+          shows the share read. */}
       <label
         id="add-export"
         className="inline-flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium whitespace-nowrap shadow-xs transition-[background-color,scale] duration-(--dur-micro) ease-out select-none hover:bg-zinc-100 active:scale-[0.97] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-800"

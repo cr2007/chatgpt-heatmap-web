@@ -1,6 +1,12 @@
 import { useSyncExternalStore } from "react";
 
-/** True while `query` matches; re-renders when the match changes. */
+/**
+ * Follows a media query; re-renders when the match changes.
+ *
+ * @param query - A CSS media query, for example `DESKTOP_QUERY`.
+ * @returns True while `query` matches.
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/matchMedia | MDN: matchMedia}
+ */
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (onChange) => {

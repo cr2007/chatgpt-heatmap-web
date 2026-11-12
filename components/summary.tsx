@@ -20,6 +20,13 @@ const local = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
+/**
+ * Formats a span of days, or one day when both ends are the same.
+ *
+ * @param from - the first day, `YYYY-MM-DD`
+ * @param to - the last day, `YYYY-MM-DD`
+ * @returns "Mar 11, 2024 to Apr 2, 2024" in the reader's locale
+ */
 const range = (from: string, to: string) =>
   from === to
     ? longDate.format(local(from))
@@ -32,9 +39,13 @@ function Figure({
   value,
   note,
 }: {
+  /** The id of the figure, such as `figure-streak`. */
   id: string;
+  /** The small label above the value. */
   label: string;
+  /** The big value. */
   value: ReactNode;
+  /** The note under the value. */
   note: ReactNode;
 }) {
   return (
@@ -52,16 +63,23 @@ function Figure({
 }
 
 /**
- * The headline and the four figures above the calendar, for all years or
- * for one `year`. Definitions are in lib/stats.ts and the README.
+ * Shows the headline and the four figures above the calendar.
+ *
+ * Definitions are in lib/stats.ts and the README.
+ *
+ * @see lib/stats.ts
+ * @see README.md
  */
 export function Summary({
   stats,
   year,
   timeZone,
 }: {
+  /** The figures of the view ({@link Stats}). */
   stats: Stats;
+  /** The year of the view, or null for all years. */
   year: number | null;
+  /** The IANA zone that the days are counted in. */
   timeZone: string;
 }) {
   const both = stats.chatgpt > 0 && stats.claude > 0;

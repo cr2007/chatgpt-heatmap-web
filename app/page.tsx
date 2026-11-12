@@ -38,39 +38,34 @@ const NO_YEARS: number[] = [];
 /** localStorage key: book posture with the controls on the right. */
 const SWAP_KEY = "fold-swap";
 
-/** An older version kept the view in the address (#all, #2025). The view
- *  is no longer kept, so such a hash is cleared, and every visit starts on
- *  "All years". Other hashes (the skip link's) stay. */
+/**
+ * Clears a view hash (#all, #2025) from the address.
+ *
+ * @remarks
+ * An older version kept the view in the address. The view is no longer
+ * kept, so every visit starts on "All years". Other hashes (the skip
+ * link's) stay.
+ */
 function clearOldViewHash() {
   if (/^#(all|\d{4})$/.test(location.hash))
     history.replaceState(null, "", location.pathname + location.search);
 }
 
 /**
- * Root page: owns the loaded exports, an upload in progress, the time zone,
- * the year view and the picked day, and arranges the screen for the window
- * and the foldable posture.
+ * Shows the root page.
  *
- * Step 1: Hold the state. All that a fold or an unfold must keep (the view,
- *         the time zone, the picked day) lives here, so a posture change
- *         keeps it.
- * Step 2: Aggregate the exports; while an upload streams, its partial
- *         result stands in for its provider, so the heatmap fills in.
- * Step 3: Build the parts once: the top bar, the figures, the year tabs and
- *         the legend, the calendar.
- * Step 4: Arrange them:
- *   Step 4.1: Nothing loaded, or files still going into the welcome
- *             screen's post box: the welcome screen.
- *   Step 4.2: A half-open foldable: the bar, the figures, the tabs and the
- *             day pane on one screen half, the calendar on the other.
- *   Step 4.3: Otherwise: the bar, then the figures, the tabs and the
- *             calendar at full width.
- *   Step 4.4: While the post box flap shuts, draw the loaded screen
- *             hidden under the welcome screen.
- *   A file dragged anywhere over a loaded page shows one drop target.
+ * @remarks
+ * It owns the loaded exports, an upload in progress, the time zone, the year
+ * view and the picked day, and arranges the screen for the window and the
+ * foldable posture. A file dragged anywhere over a loaded page shows one
+ * drop target.
+ *
+ * @returns The welcome screen, or the loaded screen for one screen or a
+ *   half-open foldable.
  */
 export default function Home() {
-  // Step 1
+  // Step 1: Hold the state. All that a fold or an unfold must keep (the view,
+  // the time zone, the picked day) lives here, so a posture change keeps it.
   const [exports, setExports] = useState<Exports>(loadTestData);
   /** What an upload in progress has read so far; null when idle. */
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
@@ -113,7 +108,7 @@ export default function Home() {
   // A fold pane is half the window: the full bar needs the whole width.
   const isWideBar = useMediaQuery(WIDE_BAR_QUERY) && !posture;
 
-  // Step 2
+  // Step 2: Aggregate the exports; a streaming upload's partial result stands in.
   // While files go into the post box, the welcome screen shows: skip the partials.
   const live = posting ? null : streaming;
   const agg = useMemo(() => {
@@ -136,26 +131,53 @@ export default function Home() {
     [agg, allStats, view],
   );
 
-  /** Adds new exports, keeping a provider the upload did not include. */
+  /**
+   * Adds new exports, keeping a provider the upload did not include.
+   *
+   * @param next - The exports of the upload.
+   */
   const loadExports = (next: Partial<Exports>) =>
     setExports((prev) => ({ ...prev, ...next }));
+  /**
+   * Removes the export of one provider.
+   *
+   * @param provider - "chatgpt" or "claude".
+   */
   const clearExport = (provider: Provider) =>
     setExports((prev) => ({ ...prev, [provider]: null }));
-  /** A streaming upload's partial result; new data fades in, without the sweep. */
+  /**
+   * Takes a streaming upload's partial result; new data fades in, without
+   * the sweep.
+   *
+   * @param partial - What the upload read so far, or null when it ended.
+   */
   const onStream = (partial: PartialExports | null) => {
     setStreaming(partial);
     if (partial) setSweep(0);
   };
-  /** A new time zone runs the sweep over the calendar. */
+  /**
+   * Sets the time zone; a new zone runs the sweep over the calendar.
+   *
+   * @param tz - The IANA zone name.
+   */
   const changeTimeZone = (tz: string) => {
     if (tz === timeZone) return;
     setTimeZone(tz);
     setSweep((n) => n + 1);
   };
-  /** Picks a view. Between two single years the
-   *  calendar waves to it, to or from "All years" it morphs; after a
-   *  keyboard pick nothing moves (no motion on a keyboard action), but a
-   *  running wave still stops. */
+  /**
+   * Picks a view.
+   *
+   * @remarks
+   * Between two single years the calendar waves to it, to or from "All
+   * years" it morphs; after a keyboard pick nothing moves (no motion on a
+   * keyboard action), but a running wave still stops.
+   *
+   * @param next - The year, or "all".
+   * @param how - How the tab was picked; "key" for the keyboard.
+   * @see {@link prepareMorph}
+   * @see {@link keepInPlace}
+   */
   function pickView(next: YearView, how: YearTabsHow) {
     if (next === view) return;
     const svg = document.querySelector<SVGSVGElement>("#calendar svg");
@@ -175,7 +197,7 @@ export default function Home() {
     </>
   );
 
-  // Step 4.1
+  // Step 4.1: Nothing loaded, or files still going into the post box: the welcome screen.
   const hasData =
     exports.chatgpt !== null || exports.claude !== null || agg !== null;
   const welcome = (!hasData || posting) && (
@@ -192,8 +214,15 @@ export default function Home() {
   );
   if (!hasData) return <>{welcome}</>;
 
-  // Step 3
-  /** A loaded export as the bar shows it; the prompts are the heatmap's count. */
+  // Step 3: Build the parts once: the top bar, the figures, the year tabs and
+  // the legend, the calendar.
+  /**
+   * Shows a loaded export as the bar shows it.
+   *
+   * @param e - The export, or null for none.
+   * @returns The name, the files, the chat count and the prompt count (the
+   *   heatmap's count); null for no export.
+   */
   const info = (e: LoadedExport | null) =>
     e && {
       name: e.name,
@@ -320,7 +349,8 @@ export default function Home() {
     />
   );
 
-  // Step 4.2
+  // Step 4.2: A half-open foldable: the bar, the figures, the tabs and the day
+  // pane on one screen half, the calendar on the other.
   const screen = posture ? (
     <div className="relative">
       {background}
@@ -375,7 +405,7 @@ export default function Home() {
       {drop}
     </div>
   ) : (
-    // Step 4.3
+    // Step 4.3: Otherwise: the bar, then the figures, the tabs and the calendar at full width.
     <div className="relative min-h-dvh">
       {background}
       {bar}
@@ -407,9 +437,8 @@ export default function Home() {
       {drop}
     </div>
   );
-  // Step 4.4: while the welcome screen's flap shuts, the loaded screen is
-  // already drawn, hidden, so it shows at once when the flap is shut. The
-  // two stay at the same place in the tree, so neither is drawn again.
+  // Step 4.4: While the flap shuts, draw the loaded screen hidden, so it shows at
+  // once. Both keep their place in the tree, so neither is drawn again.
   return (
     <>
       {welcome}

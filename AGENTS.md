@@ -5,7 +5,8 @@ Rules for anyone who changes this repo, people and coding agents alike. `CLAUDE.
 ## Writing
 
 - Never use emdashes (—) or emojis anywhere: not in UI copy, code, comments, or generated strings.
-- New functions and components get a short TSDoc comment. A function with several steps lists them in its TSDoc as `Step 1`, `Step 2`, and nested steps as `Step 2.1`, `Step 2.2`; the code marks each with a matching `// Step N` comment. Non-obvious constants get a one-line doc comment. Keep comments short; say why, not what.
+- New functions and components get a short TSDoc comment: a one-sentence summary, then any why notes, with no step list. A function with several steps marks each step with a short comment inside the function, at the point where that step happens: `// Step 1: ...`, nested `// Step 2.1: ...`. Keep a step comment to one line where you can, never more than two `//` lines. When a step needs more, split it into sub-steps at the points in the code where each part happens (`// Step 1.1: ...`, `// Step 1.2: ...`) rather than write a long comment. Non-obvious constants get a one-line doc comment. Keep comments short; say why, not what.
+- TSDoc uses only the standard tags, in this order: the one-sentence summary line, `@remarks` (longer why notes, measured numbers, caveats), `@param name - ...` for each parameter, `@returns` for a returned value, `@throws` when a function throws on purpose, `@typeParam T - ...` for each generic, `@defaultValue` for an optional value with a default, `@see` (the source of a rule or a value, or a related function), and `{@link name}` inline where a comment names another symbol. No types in braces (TSDoc takes them from the signature). Add a tag only where it adds a fact. Give the unit or the allowed values when the type does not show them. A component documents each prop with a one-line doc on the prop in its props type, not with `@param`.
 
 ## Git
 

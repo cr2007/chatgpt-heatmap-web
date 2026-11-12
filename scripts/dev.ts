@@ -1,10 +1,6 @@
 /**
  * Dev server: Bun bundles index.html on request, with hot reloading.
  * Tailwind runs through the plugin in bunfig.toml ([serve.static]).
- *
- * Step 1: Serve the app at "/" and the synthetic-data page at "/test.html".
- *         The test page is a route here only, so no build ever ships it.
- * Step 2: Serve files in public/ as-is (the font, llms.txt).
  */
 import app from "../index.html";
 import testPage from "../dev/test.html";
@@ -17,9 +13,10 @@ const server = Bun.serve({
   hostname,
   port: Number(process.env.PORT ?? 3000),
   development: { hmr: true, console: true },
-  routes: { "/": app, "/test.html": testPage }, // Step 1
+  routes: { "/": app, "/test.html": testPage }, // Step 1: test page is a route only, so no build ships it
   async fetch(req) {
-    // Step 2: resolve inside public/ only; ".." cannot climb out of it.
+    // Step 2: Serve files in public/ as-is (the font, llms.txt). Resolve
+    // inside public/ only; ".." cannot climb out of it.
     const path = new URL(req.url).pathname;
     const file = Bun.file(`${publicDir}${path}`);
     if (!path.includes("..") && (await file.exists()))

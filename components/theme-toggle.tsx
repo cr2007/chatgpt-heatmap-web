@@ -2,9 +2,15 @@ import { Moon, Sun } from "lucide-react";
 import { useThemeToggle } from "@/hooks/use-theme-toggle";
 
 /**
- * One button that flips between light and dark. It shows the current
- * theme's icon; the `dark` class on <html> picks it, so the first render is
- * right. The icon does not animate: it changes in the same frame as the page.
+ * One button that flips between light and dark.
+ *
+ * @remarks
+ * It shows the current theme's icon; the `dark` class on <html> picks it, so
+ * the first render is right. The icon does not animate: it changes in the
+ * same frame as the page.
+ *
+ * @see {@link useThemeToggle}
+ * @see components/theme-shortcut.tsx for the D key
  */
 export function ThemeToggle() {
   const { isDark, toggle } = useThemeToggle();

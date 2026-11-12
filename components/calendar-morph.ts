@@ -4,30 +4,10 @@
  * day cell moves from where its date was drawn to where it is drawn now,
  * and its shade turns into the new one, in a wave in date order; the month
  * labels move with their weeks. Through every view change the calendar
- * stays where it is on screen (`keepInPlace`, then `restore`).
+ * stays where it is on screen ({@link keepInPlace}, then {@link restore}).
  *
- * Step 1: Just before the view changes:
- *   Step 1.1: `keepInPlace` (every change, a keyboard one too): record the
- *             calendar's top on screen and hold the page as tall as it is
- *             scrolled.
- *   Step 1.2: `prepareMorph`: with a direction (two single years), take the
- *             wave's snapshot; else record each cell and label as it looks
- *             now (a running morph included, so a fast second click goes on
- *             from where the cells are). Then stop a running wave in both
- *             cases: its cells are about to go.
- * Step 2: `playMorph`, after the new view is drawn:
- *   Step 2.1: Put the calendar back where it was (`restore`), before any
- *             motion measures the cells.
- *   Step 2.2: Play the wave if one was prepared; else stop a running morph
- *             and give each cell a FLIP animation (transform and fill only)
- *             from its recorded look. A cell matches by date, or between two
- *             single years by month and day; a cell with no match (29 Feb,
- *             the other years of "All years") grows in.
- *   Step 2.3: From "All years" to one year, the years that leave stay where
- *             they were, as one group, and fade out (`fadeLeaving`).
- *   Step 2.4: The drawing does not clip while the morph runs: the new view
- *             can be shorter than the old one, and the year that stays
- *             moves up from below its new edge.
+ * Use, in order: {@link keepInPlace} and {@link prepareMorph} just before the
+ * view changes, then {@link playMorph} after the new view is drawn.
  * Reduced motion: no snapshot, so the change is instant.
  */
 
@@ -64,9 +44,13 @@ interface Snapshot {
 
 /** The start of the wave is spread over this many ms in date order. */
 const SPREAD = 180;
-/** More new cells than this (the other years of "All years") appear at
- *  once: one animation per cell would cost more than the moving year
- *  gains (measured: 133 to 250 ms for the first frame at 1x CPU). */
+/**
+ * More new cells than this (the other years of "All years") appear at once.
+ *
+ * @remarks
+ * One animation per cell would cost more than the moving year gains
+ * (measured: 133 to 250 ms for the first frame at 1x CPU).
+ */
 const MAX_ENTER = 400;
 /** Animation id, so a new morph stops only this kind of animation. */
 const ID = "year-morph";
@@ -75,17 +59,21 @@ let pending: Snapshot | null = null;
 /** A prepared wave: its snapshot and direction. */
 let wave: { was: WaveSnapshot; dir: number } | null = null;
 
-/** The calendar's top on screen before a view change (`keepInPlace`). */
+/** The calendar's top on screen in px before a view change ({@link keepInPlace}). */
 let anchor: number | null = null;
 /** Ends the running page hold, if any. */
 let unhold = () => {};
 
 /**
  * Holds the page at least `height` px tall, so the browser cannot pull a
- * scrolled page down when the view gets shorter. The hold ends once the
- * page's own content is tall enough again (the user scrolled up, or the
- * window grew), or when a new hold replaces it (in the same task, so the
- * page never clamps in between).
+ * scrolled page down when the view gets shorter.
+ *
+ * @remarks
+ * The hold ends once the page's own content is tall enough again (the user
+ * scrolled up, or the window grew), or when a new hold replaces it (in the
+ * same task, so the page never clamps in between).
+ *
+ * @param height - The smallest page height, in px.
  */
 function hold(height: number) {
   unhold();
@@ -107,48 +95,56 @@ function hold(height: number) {
 }
 
 /**
- * Step 1.1, before any view change (a keyboard one too): the calendar is to stay
- * where it is on screen. Records its top and holds the page as tall as it
- * is scrolled. Two things would move it: a shorter view (one year after
- * "All years" is about 400 px shorter, and the browser pulls a scrolled
- * page down) and the figures above it, whose text can wrap onto a
- * different number of lines for one year than for all of them.
+ * Records where the calendar is on screen, before any view change (a
+ * keyboard one too), so it stays there.
+ *
+ * @remarks
+ * Two things would move it: a shorter view (one year after "All years" is
+ * about 400 px shorter, and the browser pulls a scrolled page down) and the
+ * figures above it, whose text can wrap onto a different number of lines
+ * for one year than for all of them.
+ *
+ * @param svg - The calendar's SVG element, or null when none is drawn.
+ * @see {@link playMorph}, which puts the calendar back.
  */
 export function keepInPlace(svg: SVGSVGElement | null) {
+  // Step 1.1: Record the calendar's top and hold the page as tall as it is scrolled.
   anchor = svg ? svg.getBoundingClientRect().top : null;
   hold(scrollY + innerHeight);
 }
 
 /**
- * After the new view is drawn, puts the calendar back where it was:
+ * Puts the calendar back where {@link keepInPlace} recorded it, after the
+ * new view is drawn.
  *
- * Step 1: Drop the padding a previous change added, and measure how far
- *         the calendar moved.
- * Step 2: Scroll by that much (the hold keeps the page tall enough).
- * Step 3: What scrolling cannot make up (the figures above got shorter
- *         while the page is at its top) becomes padding above the
- *         calendar, until the next view change.
+ * @param svg - The calendar's SVG element.
  */
 function restore(svg: SVGSVGElement) {
   if (anchor === null) return;
-  // Step 1
+  // Step 1: Drop the padding a previous change added; measure how far the calendar moved.
   const box = svg.parentElement!;
   box.style.paddingTop = "";
   const moved = svg.getBoundingClientRect().top - anchor;
   anchor = null;
   if (Math.abs(moved) < 0.5) return;
   const { scroll, pad } = placeBack(moved, scrollY);
-  // Step 2
+  // Step 2: Scroll by that much (the hold keeps the page tall enough).
   hold(scrollY + scroll + innerHeight);
   scrollBy({ top: scroll, behavior: "instant" });
-  // Step 3
+  // Step 3: What scrolling cannot make up (the page is at its top) becomes
+  // padding above the calendar, until the next view change.
   if (pad > 0.5) box.style.paddingTop = `${pad}px`;
 }
 
 /**
- * How to put back a calendar that moved `moved` px down (negative: up) on a
- * page scrolled `scrolled` px: scroll by as much as the page allows (not
- * above its top), and pad above the calendar for the rest.
+ * How to put back a calendar that moved: scroll by as much as the page
+ * allows (not above its top), and pad above the calendar for the rest.
+ *
+ * @param moved - How far the calendar moved down, in px (negative: up).
+ * @param scrolled - How far the page is scrolled, in px (0 or more).
+ * @returns `scroll`, the px to scroll by (negative: up), and `pad`, the px
+ *   to pad above (0 or more).
+ * @see {@link restore}, which applies it.
  */
 export function placeBack(moved: number, scrolled: number) {
   // Not above the top of the page (and 0, not -0, when it is not scrolled).
@@ -168,7 +164,7 @@ function boxOf(svg: SVGSVGElement): Box {
   return { x: b.x, y: b.y, unit: svg.viewBox.baseVal.width / b.width };
 }
 
-/** A duration token in ms: the built CSS may write "520ms" as ".52s". */
+/** Reads a duration token in ms: the built CSS may write "520ms" as ".52s". */
 function ms(root: CSSStyleDeclaration, name: string, fallback: number) {
   const v = root.getPropertyValue(name).trim();
   return (parseFloat(v) || fallback / 1000) * (v.endsWith("ms") ? 1 : 1000);
@@ -178,11 +174,21 @@ function ms(root: CSSStyleDeclaration, name: string, fallback: number) {
 const anyYear = (key: string) => key.replace(/\d{4}/, "");
 
 /**
- * Step 1.2: records the calendar `svg` before a view change. `dir` is set
- * only between two single years: 1 to a later year, -1 to an earlier one.
+ * Records the calendar before a view change, so {@link playMorph} can move it.
+ *
+ * @remarks
  * With no `svg` (a keyboard change) or reduced motion, nothing plays.
+ * With `dir`, it takes the wave's snapshot ({@link snapshotWave}) in place
+ * of the morph's.
+ *
+ * @param svg - The calendar's SVG element, or null for a keyboard change.
+ * @param dir - Only between two single years: 1 to a later year, -1 to an
+ *   earlier one. Leave it out to or from "All years".
+ * @see {@link playMorph}, which plays what this records.
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion
  */
 export function prepareMorph(svg: SVGSVGElement | null, dir?: number) {
+  // Step 1.2: With a direction (two single years), take the wave's snapshot.
   pending = null;
   wave = null;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -190,6 +196,8 @@ export function prepareMorph(svg: SVGSVGElement | null, dir?: number) {
   // After the snapshot (it reads the looks on screen): the cells of a running wave are about to go.
   stopWave();
   if (!svg || reduced || dir) return;
+  // Step 1.3: Else record each cell and label as it looks now, a running morph
+  // included, so a fast second click goes on from where the cells are.
   const cells = new Map<string, Look>();
   const years = new Set<string>();
   for (const r of svg.querySelectorAll<SVGRectElement>("rect[data-day]")) {
@@ -221,11 +229,27 @@ export function prepareMorph(svg: SVGSVGElement | null, dir?: number) {
   };
 }
 
-/** Step 2: plays the motion from the recorded look to the calendar `svg` now (steps in the file header). */
+/**
+ * Plays the year change motion after the new view is drawn; with nothing
+ * prepared, it only puts the calendar back.
+ *
+ * @remarks
+ * It first puts the calendar back where {@link keepInPlace} recorded it. Then
+ * it plays the wave ({@link playWave}) or the morph from the look that
+ * {@link prepareMorph} recorded. The morph is a FLIP animation of transform
+ * and fill only.
+ *
+ * @param svg - The calendar's SVG element, with the new view drawn.
+ * @see {@link prepareMorph}, which records the look to start from.
+ * @see {@link keepInPlace}, which records where the calendar was.
+ * @see https://aerotwist.com/blog/flip-your-animations/ for FLIP.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
+ */
 export function playMorph(svg: SVGSVGElement) {
-  // Step 2.1: first, so the motion starts from where the cells are on screen now.
+  // Step 2.1: Put the calendar back first (`restore`), so the motion starts
+  // from where the cells are on screen now.
   restore(svg);
-  // Step 2.2
+  // Step 2.2: Play the wave if one was prepared; else stop a running morph.
   if (wave) {
     playWave(svg, wave.was, wave.dir);
     wave = null;
@@ -238,6 +262,8 @@ export function playMorph(svg: SVGSVGElement) {
     if (a.id === ID) a.cancel();
   svg.querySelector("[data-ghost]")?.remove();
 
+  // Step 2.3: Give each cell a FLIP animation (transform and fill only) from its
+  // recorded look, by date (two single years: by month and day); no match grows in.
   const root = getComputedStyle(document.documentElement);
   const easing = root.getPropertyValue("--ease-spring").trim() || "ease-out";
   const duration = ms(root, "--dur-spring", 520);
@@ -288,7 +314,8 @@ export function playMorph(svg: SVGSVGElement) {
       run(r, { transform: "scale(0.6)", opacity: 0 }, delay);
     }
 
-  // Step 2.3
+  // Step 2.4: From "All years" to one year, the years that leave stay where
+  // they were, as one group, and fade out.
   if (was.layer && oneYear) fadeLeaving(svg, was.layer, was.box, box, root);
 
   // Labels: the same key, or between two single years the same month or
@@ -312,7 +339,8 @@ export function playMorph(svg: SVGSVGElement) {
       );
   }
 
-  // Step 2.4: a newer morph cancels these animations and sets it again.
+  // Step 2.5: Do not clip while the morph runs: the new view can be shorter, and
+  // the year that stays moves up from below its new edge. A newer morph sets it again.
   const all = svg.getAnimations({ subtree: true }).filter((a) => a.id === ID);
   svg.style.overflow = "visible";
   Promise.all(all.map((a) => a.finished)).then(
@@ -322,9 +350,14 @@ export function playMorph(svg: SVGSVGElement) {
 }
 
 /**
- * Step 2.3: shows the cells and labels of `layer` (the old "All years"
- * drawing at `was`) that the new view of `svg` (at `now`) does not have,
- * where they were, and fades them out as one group.
+ * Shows the old cells and labels that the new view does not have, where
+ * they were, and fades them out as one group over `--dur-ui`.
+ *
+ * @param svg - The calendar's SVG element, with the new view drawn.
+ * @param layer - The old "All years" drawing.
+ * @param was - Where the old drawing was.
+ * @param now - Where the new drawing is.
+ * @param root - The computed style of the page root, for the motion tokens.
  */
 function fadeLeaving(
   svg: SVGSVGElement,

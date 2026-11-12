@@ -22,6 +22,8 @@ import { playMorph } from "@/components/calendar-morph";
 
 /** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
 const HIDE_DELAY = 80;
+/** Shade class prefixes of each provider (`ramp` in lib/providers.ts, from
+ *  {@link providerInfo}). */
 const GPT = providerInfo("chatgpt").ramp;
 const CLAUDE = providerInfo("claude").ramp;
 
@@ -34,8 +36,15 @@ const dayName = new Intl.DateTimeFormat(undefined, {
   timeZone: "UTC",
 });
 
-/** Accessible name of a day cell, for example
- *  "Sun, Mar 10, 2024: 3 messages (ChatGPT 2, Claude 1)". */
+/**
+ * Gives the accessible name of a day cell.
+ *
+ * @param name - The readable day, for example "Sun, Mar 10, 2024".
+ * @param chatgpt - ChatGPT prompts on the day.
+ * @param claude - Claude prompts on the day.
+ * @param outside - The day is outside the export.
+ * @returns For example "Sun, Mar 10, 2024: 3 messages (ChatGPT 2, Claude 1)".
+ */
 function describeDay(
   name: string,
   chatgpt: number,
@@ -51,50 +60,77 @@ function describeDay(
   return `${name}: ${plural(chatgpt + claude, "message")} (${parts.join(", ")})`;
 }
 
-/** The day `n` days after a `YYYY-MM-DD` day. */
+/**
+ * Moves a day by a number of days, in UTC so no clock change shifts it.
+ *
+ * @param day - A `YYYY-MM-DD` day.
+ * @param n - Days to add; a negative number goes back.
+ * @returns The `YYYY-MM-DD` day `n` days after `day`.
+ */
 const addDays = (day: string, n: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + n * 864e5)
     .toISOString()
     .slice(0, 10);
 
+/** Props of {@link CalendarHeatmap}. */
 export interface CalendarHeatmapProps {
+  /** Prompt counts per provider, by `YYYY-MM-DD` day. */
   data: Record<string, CalHeatmapDay>;
+  /** The chats of each day, for the day details. */
   dayTitles: Record<string, DayTitleBreakdown>;
   /** Shade level edges per provider. */
   edges: Record<Provider, Edges>;
-  /** First and last day of the export (`YYYY-MM-DD`); days outside are drawn hollow. */
+  /** First day of the export (`YYYY-MM-DD`); days before it are hollow. */
   firstDay?: string;
+  /** Last day of the export (`YYYY-MM-DD`); days after it are hollow. */
   lastDay?: string;
+  /** Only its year counts: the calendar starts on January 1. */
   from: Date;
+  /** Only its year counts: the calendar ends on December 31. */
   to: Date;
+  /**
+   * Weeks run down the page (the phone layout), not across.
+   *
+   * @defaultValue false
+   */
   vertical?: boolean;
-  /** Counts time zone changes; each new value runs the date-order sweep. 0 means none. */
+  /**
+   * Counts time zone changes; each new value runs the date-order sweep.
+   * 0 means none.
+   *
+   * @defaultValue 0
+   */
   sweep?: number;
-  /** The panel has a fixed height (the fold layouts), so the calendar fits it. */
+  /**
+   * The panel has a fixed height (the fold layouts), so the calendar fits it.
+   *
+   * @defaultValue false
+   */
   fixedHeight?: boolean;
-  /** Largest scale where the page scrolls (see `fitScale`). */
+  /**
+   * Largest scale where the page scrolls (see {@link fitScale}).
+   *
+   * @defaultValue 1
+   */
   maxScale?: number;
-  /** Id of the root; the day details get `${id}-tip` and the drawing `${id}-svg`. */
+  /** Id of the root; the day details get `${id}-tip` and the drawing
+   *  `${id}-svg`. */
   id?: string;
   /** Half-open foldables: show the day details in this pane (DayPane) in
-   *  place of a floating card. `onPick` gets each picked day. */
+   *  place of a floating card. `id` is the pane's id; `onPick` gets each
+   *  picked day, or null. */
   pane?: { id: string; onPick: (day: string | null) => void };
 }
 
 /**
- * Draws one or more years of ChatGPT and Claude activity as an SVG calendar,
- * scaled to fit its panel, with a hover tooltip for each day.
+ * Draws one or more years of ChatGPT and Claude activity as an SVG calendar.
  *
- * Step 1: Lay out the years (pure, in lib/calendar-geometry.ts) and scale
- *         the SVG to the panel, keeping its aspect ratio.
- * Step 2: Make a two-color gradient for each day with both providers.
- * Step 3: Draw the labels and the cells. Each cell carries its place in the
- *         date range as `--t`, which the CSS uses to run color changes in
- *         date order (see app/globals.css).
- * Step 4: Show the day details: on hover at the cursor; on keyboard focus
- *         or a tap at the cell. One cell is in the tab order (a roving
- *         tab stop); the arrow keys move by day and by week. With `pane`,
- *         the details go to the pane and stay until the next pick.
+ * It scales to fit its panel and shows a tooltip for each day on hover,
+ * keyboard focus or a tap.
+ *
+ * @see {@link layoutCalendar} for the place of each cell and label.
+ * @see {@link playMorph} for the year change motion.
+ * @see {@link DayTooltip} for the day details.
  */
 export function CalendarHeatmap({
   data,
@@ -130,13 +166,17 @@ export function CalendarHeatmap({
   const [active, setActive] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
-  /** Sets the shown day, and tells the pane when there is one. */
+  /**
+   * Sets the shown day, and tells the pane when there is one.
+   *
+   * @param next - The day and its place in the grid, or null to hide.
+   */
   function show(next: typeof tip) {
     setTip(next);
     pane?.onPick(next?.day ?? null);
   }
 
-  // Step 1
+  // Step 1: Lay out the years (lib/calendar-geometry.ts); scale the SVG to the panel.
   // Keyed on the years: the page passes new Date objects on each render.
   const [startYear, endYear] = [from.getFullYear(), to.getFullYear()];
   const layout = useMemo(
@@ -173,7 +213,7 @@ export function CalendarHeatmap({
   const renderedW = Math.round(layout.width * scale) || layout.width;
   const renderedH = Math.round(layout.height * scale) || layout.height;
 
-  // Step 2
+  // Step 2: Make a two-color gradient for each day with both providers.
   const gradients = Object.entries(data).flatMap(
     ([day, { chatgpt, claude }]) => {
       if (chatgpt <= 0 || claude <= 0) return [];
@@ -200,14 +240,25 @@ export function CalendarHeatmap({
     },
   );
 
-  // Step 4: leaving waits a moment, so moving to the next cell updates the
-  // open tooltip instead of reopening it. A pane keeps the last day.
+  // Step 4: Show the day details. With `pane`, they go to the pane and stay
+  // until the next pick.
+  // Step 4.1: On hover, at the cursor.
+  /**
+   * Shows the details of a day at the mouse.
+   *
+   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   * @param day - The `YYYY-MM-DD` day under the pointer.
+   */
   function handleEnter(e: React.PointerEvent, day: string) {
     if (e.pointerType !== "mouse" || !containerRef.current) return;
     clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
     show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
   }
+  // Step 4.2: Leaving waits a moment, so the next cell updates the open tooltip
+  // instead of reopening it. A pane keeps the last day.
+  /** Hides floating details after {@link HIDE_DELAY}; a tap or a pane
+   *  keeps them. */
   function handleLeave() {
     if (pane) return;
     hideTimer.current = setTimeout(
@@ -216,7 +267,17 @@ export function CalendarHeatmap({
     );
   }
 
-  /** Shows the details of `day` under its cell (keyboard focus or a tap). */
+  // Step 4.3: On keyboard focus or a tap, at the cell.
+  /**
+   * Shows the details of a day under its cell (keyboard focus or a tap).
+   *
+   * A day with no prompts hides the details.
+   *
+   * @param day - The `YYYY-MM-DD` day.
+   * @param cell - The day's cell, which gives the place.
+   * @param tap - A tap opened them, so they stay until the next tap.
+   * @defaultValue `tap` is false.
+   */
   function showAtCell(day: string, cell: Element, tap = false) {
     const box = containerRef.current?.getBoundingClientRect();
     if (!box || !data[day]) return show(null);
@@ -230,8 +291,19 @@ export function CalendarHeatmap({
     });
   }
 
-  /** Arrow keys move by a day along a week and by a week across weeks;
-   *  Home and End go to the first and last drawn day; Escape hides. */
+  // Step 4.4: One cell is a tab stop; the arrow keys move by day and by week.
+  /**
+   * Moves the tab stop between days with the keyboard.
+   *
+   * Arrow keys move by a day along a week and by a week across weeks; Home
+   * and End go to the first and last drawn day; Escape hides the details.
+   *
+   * @param e - A key press on a focused cell.
+   * @see https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/ for the
+   *   roving tab stop.
+   * @see https://www.w3.org/WAI/ARIA/apg/patterns/grid/ for the arrow, Home
+   *   and End keys.
+   */
   function onKeyDown(e: React.KeyboardEvent<SVGSVGElement>) {
     const day = (e.target as Element).getAttribute("data-day");
     if (!day) return;
@@ -275,9 +347,19 @@ export function CalendarHeatmap({
     return () => document.removeEventListener("pointerdown", close);
   }, [tip?.tap, pane]);
 
-  /** The shade class of a day: one provider's level, none for a day with
-   *  both (its gradient fill sets the colors), empty, or hollow when the day
-   *  is outside the export, so it does not read as a day with no prompts. */
+  /**
+   * Picks the shade class of a day.
+   *
+   * A day outside the export is hollow, so it does not read as a day with
+   * no prompts.
+   *
+   * @param day - The `YYYY-MM-DD` day.
+   * @param chatgpt - ChatGPT prompts on the day.
+   * @param claude - Claude prompts on the day.
+   * @returns One provider's level class; `undefined` for a day with both
+   *   (its gradient fill sets the colors); `lv-0` when empty; `lv-out` when
+   *   outside the export.
+   */
   function shadeClass(
     day: string,
     chatgpt: number,
@@ -291,7 +373,7 @@ export function CalendarHeatmap({
     return "lv-0";
   }
 
-  // Step 3: two sweep names, so that each new sweep restarts the animation.
+  // Step 3: Draw the cells; `--t` orders color changes by date, 2 sweep names restart it.
   // The faint edge keeps the palest shade apart from the empty grey.
   const cellClass = cn(
     "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",

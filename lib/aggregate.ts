@@ -8,13 +8,17 @@ import type {
 import { dayFormatter } from "./parse";
 import { quartiles, type Edges } from "./calendar-geometry";
 
+/** The counts and ranges that the calendar and the figures read. */
 export interface AggregatedData {
+  /** Prompt counts per `YYYY-MM-DD` local day. */
   data: Record<string, CalHeatmapDay>;
+  /** The chats of each local day, busiest first. */
   dayTitles: Record<string, DayTitleBreakdown>;
-  /** Shade level edges per provider (see `quartiles`). */
+  /** Shade level edges per provider (see {@link quartiles}). */
   edges: Record<Provider, Edges>;
-  /** First and last day with a prompt, as local midnight. */
+  /** First day with a prompt, as local midnight. */
   from: Date;
+  /** Last day with a prompt, as local midnight. */
   to: Date;
   /** Distinct years that have a prompt, ascending. */
   years: number[];
@@ -23,9 +27,17 @@ export interface AggregatedData {
 /**
  * Counts prompts per local day in `timeZone` and per chat, for both providers.
  *
- * Step 1: Add one to the day and to the day's chat for each prompt, then
- *         list each day's chats, busiest first.
- * Step 2: Derive the shade edges per provider, the date range and the years.
+ * @remarks
+ * A time zone change calls it again on the stored times; it never parses the
+ * export again. {@link dayFormatter} makes that cheap.
+ *
+ * @param chatgptSummary - The ChatGPT chats, or null when none are loaded.
+ * @param claudeSummary - The Claude chats, or null when none are loaded.
+ * @param timeZone - The IANA zone that sets the local day.
+ * @returns The day counts, the chats of each day, the shade edges, the date
+ *   range and the years; null when no prompt has a time.
+ * @see `summarize` in lib/stats.ts, which reads `data` for the figures.
+ * @see test/oracle.test.ts, which checks the counts with `jq`.
  */
 export function aggregateDateData(
   chatgptSummary: ConversationSummary[] | null,
@@ -36,7 +48,8 @@ export function aggregateDateData(
   const data: Record<string, CalHeatmapDay> = {};
   const dayTitles: Record<string, DayTitleBreakdown> = {};
 
-  // Step 1
+  // Step 1: Add one to the day and to the day's chat for each prompt, then
+  // list each day's chats, busiest first.
   const sources: [Provider, ConversationSummary[] | null][] = [
     ["chatgpt", chatgptSummary],
     ["claude", claudeSummary],
@@ -67,7 +80,7 @@ export function aggregateDateData(
     dayTitles[day] = { chatgpt: byCount(chatgpt), claude: byCount(claude) };
   }
 
-  // Step 2
+  // Step 2: Derive the shade edges per provider, the date range and the years.
   const allDays = Object.keys(data).sort();
   if (allDays.length === 0) return null;
   const counts = Object.values(data);

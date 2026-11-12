@@ -7,7 +7,14 @@ export type How = "pointer" | "key" | "drag";
 
 /** Movement (px) before a press turns into a drag: Motion uses 3 px for a mouse, Vaul and Embla 10 px for a finger. */
 const START = { mouse: 3, touch: 10 };
-/** WWDC18 "Designing Fluid Interfaces": a flick comes to rest v * d / (1 - d) px further, v in px/ms. 0.99 is UIKit's fast rate. */
+/**
+ * The flick deceleration rate per ms: 0.99 is UIKit's fast rate.
+ *
+ * @remarks
+ * WWDC18 "Designing Fluid Interfaces": a flick comes to rest v * d / (1 - d) px further, v in px/ms.
+ *
+ * @see https://developer.apple.com/videos/play/wwdc2018/803/
+ */
 const DECELERATION = 0.99;
 /** The held pill lifts, as the iOS 26 lens does; 1.04 keeps it inside the row's 2 px padding. */
 const HELD = 1.04;
@@ -21,25 +28,44 @@ const LABEL =
 /** The row's padding (px, p-0.5): where the first tab starts. */
 const PAD = 2;
 
-/** iOS rubber band: past an end, the pill moves less the further you pull (`d` is the room it may use). */
+/**
+ * The iOS rubber band: past an end, the pill moves less the further you pull.
+ *
+ * @param x - how far the pointer is past the end, in px
+ * @param d - the room the pill may use, in px
+ * @returns how far the pill moves past the end, in px (less than `d`)
+ */
 export const rubber = (x: number, d: number) =>
   (1 - 1 / ((x * 0.55) / d + 1)) * d;
 
 /**
- * The magnet between two tabs: `t` is the pointer's way from one tab (0) to
- * the next (1); the pill stays on a tab for the first and last `share` of
- * that way and crosses the rest faster. Continuous, so the pill never jumps.
+ * The magnet between two tabs: the pill stays on a tab near each end.
+ *
+ * The pill crosses the middle faster. Continuous, so the pill never jumps.
+ *
+ * @param t - the pointer's way from one tab (0) to the next (1)
+ * @param share - the share of the way at each end where the pill holds,
+ *   0 to 0.5
+ * @returns the pill's way from one tab to the next, 0 to 1
  */
 export const magnet = (t: number, share: number) =>
   Math.min(1, Math.max(0, (t - share) / (1 - 2 * share)));
 
-/** How far (px) a release at `v` px/ms carries on. */
+/**
+ * How far a flick carries on after the release.
+ *
+ * @param v - the release velocity, in px/ms
+ * @returns the extra distance, in px (negative for a flick to the left)
+ * @see {@link DECELERATION}
+ */
 export const project = (v: number) => (v * DECELERATION) / (1 - DECELERATION);
 
 /**
- * The calendar view picker: one choice, "All years" or one year with its
- * total, as a native radio group in a fieldset (WAI-ARIA APG radio group):
- * Tab enters at the picked year, the arrow keys pick the next or the
+ * The calendar view picker: "All years" or one year with its total.
+ *
+ * @remarks
+ * It is a native radio group in a fieldset (WAI-ARIA APG radio group): Tab
+ * enters at the picked year, the arrow keys pick the next or the
  * previous one, Space picks the focused one. Each year is a label around a
  * visually hidden radio. A pill marks the picked year; it lies over the
  * labels and holds a copy of them, moved against the pill so each sits on
@@ -52,21 +78,8 @@ export const project = (v: number) => (v * DECELERATION) / (1 - DECELERATION);
  * row has `data-state` ("pressed", "dragging") and the pill is accent glass
  * (app/globals.css, `.year-pill`).
  *
- * Step 1: On a phone the row scrolls sideways (it clips only when its years
- *         do not fit): keep the picked year in view (the row only, never
- *         the page). Place the pill on it, again when the row resizes; it
- *         slides only after its first placement.
- * Step 2: A press on the picked year may become a drag: past START px it
- *         captures the pointer, and the pill follows.
- *   Step 2.1: Past the first or the last tab the pill is rubber-banded.
- *   Step 2.2: Between two tabs the magnet holds it near each tab, and its
- *             width blends from one tab to the other.
- * Step 3: On release, pick the year the flick points at, spring the pill
- *         to it and change the view; the click that follows a drag is
- *         swallowed. A cancelled pointer puts the pill back with no change.
- * Step 4: A pick by click, tap or key (a radio's change) changes the view;
- *         a pick by key marks the row (`data-instant`), so the pill moves
- *         there at once, and Step 1 clears the mark on the next frame.
+ * @see https://www.w3.org/WAI/ARIA/apg/patterns/radio/
+ * @see {@link rubber}, {@link magnet} and {@link project} for the drag motion.
  */
 export function YearTabs({
   years,
@@ -78,8 +91,9 @@ export function YearTabs({
   years: number[];
   /** Prompts per year, in the order of `years`. */
   totals: number[];
+  /** The picked view: "all" or one year. */
   view: YearView;
-  /** `key` for a keyboard pick, so the page can skip the motion. */
+  /** Changes the view; `how` ({@link How}) is `key` for a keyboard pick, so the page can skip the motion. */
   onView: (view: YearView, how: How) => void;
 }) {
   const row = useRef<HTMLFieldSetElement>(null);
@@ -101,13 +115,21 @@ export function YearTabs({
   const via = useRef<"pointer" | "key">("pointer");
   const name = useId();
 
+  /** The tab labels, in order. */
   const tabs = () => [
     ...(row.current?.querySelectorAll<HTMLLabelElement>(":scope > label") ??
       []),
   ];
+  /** The view that a tab stands for. */
   const viewOf = (b: HTMLElement) =>
     (b.dataset.view === "all" ? "all" : Number(b.dataset.view)) as YearView;
-  /** Draws the pill at `left` px in the row, `width` px wide; its label copy moves the other way, so the labels stay on their buttons. */
+  /**
+   * Draws the pill; its label copy moves the other way, so the labels stay
+   * on their buttons.
+   *
+   * @param left - the pill's left edge, in px in the row
+   * @param width - the pill's width, in px
+   */
   const paint = (left: number, width: number) => {
     pill.current!.style.translate = `${left}px 0`;
     pill.current!.style.width = `${width}px`;
@@ -128,14 +150,20 @@ export function YearTabs({
       `${((e.clientX - r.left) / r.width) * 100}%`,
     );
   };
-  /** The tab whose middle is nearest to `x`. */
+  /**
+   * Finds the tab whose middle is nearest to a point.
+   *
+   * @param x - the point, in px in the row
+   * @returns the label of that tab
+   */
   const nearest = (x: number) => {
     const mid = (b: HTMLElement) =>
       Math.abs(b.offsetLeft + b.offsetWidth / 2 - x);
     return tabs().reduce((best, b) => (mid(b) < mid(best) ? b : best));
   };
 
-  // Step 1
+  // Step 1: Keep the picked year in view and put the pill on it, again when the
+  // row resizes.
   useLayoutEffect(() => {
     const el = row.current;
     const on = el?.querySelector<HTMLElement>(":scope > label[data-picked]");
@@ -150,7 +178,10 @@ export function YearTabs({
       );
     };
     fit();
+    // Step 1.1: On a phone the row scrolls sideways (it clips only when its
+    // years do not fit). Scroll the row only, never the page.
     el.scrollLeft = on.offsetLeft + on.offsetWidth / 2 - el.clientWidth / 2;
+    // Step 1.2: Place the pill; it slides only after its first placement.
     placeOn(on);
     // A keyboard pick placed the pill at once; later moves slide again.
     requestAnimationFrame(() => el.removeAttribute("data-instant"));
@@ -169,12 +200,18 @@ export function YearTabs({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  /** Step 2.1 and 2.2: draws the pill for a pointer that would put its left edge at `x` (px in the row). */
+  /**
+   * Draws the pill for a pointer during a drag.
+   *
+   * @param x - where the pointer would put the pill's left edge, in px in
+   *   the row
+   * @see {@link rubber} past an end, {@link magnet} between two tabs.
+   */
   function follow(x: number) {
     const bs = tabs();
     const first = bs[0];
     const last = bs.at(-1)!;
-    // Step 2.1
+    // Step 2.1: Past the first or the last tab the pill is rubber-banded.
     if (x <= first.offsetLeft || x >= last.offsetLeft) {
       const end = x < first.offsetLeft ? first : last;
       paint(
@@ -186,7 +223,8 @@ export function YearTabs({
       );
       return;
     }
-    // Step 2.2
+    // Step 2.2: Between two tabs the magnet holds it near each tab, and its
+    // width blends from one tab to the other.
     const i = bs.findLastIndex((b) => b.offsetLeft <= x);
     const [a, b] = [bs[i], bs[i + 1]];
     const t = magnet(
@@ -223,7 +261,8 @@ export function YearTabs({
     const d = drag.current;
     if (!d || e.pointerId !== d.id) return;
     const dx = e.clientX - d.x0;
-    // Step 2
+    // Step 2: A press on the picked year may become a drag: past START px it
+    // captures the pointer, and the pill follows (`follow`).
     if (!d.on) {
       const start = e.pointerType === "mouse" ? START.mouse : START.touch;
       if (Math.abs(dx) < start) return;
@@ -236,6 +275,12 @@ export function YearTabs({
     follow(d.left0 + dx);
     glow(e);
   }
+  /**
+   * Ends a press or a drag of the pill.
+   *
+   * @param e - the pointer up or cancel event
+   * @param cancel - true for a cancelled pointer: the view does not change
+   */
   function end(e: React.PointerEvent<HTMLFieldSetElement>, cancel: boolean) {
     const d = drag.current;
     if (!d || e.pointerId !== d.id) return;
@@ -246,7 +291,8 @@ export function YearTabs({
     // The click that ends a drag comes in this task; any later click is real.
     swallow.current = true;
     setTimeout(() => (swallow.current = false));
-    // Step 3
+    // Step 3: On release, pick the year the flick points at, spring the pill to it
+    // and change the view. A cancelled pointer puts the pill back, no change.
     const [a, b] = [d.track[0], d.track.at(-1)!];
     const v = a && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0;
     const target = cancel
@@ -327,7 +373,10 @@ export function YearTabs({
               e.preventDefault();
             }}
             onChange={() => {
-              // Step 4: a keyboard pick moves the pill at once (see app/globals.css).
+              // Step 4: A pick by click, tap or key (a radio's change) changes the
+              // view. A pick by key marks the row (`data-instant`), so the pill
+              // moves at once (see app/globals.css); Step 1 clears the mark on
+              // the next frame.
               if (via.current === "key")
                 row.current?.setAttribute("data-instant", "");
               onView(v, via.current);

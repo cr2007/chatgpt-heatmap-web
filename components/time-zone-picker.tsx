@@ -11,28 +11,24 @@ import {
 
 /** The search index, built once per visit (about 50 ms). */
 let index: ZoneEntry[] | undefined;
+/** The search index, built on first use ({@link buildIndex}). */
 const getIndex = () => (index ??= buildIndex(zoneList()));
 /** The list before a search: UTC, then the zones nearest the computer's. */
 let nearest: ZoneEntry[] | undefined;
+/** The list before a search, made on first use ({@link nearestFirst}). */
 const getNearest = () => (nearest ??= nearestFirst(getIndex()));
 
 /** Space in px the list needs below the field before it opens upward. */
 const LIST_ROOM = 320;
 
 /**
- * A searchable time zone field (the WAI-ARIA combobox pattern): type a city,
- * a zone, a time name ("Gulf Standard Time"), an abbreviation ("IST") or an
- * offset ("+5:30"); small typos still match. The input id is
- * `${id}-time-zone`; the list adds `-list`, an option `-option-N`.
+ * A searchable time zone field (the WAI-ARIA combobox pattern).
  *
- * Step 1: On focus, empty the field (the current zone stays as the
- *         placeholder) and open the list. Selecting the text instead fails
- *         in Safari: its mouseup moves the caret to the click point.
- * Step 2: Before any typing the list is UTC, then the zones nearest the
- *         computer's zone, with the current zone active. Typing ranks the
- *         zones (lib/time-zones.ts); the best one is active.
- * Step 3: Arrow keys move the active option, Enter or a click picks it,
- *         Escape or leaving the field keeps the current zone.
+ * @remarks
+ * Type a city, a zone, a time name ("Gulf Standard Time"), an abbreviation
+ * ("IST") or an offset ("+5:30"); small typos still match ({@link searchZones}).
+ *
+ * @see https://www.w3.org/WAI/ARIA/apg/patterns/combobox/
  */
 export function TimeZonePicker({
   id,
@@ -42,15 +38,31 @@ export function TimeZonePicker({
   compact = false,
   label = inline ? "Days start at midnight in" : "Time zone",
 }: {
+  /** The id prefix: the input id is `${id}-time-zone`; the list adds
+   *  `-list`, an option `-option-N`. */
   id: string;
+  /** The IANA zone that the days are counted in. */
   timeZone: string;
+  /** Picks a new time zone. */
   setTimeZone: (timeZone: string) => void;
-  /** Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen. */
+  /**
+   * Label and field in one sentence ("Days start at midnight in ..."), for the welcome screen.
+   *
+   * @defaultValue false
+   */
   inline?: boolean;
-  /** The top bar: the label is for screen readers only, and a globe in the
-   *  field marks it, so the bar keeps its room. */
+  /**
+   * The top bar: the label is for screen readers only, and a globe in the
+   * field marks it, so the bar keeps its room.
+   *
+   * @defaultValue false
+   */
   compact?: boolean;
-  /** The label text. */
+  /**
+   * The label text.
+   *
+   * @defaultValue "Days start at midnight in" when `inline`, else "Time zone"
+   */
   label?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -68,7 +80,8 @@ export function TimeZonePicker({
     idle(() => getIndex());
   }, []);
 
-  // Step 2
+  // Step 2: Before any typing: UTC, then the zones nearest the computer's zone.
+  // Typing ranks the zones (lib/time-zones.ts). The best one is active.
   const results = useMemo(() => {
     if (!open) return [];
     return query.trim() ? searchZones(getIndex(), query) : getNearest();
@@ -98,7 +111,11 @@ export function TimeZonePicker({
     setOpen(true);
   }
 
-  /** Picks a zone and closes the field. */
+  /**
+   * Picks a zone and closes the field.
+   *
+   * @param entry - the zone to pick; undefined keeps the current zone
+   */
   function pick(entry: ZoneEntry | undefined) {
     if (entry && entry.zone !== timeZone) setTimeZone(entry.zone);
     setOpen(false);
@@ -106,7 +123,8 @@ export function TimeZonePicker({
     inputRef.current?.blur();
   }
 
-  // Step 3
+  // Step 3: Arrow keys move the active option, Enter or a click picks it,
+  // Escape or leaving the field keeps the current zone.
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -179,7 +197,8 @@ export function TimeZonePicker({
             "h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500",
             compact ? "pl-8" : "pl-3",
           )}
-          // Step 1
+          // Step 1: On focus, empty the field (the zone is the placeholder) and open
+          // the list. Selecting the text fails in Safari: mouseup moves the caret.
           onFocus={openList}
           onClick={() => !open && openList()}
           onChange={(e) => {

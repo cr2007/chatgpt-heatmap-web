@@ -20,32 +20,28 @@ const NEAR = 420;
 /** The flap stands this far open (deg) while files are over the zone; a card pushes it the rest of the way. */
 const AJAR = 40;
 
-/** A drop in progress: where it landed, its cards, and its read (true when the files loaded). */
+/** A drop in progress. */
 interface Drop {
+  /** A new value per drop, so the card list starts again. */
   id: number;
+  /** Where it landed, in client px. */
   at: { x: number; y: number };
+  /** One card per file ({@link cardsFor}). */
   cards: Card[];
+  /** The read; resolves true when the files loaded. */
   read: Promise<boolean>;
 }
 
 /**
- * The welcome screen's drop zone: a post box. The whole zone is the label
+ * The welcome screen's drop zone: a post box.
+ *
+ * @remarks
+ * The whole zone is the label
  * of the file input (one control, one tab stop); the box is its picture.
  * Dropped or picked files go in as cards (components/mail-motion.ts), and
  * the page keeps this screen until the flap is shut (`onPosting`).
  *
- * Step 1: Pick the phase: posting, reading, over, ready (files over the
- *         page) or idle.
- *   Step 1.1: While files are dragged, the flap opens as they come near
- *             the zone: the pointer is read once a frame and the angle is
- *             written on the flap itself; its CSS transition smooths the
- *             gaps between drag events.
- * Step 2: On a drop or a pick, draw one card per file and run the drop
- *         moment. The read starts one frame later, so the cards show at
- *         once, and it steers the moment: a loaded read pushes the last
- *         card in, a failed one slides it back out.
- * Step 3: A line under the box shows the read progress; a native progress
- *         element carries it for screen readers.
+ * @see {@link insertCards}
  */
 export function MailSlot({
   inputId,
@@ -55,11 +51,13 @@ export function MailSlot({
   onFiles,
   onPosting,
 }: {
+  /** The id of the file input; the other ids start with it. */
   inputId: string;
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
   /** Upload count; a new value restarts the progress line. */
   uploads: number;
+  /** The upload error, or "" when there is none. */
   error: string;
   /** Reads the files; resolves true when they loaded. */
   onFiles: (files: FileList) => Promise<boolean>;
@@ -74,7 +72,8 @@ export function MailSlot({
   // A small export is read before the cards are in; hold 100% until they are.
   const shown = progress ?? (drop && !error ? 1 : null);
   const isReading = shown !== null;
-  // Step 1
+  // Step 1: Pick the phase: posting, reading, over, ready (files over the
+  // page) or idle.
   const phase = drop
     ? "posting"
     : isReading
@@ -87,7 +86,8 @@ export function MailSlot({
   const dragging = phase === "over" || phase === "ready";
   const files = drag.count ? plural(drag.count, "file") : "the files";
 
-  // Step 1.1
+  // Step 1.1: While files are dragged, the flap opens as they come near the zone.
+  // The angle goes on the flap, once a frame; its CSS transition fills the gaps.
   useEffect(() => {
     const flap = slot.current?.querySelector<HTMLElement>(".mail-flap");
     if (!flap || !drag.active || drop) return;
@@ -118,7 +118,8 @@ export function MailSlot({
     };
   }, [drag.active, drop]);
 
-  // Step 2: before paint, so a card never shows at the top-left corner.
+  // Step 2.2: Draw one card per file and run the drop moment, before paint, so
+  // a card never shows at the top-left corner.
   useLayoutEffect(() => {
     if (!drop || !slot.current) return;
     onPosting(true);
@@ -137,7 +138,15 @@ export function MailSlot({
     };
   }, [drop, onPosting]);
 
-  /** Step 2: starts the drop moment at a point (client px) and the read. */
+  // Step 2.1: On a drop or a pick, start the drop moment and the read.
+  /**
+   * Starts the drop moment and the read.
+   *
+   * @param list - the dropped or picked files
+   * @param x - where the cards start, in client px
+   * @param y - where the cards start, in client px
+   * @see {@link insertCards}
+   */
   function take(list: FileList, x: number, y: number) {
     const all = Array.from(list);
     if (!all.length) return;
@@ -145,6 +154,8 @@ export function MailSlot({
     // A drop's file list is locked after the event: keep the files in a new list.
     const copy = new DataTransfer();
     all.forEach((f) => copy.items.add(f));
+    // Step 2.1.1: The read starts one frame later, so the cards show at once. It
+    // steers the moment: loaded pushes the last card in, failed slides it out.
     const read = new Promise<boolean>((resolve) =>
       requestAnimationFrame(() =>
         setTimeout(() => resolve(onFiles(copy.files))),
@@ -206,7 +217,8 @@ export function MailSlot({
               <span className="mail-flap" />
               <span className="mail-hood" />
             </span>
-            {/* Step 3: for the eye; the progress element below is for screen readers. */}
+            {/* Step 3: A line under the box shows the read progress, for the eye;
+                the progress element below is for screen readers. */}
             <span
               aria-hidden="true"
               className="mail-progress"
@@ -280,7 +292,8 @@ export function MailSlot({
           }}
         />
       </label>
-      {/* Step 3: outside the label, which may hold no other form control. */}
+      {/* Step 3.1: The native progress element, outside the label, which may
+          hold no other form control. */}
       {isReading && (
         <progress
           id={`${inputId}-progress`}

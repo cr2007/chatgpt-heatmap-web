@@ -1,6 +1,7 @@
 import { detectFormat, parseChatGPT, parseClaude } from "@/lib/parse";
 import type { LoadedExport, Provider } from "@/lib/types";
 
+/** The loaded export of each provider, or null for none. */
 export type Exports = Record<Provider, LoadedExport | null>;
 
 /** Nothing loaded. */
@@ -8,9 +9,16 @@ export const NO_EXPORTS: Exports = { chatgpt: null, claude: null };
 
 /**
  * Dev only: reads the exports that `dev/test.html` (or a browser check)
- * left in `sessionStorage` as `test-chatgpt` and `test-claude`. The
- * production build defines `process.env.NODE_ENV`, so the bundler drops
+ * left in `sessionStorage` as `test-chatgpt` and `test-claude`.
+ *
+ * @remarks
+ * The production build defines `process.env.NODE_ENV`, so the bundler drops
  * this code and the keys from the shipped bundle.
+ *
+ * @returns The test exports; {@link NO_EXPORTS} in production, with no test
+ *   data, or when the data does not parse.
+ * @see dev/test.html, the test-data generator.
+ * @see scripts/build.ts, which defines `process.env.NODE_ENV`.
  */
 export function loadTestData(): Exports {
   if (process.env.NODE_ENV === "production") return NO_EXPORTS;

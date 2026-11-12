@@ -5,23 +5,24 @@
  * computer's zone first and to find a zone by its country.
  *
  *   bun scripts/gen-zones.ts <dir with zone.tab and backward> [release]
- *
- * Step 1: Read zone.tab (country code, coordinates, zone).
- * Step 2: Add the old names that browsers still list (Chromium says
- *         "Asia/Calcutta"): the place a "#=" comment in `backward` names,
- *         else the link target, else an override below.
- * Step 3: Write the zones as one packed string (0.1 degree is about 11 km,
- *         plenty to rank neighbours).
  */
 const [dir, release = "unknown"] = process.argv.slice(2);
 if (!dir)
   throw new Error("usage: bun scripts/gen-zones.ts <tzdata dir> [release]");
+/** Reads the lines of a tzdata file, without blanks and comments. */
 const rows = async (name: string) =>
   (await Bun.file(`${dir}/${name}`).text())
     .split("\n")
     .filter((l) => l && !l.startsWith("#"));
 
-/** "+2518+05518" to [25.3, 55.3]: ±DDMM[SS]±DDDMM[SS]. */
+/**
+ * Reads the coordinates of a zone.tab row.
+ *
+ * @param iso - ISO 6709 text, ±DDMM[SS]±DDDMM[SS], for example "+2518+05518".
+ * @returns Latitude and longitude in degrees, to 0.1: [25.3, 55.3].
+ * @throws Error when the text has another form.
+ * @see {@link https://en.wikipedia.org/wiki/ISO_6709 | ISO 6709}
+ */
 function coords(iso: string): [number, number] {
   const m = /^([+-]\d{2})(\d{2})(\d{2})?([+-]\d{3})(\d{2})(\d{2})?$/.exec(iso);
   if (!m) throw new Error(`bad coordinates ${iso}`);
@@ -32,16 +33,15 @@ function coords(iso: string): [number, number] {
   return [round(deg(m[1], m[2], m[3])), round(deg(m[4], m[5], m[6]))];
 }
 
-// Step 1
+// Step 1: Read zone.tab (country code, coordinates, zone).
 const zones = new Map<string, string>(); // zone -> "CC lat lon"
 for (const line of await rows("zone.tab")) {
   const [cc, iso, zone] = line.split("\t");
   zones.set(zone, `${cc} ${coords(iso).join(" ")}`);
 }
 
-// Step 2: old names Chromium lists (Intl.supportedValuesOf, checked
-// 2026-11-11). Coral Harbour links to Panama, but the place is in Nunavut;
-// Atikokan's zone.tab row covers it.
+// Step 2: Add the old names that browsers still list (Chromium says
+// "Asia/Calcutta"; Intl.supportedValuesOf, checked 2026-11-11).
 const ALIASES = [
   "Africa/Asmera",
   "America/Buenos_Aires",
@@ -63,9 +63,13 @@ const ALIASES = [
   "Pacific/Ponape",
   "Pacific/Truk",
 ];
+/** Coral Harbour links to Panama, but the place is in Nunavut; Atikokan's
+ *  zone.tab row covers it. */
 const OVERRIDE: Record<string, string> = {
   "America/Coral_Harbour": "America/Atikokan",
 };
+// Step 2.1: Each takes the place a "#=" comment in `backward` names, else the
+// link target, else an override above.
 const links = new Map<string, string>();
 for (const line of (await Bun.file(`${dir}/backward`).text()).split("\n")) {
   const m = /^Link\s+(\S+)\s+(\S+)(?:\s+#=\s*(\S+))?/.exec(line);
@@ -77,7 +81,8 @@ for (const alias of ALIASES) {
   zones.set(alias, zones.get(place)!);
 }
 
-// Step 3
+// Step 3: Write the zones as one packed string (0.1 degree is about 11 km,
+// plenty to rank neighbours).
 const packed = [...zones]
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([z, v]) => `${z} ${v}`)

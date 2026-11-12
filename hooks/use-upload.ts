@@ -6,7 +6,12 @@ import { plural } from "@/lib/utils";
 
 /**
  * Holds the upload state and streams dropped or picked files into the page.
- * `onLoad` gets the final exports. `onStream` gets partial results, then null.
+ *
+ * @param handlers - `onLoad` gets the final exports. `onStream` gets partial
+ *   results, then null.
+ * @returns The progress (0 to 1, or null when idle), the upload count, the
+ *   error text, the shake state with `resetShake`, and `processFiles`.
+ * @see {@link loadExports}, which reads the files.
  */
 export function useUpload({
   onLoad,
@@ -24,7 +29,12 @@ export function useUpload({
   /** Cancels the upload in progress when a newer one starts. */
   const uploadRef = useRef<AbortController | null>(null);
 
-  /** Shows an error by the drop zone (it stays) and as a toast (it is announced). */
+  /**
+   * Shows an error by the drop zone (it stays) and as a toast (it is
+   * announced, see {@link toast}).
+   *
+   * @param msg - The error text.
+   */
   const showError = useCallback((msg: string) => {
     setError(msg);
     setIsShaking(true);
@@ -37,16 +47,13 @@ export function useUpload({
   /**
    * Streams every dropped or picked file and hands the result to the page.
    *
-   * Step 1: cancel an older upload that is still running.
-   * Step 2: stream the files; each progress step shows the partial result.
-   * Step 3: on success, keep the exports and toast each provider; on an
-   *         error, drop the partial result and show why.
-   * Resolves true when the exports loaded (the mail slot pushes its card
-   * in), false on an error or a newer upload.
+   * @param fileList - The dropped or picked files.
+   * @returns True when the exports loaded (the mail slot pushes its card
+   *   in), false on an error or a newer upload.
    */
   const processFiles = useCallback(
     async (fileList: FileList): Promise<boolean> => {
-      // Step 1
+      // Step 1: Cancel an older upload that is still running.
       uploadRef.current?.abort(
         new DOMException("A newer upload started", "AbortError"),
       );
@@ -56,7 +63,7 @@ export function useUpload({
       setProgress(0);
       setUploads((n) => n + 1);
       try {
-        // Step 2
+        // Step 2: Stream the files; each progress step shows the partial result.
         const result = await loadExports(Array.from(fileList), {
           signal: upload.signal,
           onProgress: (fraction, partial) => {
@@ -64,7 +71,8 @@ export function useUpload({
             onStream(partial);
           },
         });
-        // Step 3
+        // Step 3: On success, keep the exports and toast each provider. On an
+        // error, drop the partial result and show why.
         onStream(null);
         if (!result.ok) {
           showError(result.error);

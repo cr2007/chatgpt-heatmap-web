@@ -1,7 +1,15 @@
 import { quartiles } from "./calendar-geometry";
 import type { CalHeatmapDay } from "./types";
 
-/** A small seeded random generator (mulberry32), so the example looks the same on every visit. */
+/**
+ * Makes a small seeded random generator (mulberry32), for the example year.
+ *
+ * @remarks
+ * A seed makes the example look the same on every visit.
+ *
+ * @param seed - Any 32-bit integer.
+ * @returns A function that gives the next number, 0 or more and below 1.
+ */
 function seeded(seed: number) {
   return () => {
     seed = (seed + 0x6d2b79f5) | 0;
@@ -12,8 +20,14 @@ function seeded(seed: number) {
 }
 
 /**
- * The example year on the welcome screen: made-up counts for 2025, busier
- * on weekdays, with Claude growing through the year. It is not anyone's data.
+ * Makes the example year that the welcome screen shows before an upload.
+ *
+ * @remarks
+ * The counts for 2025 are made up: busier on weekdays, with Claude growing
+ * through the year. It is not anyone's data.
+ *
+ * @returns The counts per `YYYY-MM-DD` day and the shade edges per provider
+ *   (see {@link quartiles}).
  */
 export function sampleYear() {
   const rnd = seeded(2025);

@@ -22,11 +22,14 @@ const dateLabel = new Intl.DateTimeFormat(undefined, {
 export interface DayProps {
   /** `YYYY-MM-DD`. */
   day: string;
+  /** Prompts of each provider on the day. */
   counts: CalHeatmapDay;
+  /** The day's chats per provider, busiest first. */
   chats: DayTitleBreakdown | undefined;
 }
 
-/** One day's details: the date, the prompt count and the busiest chats per provider. */
+/** One day's details: the date, the prompt count and the busiest chats per
+ *  provider. */
 function DayDetails({ day, counts, chats }: DayProps) {
   const [year, month, date] = day.split("-").map(Number);
   const both = counts.chatgpt > 0 && counts.claude > 0;
@@ -60,13 +63,17 @@ function DayDetails({ day, counts, chats }: DayProps) {
 }
 
 /**
- * The day details as a card that floats by the cursor or the cell (flat
- * screens). The focused or tapped cell names it as its description (`id`),
- * so a screen reader also reads the chats.
+ * The day details as a card that floats by the cursor or the cell.
  *
- * Step 1: Render next to the cursor (`x`, `y` are relative to the parent).
- * Step 2: Before paint, measure the card and flip it to the other side of
- *         the cursor when it would leave the viewport, then clamp it.
+ * @remarks
+ * Flat screens only. The focused or tapped cell names it as its
+ * description (`id`), so a screen reader also reads the chats. `x` and `y`
+ * are the cursor or cell place in px, relative to the parent; the card
+ * flips to the other side when it would leave the viewport (it keeps
+ * {@link CURSOR_GAP} px from the cursor and {@link EDGE} px from the edge).
+ *
+ * @see {@link DayPane} for a half-open foldable.
+ * @see https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/
  */
 export function DayTooltip({
   id,
@@ -76,7 +83,8 @@ export function DayTooltip({
 }: DayProps & { id: string; x: number; y: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Step 2
+  // Step 2: Before paint, measure the card and flip it to the other side of
+  // the cursor when it would leave the viewport, then clamp it.
   useLayoutEffect(() => {
     const el = ref.current;
     const parent = el?.parentElement?.getBoundingClientRect();
@@ -93,7 +101,7 @@ export function DayTooltip({
     el.style.top = `${Math.max(EDGE, top) - parent.top}px`;
   }, [x, y, day.day]);
 
-  // Step 1
+  // Step 1: Render next to the cursor (`x`, `y` are relative to the parent).
   return (
     <div
       ref={ref}
@@ -108,14 +116,19 @@ export function DayTooltip({
 
 /**
  * The day details in a pane beside the calendar, when a foldable is half
- * open: the other screen half holds them, so nothing floats over the fold
- * (Apple's overlay arrangement, Android's list and detail). The picked cell
- * names the pane as its description.
+ * open.
+ *
+ * @remarks
+ * The other screen half holds them, so nothing floats over the fold
+ * (Apple's overlay arrangement, Android's list and detail).
+ *
+ * @see {@link DayTooltip} for flat screens.
  */
 export function DayPane({
   id,
   day,
 }: {
+  /** Id of the pane; the picked cell names it as its description. */
   id: string;
   /** The picked day, or null before the first pick. */
   day: DayProps | null;
@@ -140,7 +153,7 @@ export function DayPane({
   );
 }
 
-/** The busiest chats of one provider, then how many more there are. */
+/** The busiest {@link MAX_ROWS} chats of one provider, then how many more there are. */
 function ChatList({ chats }: { chats: ChatCount[] }) {
   const hidden = chats.length - MAX_ROWS;
   return (

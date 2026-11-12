@@ -4,9 +4,14 @@ import githubMark from "@/app/assets/github-mark.svg";
 import githubMarkWhite from "@/app/assets/github-mark-white.svg";
 
 /**
- * The GitHub link and the theme button, shown in every header. The link
- * asks for a star: the mark, a star and "Star". The page blocks every
+ * The GitHub link and the theme button, shown in every header.
+ *
+ * @remarks
+ * The link asks for a star: the mark, a star and "Star". The page blocks every
  * network request, so it shows no live star count. On hover the star fills.
+ *
+ * @see {@link ThemeToggle}
+ * @see scripts/build.ts for the Content-Security-Policy (`connect-src 'none'`)
  */
 export function SiteLinks() {
   return (

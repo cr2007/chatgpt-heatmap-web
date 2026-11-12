@@ -5,20 +5,25 @@
  * and `bun test` run the same code.
  */
 
-/** Why a stream is not a usable JSON array. */
 /** The error when a file does not start with "[". */
 export const NOT_ARRAY = "expected a JSON array";
 
+/** Why a stream is not a usable JSON array. */
 export class StreamError extends Error {}
 
 /**
- * Returns a function that takes text chunks and returns the complete
- * top-level object and array elements found so far, as JSON text.
+ * Makes a splitter that finds the top-level elements of a JSON array text.
  *
+ * @remarks
  * It tracks only nesting depth and string state, so it is cheap; each
  * element is then validated by JSON.parse. Anything else at the top level
  * (commas, whitespace, primitive elements) is skipped: an export is an
  * array of objects, and an array with none fails the caller's checks.
+ *
+ * @returns `push`, which takes a text chunk and returns the object and array
+ *   elements completed so far as JSON text, and `end`, which checks that the
+ *   array closed.
+ * @see {@link readArray}, which feeds it.
  */
 export function arraySplitter() {
   let buf = "";
@@ -29,6 +34,14 @@ export function arraySplitter() {
   let opened = false;
   let closed = false;
 
+  /**
+   * Scans one more chunk.
+   *
+   * @param chunk - The next decoded text of the stream.
+   * @returns The elements that this chunk completed, as JSON text.
+   * @throws {@link StreamError} when the text does not start with "[" or has text
+   *   after the closing "]".
+   */
   function push(chunk: string): string[] {
     const out: string[] = [];
     buf += chunk;
@@ -76,7 +89,12 @@ export function arraySplitter() {
     return out;
   }
 
-  /** Throws if the stream ended before the array closed. */
+  /**
+   * Checks that the stream ended after the array closed.
+   *
+   * @throws {@link StreamError} when the text is empty or ends before the array
+   *   closes.
+   */
   function end(): void {
     if (!opened) throw new StreamError("the file is empty");
     if (!closed || inStr)
@@ -87,19 +105,21 @@ export function arraySplitter() {
 }
 
 /**
- * Yields the parsed elements of a JSON array stream in batches, one batch
- * per chunk read, and the bytes read so far.
+ * Yields the parsed elements of a JSON array stream in batches.
  *
- * Step 1: Count bytes for progress, then decode UTF-8 (a BOM is dropped).
- * Step 2: Split each chunk into elements and parse them with JSON.parse.
- * Step 3: When the stream ends, check that the array closed.
+ * @param stream - The bytes of the file, UTF-8 with or without a BOM.
+ * @param signal - Cancels the read at once, even while a read waits.
+ * @returns An async generator of one batch per chunk read: the parsed
+ *   elements and the bytes read so far.
+ * @throws {@link StreamError} when the text is not one complete JSON array or an
+ *   element does not parse; the abort reason when `signal` aborts.
  */
 export async function* readArray(
   stream: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
 ): AsyncGenerator<{ items: unknown[]; bytes: number }> {
   let read = 0; // bytes taken from the source so far
-  // Step 1: each decoded chunk carries the byte count up to its end.
+  // Step 1: Count bytes, then decode UTF-8 (BOM dropped); a chunk holds bytes so far.
   // `stream: true` keeps a character that is cut across chunks whole.
   const decoder = new TextDecoder();
   const reader = stream
@@ -129,7 +149,7 @@ export async function* readArray(
       const { done, value } = await reader.read();
       if (signal?.aborted) throw signal.reason;
       if (done) break;
-      // Step 2
+      // Step 2: Split each chunk into elements and parse them with JSON.parse.
       const items = split.push(value.text).map((text) => {
         try {
           return JSON.parse(text) as unknown;
@@ -139,7 +159,7 @@ export async function* readArray(
       });
       yield { items, bytes: value.bytes };
     }
-    split.end(); // Step 3
+    split.end(); // Step 3: The stream ended; check that the array closed.
   } finally {
     signal?.removeEventListener("abort", onAbort);
     reader.cancel().catch(() => {});

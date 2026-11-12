@@ -13,16 +13,15 @@ import { FoldLayout } from "@/components/fold-layout";
 import type { Posture } from "@/lib/layout";
 
 /**
- * The first screen, before any export is loaded: what the app does, the
- * drop zone, the time zone, the privacy promise, how to get an export, and
- * an example year so the user knows what to expect.
+ * The first screen, shown until an export is loaded.
  *
- * Step 1: The hero: headline, drop zone, upload error, time zone, privacy line.
- * Step 2: The guide: numbered export steps per provider and the example year.
- * Step 3: Flat screens put them side by side (stacked on a phone); a
- *         half-open foldable puts each on its own screen half: the hero
- *         with the bar on the left in book posture, at the bottom (within
- *         thumb reach) in tent posture.
+ * @remarks
+ * It shows what the app does, the drop zone, the time zone, the privacy
+ * promise, how to get an export, and an example year so the user knows what
+ * to expect.
+ *
+ * @see {@link MailSlot}
+ * @see {@link sampleYear}
  */
 export function Welcome({
   upload,
@@ -31,12 +30,14 @@ export function Welcome({
   fold,
   onPosting,
 }: {
-  /** The page's upload, so an upload keeps its progress and can be
-   *  cancelled after this screen gives way to the loaded one. */
+  /** The page's upload ({@link useUpload}), so an upload keeps its progress
+   *  and can be cancelled after this screen gives way to the loaded one. */
   upload: ReturnType<typeof useUpload>;
+  /** The IANA zone that the days are counted in. */
   timeZone: string;
+  /** Picks a new time zone. */
   setTimeZone: (timeZone: string) => void;
-  /** The posture of a half-open foldable, or undefined on a flat screen. */
+  /** The {@link Posture} of a half-open foldable, or undefined on a flat screen. */
   fold?: Posture;
   /** True while dropped files go into the post box; the page waits for it. */
   onPosting: (posting: boolean) => void;
@@ -58,7 +59,7 @@ export function Welcome({
     );
   }, []);
 
-  // Step 1
+  // Step 1: The hero: headline, drop zone, upload error, time zone, privacy line.
   const hero = (
     <section
       id="welcome-hero"
@@ -134,7 +135,7 @@ export function Welcome({
     </section>
   );
 
-  // Step 2
+  // Step 2: The guide: numbered export steps per provider and the example year.
   const guide = (
     <section
       id="get-export"
@@ -164,7 +165,8 @@ export function Welcome({
     </section>
   );
 
-  // Step 3
+  // Step 3: A half-open foldable puts each on its own half: the hero with the bar
+  // on the left in book posture, at the bottom (thumb reach) in tent posture.
   if (fold)
     return (
       <FoldLayout
@@ -184,6 +186,7 @@ export function Welcome({
         content={<div className="p-5">{guide}</div>}
       />
     );
+  // Step 3.1: Flat screens put them side by side (stacked on a phone).
   return (
     <div className="flex min-h-dvh flex-col">
       <AppBar />

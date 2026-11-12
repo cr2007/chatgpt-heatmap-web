@@ -1,30 +1,56 @@
-/** Matches a mouse-driven, landscape window big enough for the horizontal
- *  calendar and for "All years" as the first view. The height limit keeps
- *  a short window (or 200% zoom, where a 1440x900 screen is 720x450) on the
- *  phone flow, where the calendar shows one year at full size. */
+/**
+ * Matches a mouse-driven, landscape window big enough for the horizontal
+ * calendar and for "All years" as the first view.
+ *
+ * @remarks
+ * The height limit keeps a short window (or 200% zoom, where a 1440x900
+ * screen is 720x450) on the phone flow, where the calendar shows one year
+ * at full size.
+ */
 export const DESKTOP_QUERY =
   "(orientation: landscape) and (min-width: 640px) and (min-height: 560px) and (pointer: fine)";
 
-/** Matches an expanded window (Android window size classes: 840 dp and
- *  wider), such as an open foldable or a tablet in landscape: a year fits
- *  across, so the calendar runs horizontally, with or without a mouse. */
+/**
+ * Matches an expanded window (Android window size classes: 840 dp and
+ * wider), such as an open foldable or a tablet in landscape: a year fits
+ * across, so the calendar runs horizontally, with or without a mouse.
+ *
+ * @see {@link https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes | Android window size classes}
+ */
 export const EXPANDED_QUERY = "(min-width: 840px)";
 
-/** Matches a medium window or wider (Android: 600 dp): the short top half
- *  of a Fold in tent posture (829 px on a Fold 5) still fits a year across
- *  at about 14 px cells; a Flip (about 412 px) does not. */
+/**
+ * Matches a medium window or wider (Android: 600 dp), where a year fits across.
+ *
+ * @remarks
+ * The short top half of a Fold in tent posture (829 px on a Fold 5) still
+ * fits a year across at about 14 px cells; a Flip (about 412 px) does not.
+ *
+ * @see {@link https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes | Android window size classes}
+ */
 export const MEDIUM_QUERY = "(min-width: 600px)";
 
-/** Matches a window wide enough for the full top bar once an export is
- *  loaded: the export chips with their counts, Add export and the time zone
- *  in one row (1,146 px measured, about 1,180 px with five-digit counts).
- *  Below it, the bar keeps the name and the links, and a panel under it
- *  holds the rest. */
+/**
+ * Matches a window wide enough for the full top bar once an export is
+ * loaded: the export chips with their counts, Add export and the time zone
+ * in one row.
+ *
+ * @remarks
+ * Measured: 1,146 px, about 1,180 px with five-digit counts. Below it, the
+ * bar keeps the name and the links, and a panel under it holds the rest.
+ */
 export const WIDE_BAR_QUERY = "(min-width: 76rem)";
 
-/** Matches a half-open foldable: "folded" means half open and spanning the
- *  fold (W3C Device Posture). A closed device on its cover screen, or a
- *  window on one half, is "continuous". */
+/**
+ * Matches a half-open foldable: "folded" means half open and spanning the
+ * fold (W3C Device Posture).
+ *
+ * @remarks
+ * A closed device on its cover screen, or a window on one half, is
+ * "continuous".
+ *
+ * @see {@link https://www.w3.org/TR/device-posture/ | W3C Device Posture API}
+ */
 export const FOLDED_QUERY = "(device-posture: folded)";
 
 /** How a half-open foldable is held: book (the halves side by side) or
@@ -33,83 +59,97 @@ export type Posture = "book" | "tent";
 
 /** One viewport segment: where a screen half sits in the window. */
 interface Segment {
+  /** Left edge in CSS px. */
   x: number;
+  /** Top edge in CSS px. */
   y: number;
+  /** Width in CSS px. */
   width: number;
+  /** Height in CSS px. */
   height: number;
 }
 
 /**
- * The posture to lay out for, or undefined for one screen.
+ * Picks the posture to lay out for: book, tent or one screen.
  *
- * Step 1: The Viewport Segments API (Chrome 138 and later) knows where the
- *         halves are: two segments side by side are "book", two stacked are
- *         "tent". Orientation cannot tell: a Surface Duo shows its two
- *         screens side by side in a landscape window. A seamless fold that
- *         lies flat (no gap, posture not folded) stays one screen.
- * Step 2: Without that API, a folded posture falls back to the orientation:
- *         portrait is book, landscape is tent.
+ * @remarks
+ * Orientation alone cannot tell: a Surface Duo shows its two screens side by
+ * side in a landscape window.
+ *
+ * @param segments - `window.viewport.segments` (CSS px), or undefined where
+ *   the Viewport Segments API is missing.
+ * @param folded - {@link FOLDED_QUERY} matches.
+ * @param portrait - The window is in portrait orientation.
+ * @returns "book" or "tent", or undefined for one screen.
  */
 export function foldPosture(
   segments: readonly Segment[] | undefined,
   folded: boolean,
   portrait: boolean,
 ): Posture | undefined {
-  // Step 1
+  // Step 1: The Viewport Segments API (Chrome 138+) knows the halves: side by
+  // side is "book", stacked is "tent".
   if (segments) {
     if (segments.length !== 2) return undefined;
     const [a, b] = segments;
     const stacked = a.x === b.x;
     const gap = stacked ? b.y - (a.y + a.height) : b.x - (a.x + a.width);
+    // Step 1.1: A seamless fold that lies flat (no gap, not folded) is one screen.
     if (gap <= 0 && !folded) return undefined;
     return stacked ? "tent" : "book";
   }
-  // Step 2
+  // Step 2: Without that API, a folded posture falls back to the orientation:
+  // portrait is book, landscape is tent.
   if (!folded) return undefined;
   return portrait ? "book" : "tent";
 }
 
+/** What {@link getHeatmapOrientation} reads. */
 export interface HeatmapOrientationInput {
-  /** The foldable posture, if any (see `foldPosture`). */
+  /** The foldable posture, if any (see {@link foldPosture}). */
   posture: Posture | undefined;
-  /** `DESKTOP_QUERY` or `EXPANDED_QUERY` matches. */
+  /** {@link DESKTOP_QUERY} or {@link EXPANDED_QUERY} matches. */
   isWide: boolean;
-  /** `MEDIUM_QUERY` matches. */
+  /** {@link MEDIUM_QUERY} matches. */
   isMedium: boolean;
 }
 
 /**
- * Decides whether the calendar heatmap should render in its narrow
- * vertical layout (months down the side, ~120px per year) or its wide
- * horizontal GitHub-style layout (54 weeks across).
+ * Decides the direction of the calendar heatmap.
  *
- * Step 1: A foldable posture fixes it: a book half is narrow (vertical);
- *         a tent half is short, so a year runs across it when it is at
- *         least medium (an open Fold), and down it when it is not (a Flip
- *         in Flex mode, where a year across would have 5 px cells).
- * Step 2: Otherwise the horizontal layout needs a desktop or an expanded
- *         window; every narrower context gets the vertical one.
+ * @param input - The posture and the window size (see
+ *   {@link HeatmapOrientationInput}).
+ * @returns "vertical" for the narrow layout (months down the side, about
+ *   120 px per year), or "horizontal" for the wide GitHub-style layout
+ *   (54 weeks across).
  */
 export function getHeatmapOrientation({
   posture,
   isWide,
   isMedium,
 }: HeatmapOrientationInput): "vertical" | "horizontal" {
+  // Step 1: A posture fixes it: a book half is narrow (vertical). A tent half runs a
+  // year across when medium (open Fold), else down (Flip: across gives 5 px cells).
   if (posture)
-    return posture === "tent" && isMedium ? "horizontal" : "vertical"; // Step 1
-  return isWide ? "horizontal" : "vertical"; // Step 2
+    return posture === "tent" && isMedium ? "horizontal" : "vertical";
+  // Step 2: Otherwise only a desktop or an expanded window gets horizontal.
+  return isWide ? "horizontal" : "vertical";
 }
 
 /** What the calendar shows: every year, or one year. */
 export type YearView = "all" | number;
 
 /**
- * The calendar view from the year tabs. Every visit starts on "All years"
- * (the owner's choice, 2026-11-12); the view is not kept in the address.
+ * Picks the calendar view from the year tabs.
  *
- * Step 1: A picked year that the data has wins; "all" wins when there is
- *         more than one year (one year shows as that year).
- * Step 2: With nothing valid picked: every year, or the one year there is.
+ * @remarks
+ * Every visit starts on "All years" (the owner's choice, 2026-11-12); the
+ * view is not kept in the address.
+ *
+ * @param picked - The view the user picked, or null for none.
+ * @param years - The years of the data, ascending.
+ * @returns The picked view when the data has it; else "all" for more than
+ *   one year, or the one year there is.
  */
 export function pickYearView(
   picked: YearView | null,
@@ -117,9 +157,10 @@ export function pickYearView(
 ): YearView {
   const latest = years[years.length - 1];
   if (latest === undefined) return "all";
-  // Step 1
+  // Step 1: A picked year that the data has wins; "all" wins when there is
+  // more than one year (one year shows as that year).
   if (picked === "all") return years.length > 1 ? "all" : latest;
   if (picked !== null && years.includes(picked)) return picked;
-  // Step 2
+  // Step 2: With nothing valid picked: every year, or the one year there is.
   return years.length > 1 ? "all" : latest;
 }

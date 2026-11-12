@@ -2,17 +2,28 @@ import type { Provider } from "./types";
 
 /** Copy and colors of one AI provider, shared by the form, tooltip and heatmap. */
 export interface ProviderInfo {
+  /** The provider key, "chatgpt" or "claude". */
   key: Provider;
+  /** The name the UI shows, "ChatGPT" or "Claude". */
   label: string;
-  /** Tailwind classes for cards, badges and chips. */
+  /** Tailwind border class for cards, badges and chips. */
   border: string;
+  /** Tailwind background class for cards, badges and chips. */
   bg: string;
+  /** Tailwind text class for cards, badges and chips. */
   text: string;
+  /** Tailwind background class for the provider dot. */
   dot: string;
-  /** Numbered export steps for the welcome screen and the "How to export"
-   *  popover. `code` and **bold** spans are styled (components/export-guide.tsx). */
+  /**
+   * Numbered export steps for the welcome screen and the "How to export"
+   * popover. `code` and **bold** spans are styled.
+   * @see components/export-guide.tsx
+   */
   guide: readonly string[];
-  /** Prefix of the heatmap shade classes in app/globals.css (`lv-g1` to `lv-g4`). */
+  /**
+   * Prefix of the heatmap shade classes (`lv-g1` to `lv-g4`).
+   * @see app/globals.css
+   */
   ramp: "g" | "o";
 }
 
@@ -51,6 +62,11 @@ export const PROVIDERS: readonly ProviderInfo[] = [
   },
 ];
 
-/** Looks up one provider's info by key. */
+/**
+ * Looks up one provider's info by key.
+ *
+ * @param key - "chatgpt" or "claude".
+ * @returns The entry of {@link PROVIDERS} for that key.
+ */
 export const providerInfo = (key: Provider): ProviderInfo =>
   PROVIDERS.find((p) => p.key === key)!;

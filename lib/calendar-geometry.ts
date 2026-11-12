@@ -39,27 +39,43 @@ const V = {
 
 /** One day cell: its `YYYY-MM-DD` key, top-left corner, and place in the range (0 to 1). */
 export interface CellBox {
+  /** The day, as `YYYY-MM-DD`. */
   day: string;
+  /** Left edge in SVG units. */
   x: number;
+  /** Top edge in SVG units. */
   y: number;
+  /** Place in the date range, 0 (first day) to 1 (last day). */
   t: number;
 }
 
 /** One SVG text label. */
 export interface Label {
+  /** Unique React key: `y`, `d` or `m` and the year and place. */
   key: string;
+  /** Anchor x in SVG units. */
   x: number;
+  /** Baseline y in SVG units. */
   y: number;
+  /** The label text. */
   text: string;
+  /** Font size in SVG units. */
   size: number;
+  /** True for the year label. */
   bold?: boolean;
+  /** SVG `text-anchor`; the start of the text when missing. */
   anchor?: "middle" | "end";
 }
 
+/** Everything one calendar draws, in SVG units. */
 export interface CalendarLayout {
+  /** SVG width in SVG units. */
   width: number;
+  /** SVG height in SVG units. */
   height: number;
+  /** One cell per day of the years, in date order. */
   cells: CellBox[];
+  /** The year, weekday and month labels. */
   labels: Label[];
 }
 
@@ -67,9 +83,15 @@ export interface CalendarLayout {
 export type Edges = readonly [number, number, number];
 
 /**
- * The quartiles of the days with prompts (nearest rank). Each shade level
- * then holds about a quarter of the active days, so one very busy day
- * does not push every other day into the palest shade.
+ * Finds the quartiles of the days with prompts (nearest rank).
+ *
+ * @remarks
+ * Each shade level then holds about a quarter of the active days, so one
+ * very busy day does not push every other day into the palest shade.
+ *
+ * @param counts - The prompt count of each day; days with 0 are left out.
+ * @returns The upper counts of levels 1 to 3; all 0 when no day has a prompt.
+ * @see {@link level}, which reads the edges.
  */
 export function quartiles(counts: readonly number[]): Edges {
   const sorted = counts.filter((n) => n > 0).sort((a, b) => a - b);
@@ -78,7 +100,13 @@ export function quartiles(counts: readonly number[]): Edges {
   return [at(0.25), at(0.5), at(0.75)];
 }
 
-/** The shade level of a count: 0 for no prompts, else 1 (fewest) to 4. */
+/**
+ * Picks the shade level of a count.
+ *
+ * @param count - The prompts of one day.
+ * @param edges - The upper counts of levels 1 to 3 (see {@link quartiles}).
+ * @returns 0 for no prompts, else 1 (fewest) to 4.
+ */
 export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
   if (count <= 0) return 0;
   return count <= a ? 1 : count <= b ? 2 : count <= c ? 3 : 4;
@@ -86,21 +114,25 @@ export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
 
 /**
  * Places every day and label of the years `startYear` to `endYear` on the
- * SVG grid. It walks UTC day numbers, so the result is the same in every
- * time zone and a daylight saving change cannot shift a column.
+ * SVG grid.
  *
- * Step 1: Size the SVG for the orientation and the number of years.
- * Step 2: For each year:
- *   Step 2.1: Add the year label and the weekday labels.
- *   Step 2.2: Add each month label at the week of its first day.
- *   Step 2.3: Add each day cell; a week is a column (horizontal) or a row (vertical).
+ * @remarks
+ * It walks UTC day numbers, so the result is the same in every time zone and
+ * a daylight saving change cannot shift a column.
+ *
+ * @param startYear - The first year to draw.
+ * @param endYear - The last year to draw, included.
+ * @param vertical - True for weeks as rows (a phone), false for weeks as
+ *   columns.
+ * @returns The SVG size, the cells and the labels, in SVG units.
+ * @see {@link fitScale}, which scales the result to its panel.
  */
 export function layoutCalendar(
   startYear: number,
   endYear: number,
   vertical: boolean,
 ): CalendarLayout {
-  // Step 1
+  // Step 1: Size the SVG for the orientation and the number of years.
   const years = endYear - startYear + 1;
   const hSection = H.yearH + H.monthH + 7 * STEP;
   const vSection = V.yearH + V.dowH + 54 * STEP;
@@ -116,7 +148,7 @@ export function layoutCalendar(
   const cells: CellBox[] = [];
   const labels: Label[] = [];
 
-  // Step 2
+  // Step 2: Lay out each year.
   for (let year = startYear; year <= endYear; year++) {
     const yi = year - startYear;
     const jan1 = Date.UTC(year, 0, 1);
@@ -132,7 +164,7 @@ export function layoutCalendar(
       ? vTop + V.yearH + V.dowH
       : hTop + H.yearH + H.monthH;
 
-    // Step 2.1
+    // Step 2.1: Add the year label and the weekday labels.
     labels.push(
       vertical
         ? {
@@ -178,7 +210,7 @@ export function layoutCalendar(
         });
     }
 
-    // Step 2.2
+    // Step 2.2: Add each month label at the week of its first day.
     MONTHS.forEach((text, m) => {
       const week = weekOf((Date.UTC(year, m, 1) - jan1) / DAY_MS);
       labels.push(
@@ -201,7 +233,8 @@ export function layoutCalendar(
       );
     });
 
-    // Step 2.3
+    // Step 2.3: Add each day cell; a week is a column (horizontal) or a row
+    // (vertical).
     const days = (Date.UTC(year + 1, 0, 1) - jan1) / DAY_MS;
     for (let i = 0; i < days; i++) {
       const ms = jan1 + i * DAY_MS;
@@ -220,19 +253,28 @@ export function layoutCalendar(
 }
 
 /**
- * The scale that fits a calendar of `layout` size into its panel.
+ * Finds the scale that fits a calendar of `layout` size into its panel.
  *
+ * @remarks
  * In the fold layouts the panel has a fixed height, so the
  * calendar fits both sides and may grow. Where the page scrolls, the panel
  * height comes from the calendar itself; using it would let a short narrow
  * moment (a phone rotation, a window resize) shrink the calendar for good.
  * There it fits the width only, up to its natural size.
+ *
+ * @param panel - The panel size, in CSS px.
+ * @param layout - The calendar size, in SVG units.
+ * @param fixedHeight - True when the panel has a fixed height (the fold
+ *   layouts).
+ * @param maxScale - Largest scale where the page scrolls; above 1 lets one
+ *   narrow year grow.
+ * @returns CSS px per SVG unit; 1 before the panel has a width.
+ * @defaultValue `maxScale` is 1 (the natural size).
  */
 export function fitScale(
   panel: { width: number; height: number },
   layout: { width: number; height: number },
   fixedHeight: boolean,
-  /** Largest scale where the page scrolls; above 1 lets one narrow year grow. */
   maxScale = 1,
 ): number {
   if (!panel.width) return 1;

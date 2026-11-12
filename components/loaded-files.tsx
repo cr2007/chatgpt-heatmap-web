@@ -3,7 +3,9 @@ import { cn, plural, splitName } from "@/lib/utils";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 
+/** A loaded export of one provider, as the file list shows it. */
 export interface LoadedInfo {
+  /** The file name to show. */
   name: string;
   /** Chats in the export. */
   count: number;
@@ -14,15 +16,20 @@ export interface LoadedInfo {
 }
 
 /**
- * One row per loaded provider: the provider and its conversation count, the
- * file name under them, and a remove button. A long name is cut in the
- * middle, so the count and the extension always stay visible.
+ * Lists the loaded exports, one row per provider, each with a remove button.
+ *
+ * @remarks
+ * A row shows the provider, its conversation count and the file name under
+ * them. A long name is cut in the middle ({@link splitName}), so the count
+ * and the extension always stay visible.
  */
 export function LoadedFiles({
   loaded,
   onClear,
 }: {
+  /** The export of each provider, or null when none is loaded. */
   loaded: Record<Provider, LoadedInfo | null>;
+  /** Removes the export of one provider. */
   onClear: (provider: Provider) => void;
 }) {
   return (

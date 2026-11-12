@@ -10,16 +10,12 @@ const ABSORB = 220;
 
 /**
  * The drop target of the overlay that takes a drop anywhere on the loaded
- * page (components/page-drop.tsx): it fills its parent, with a spinner and
- * a progress line while reading. The welcome screen has the post box
- * (components/mail-slot.tsx) instead.
+ * page (components/page-drop.tsx).
  *
- * Step 1: Files over the page: the zone says it is ready and how many files
- *         there are (lib/file-drag.ts).
- * Step 2: Files over the zone: a soft accent well follows the pointer and
- *         the content leans toward it. The pointer writes CSS variables once
- *         a frame, so the effect needs no React render.
- * Step 3: On drop the well collapses into the drop point, then reading starts.
+ * It fills its parent, with a spinner and a progress line while reading.
+ * The welcome screen has the post box (components/mail-slot.tsx) instead.
+ *
+ * @see {@link getFileDrag} for the files dragged over the page.
  */
 export function DropZone({
   inputId,
@@ -27,11 +23,13 @@ export function DropZone({
   uploads,
   onFiles,
 }: {
+  /** Id of the hidden file input; the zone gets `${inputId}-zone`. */
   inputId: string;
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
   /** Upload count; a new value restarts the progress line. */
   uploads: number;
+  /** Reads the dropped or picked files. */
   onFiles: (files: FileList) => Promise<unknown>;
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -39,6 +37,8 @@ export function DropZone({
   const drag = useSyncExternalStore(subscribeFileDrag, getFileDrag);
   const frame = useRef(0);
   const isReading = progress !== null;
+  // Step 1: Files over the page: the zone says it is ready and how many files
+  // there are (lib/file-drag.ts).
   const phase = absorbing
     ? "absorb"
     : isDragging
@@ -48,7 +48,16 @@ export function DropZone({
         : "idle";
   const files = drag.count ? plural(drag.count, "file") : "the files";
 
-  /** Step 2: moves the well and the lean to the pointer, once a frame. */
+  // Step 2: Files over the zone: a soft accent well follows the pointer and the
+  // content leans toward it. CSS variables, once a frame, so no React render.
+  /**
+   * Moves the well and the lean (up to {@link LEAN} px) to the pointer,
+   * once a frame.
+   *
+   * @param el - The zone, which gets the CSS variables.
+   * @param x - Pointer x in client px.
+   * @param y - Pointer y in client px.
+   */
   function follow(el: HTMLElement, x: number, y: number) {
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
@@ -99,7 +108,7 @@ export function DropZone({
       onDrop={async (e) => {
         e.preventDefault();
         setIsDragging(false);
-        // Step 3
+        // Step 3: The well collapses into the drop point, then reading starts.
         setAbsorbing(true);
         setTimeout(() => setAbsorbing(false), ABSORB);
         await onFiles(e.dataTransfer.files);

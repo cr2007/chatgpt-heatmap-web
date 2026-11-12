@@ -23,17 +23,20 @@ function Inline({ text }: { text: string }) {
 }
 
 /**
- * The numbered export steps of each provider in `providers`, under an h3
- * per provider. The welcome screen and the "How to export" popover use it.
- * `idPrefix` names each list: `${idPrefix}-chatgpt`.
+ * The numbered export steps of each provider, under an h3 per provider.
+ *
+ * The welcome screen and the "How to export" popover use it.
  */
 export function ExportGuide({
   providers,
   idPrefix,
   className,
 }: {
+  /** The providers to show, in order; each gives its `guide` steps ({@link ProviderInfo}). */
   providers: readonly ProviderInfo[];
+  /** Names each provider's section: `${idPrefix}-chatgpt`. */
   idPrefix: string;
+  /** Classes for the wrapper of the sections. */
   className?: string;
 }) {
   return (

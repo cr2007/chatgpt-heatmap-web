@@ -9,28 +9,31 @@ import type { LoadedInfo } from "@/components/loaded-files";
 const MAX_FILES = 4;
 
 /**
- * One loaded export in the top bar: the provider and its chat count; on
- * hover, keyboard focus or a tap, the prompt count and the file names; and
- * a remove button.
+ * One loaded export in the top bar, with a remove button.
  *
- * Step 1: The chip button's accessible name holds the counts and the file
- *         names, so a screen reader hears them without the tip.
- * Step 2: The tip shows on hover (after a short delay) and on focus; a click
- *         or a tap pins it until the next click, a tap outside or Escape.
+ * It shows the provider and its chat count; on hover, keyboard focus or a
+ * tap, the prompt count and up to {@link MAX_FILES} file names.
+ *
+ * @see https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+ *   for the hit area of the remove button.
  */
 function Chip({
   p,
   info,
   onClear,
 }: {
+  /** The provider of the export. */
   p: ProviderInfo;
+  /** The export's counts and file names. */
   info: LoadedInfo;
+  /** Removes the export. */
   onClear: () => void;
 }) {
   const [pinned, setPinned] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
 
-  // Step 2: an outside tap or Escape unpins.
+  // Step 2: The tip shows on hover (after a short delay) and on focus. A click
+  // or a tap pins it until the next click, a tap outside or Escape.
   useEffect(() => {
     if (!pinned) return;
     const outside = (e: PointerEvent) =>
@@ -64,7 +67,8 @@ function Chip({
         <span className="font-normal text-zinc-500 tabular-nums dark:text-zinc-400">
           {plural(info.count, "chat")}
         </span>
-        {/* Step 1 */}
+        {/* Step 1: The button's name holds the counts and the file names, so
+            a screen reader hears them without the tip. */}
         <span className="sr-only">
           , {plural(info.prompts, "prompt")}, from {info.files.join(", ")}
         </span>
@@ -79,7 +83,8 @@ function Chip({
       >
         <X aria-hidden="true" size={14} />
       </button>
-      {/* Step 2: for the eye only; the button's name already says it. */}
+      {/* Step 2.1: The tip is for the eye only; the button's name already
+          says it. */}
       <div
         aria-hidden="true"
         data-pinned={pinned || undefined}
@@ -108,12 +113,14 @@ function Chip({
   );
 }
 
-/** The loaded exports as chips in the top bar, ChatGPT first. */
+/** The loaded exports as chips in the top bar, in {@link PROVIDERS} order (ChatGPT first). */
 export function ExportChips({
   loaded,
   onClear,
 }: {
+  /** The export of each provider, or null when it has none. */
   loaded: Record<Provider, LoadedInfo | null>;
+  /** Removes the export of one provider. */
   onClear: (provider: Provider) => void;
 }) {
   return (

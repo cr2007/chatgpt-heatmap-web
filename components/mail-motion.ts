@@ -1,13 +1,16 @@
 /**
- * The mail slot drop moment (components/mail-slot.tsx). Web Animations on
- * transform and opacity only; a card's clip is set once, never animated. A
- * card moves to the opening (faster once the read is done), its front edge
- * pushes the flap in, it slides in at its own pace (never faster), and the
- * flap snaps shut behind the last card. The order and the feel come from a
- * frame-by-frame study of a letter being posted (the flap opens on contact,
- * rests on the letter, and snaps shut with no rebound); the times are UI
- * times, not to scale. These timings are measured as one set, so they stay
- * here as constants and do not use the --dur-* tokens.
+ * The mail slot drop moment (components/mail-slot.tsx).
+ *
+ * Web Animations on transform and opacity only; a card's clip is set once,
+ * never animated. A card moves to the opening (faster once the read is done),
+ * its front edge pushes the flap in, it slides in at its own pace (never
+ * faster), and the flap snaps shut behind the last card. The order and the
+ * feel come from a frame-by-frame study of a letter being posted (the flap
+ * opens on contact, rests on the letter, and snaps shut with no rebound); the
+ * times are UI times, not to scale. These timings are measured as one set, so
+ * they stay here as constants and do not use the --dur-* tokens.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
  */
 
 /** Card size (px); mail-slot.tsx draws the card at this size. */
@@ -16,11 +19,25 @@ export const CARD = { w: 232, h: 52 };
 export const MAX_CARDS = 4;
 
 /**
- * A damped spring as CSS linear(), from SwiftUI's spring(duration:bounce:)
- * (WWDC23 "Animate with springs"): damping ratio = 1 - bounce, period =
- * `perceptual` ms. With `stop`, the motion ends where it first reaches its
- * target, as a flap stopped by its frame: it hits the stop with speed left
- * and has no overshoot. Returns the easing and the duration.
+ * Makes a damped spring as a CSS linear() easing, for a Web Animation.
+ *
+ * @remarks
+ * It follows SwiftUI's spring(duration:bounce:) (WWDC23 "Animate with
+ * springs"): damping ratio = 1 - bounce.
+ *
+ * @param bounce - above 0 and below 1; a higher value overshoots more
+ * @param perceptual - the period, in ms
+ * @param stop - true to end where the motion first reaches its target, as
+ *   a flap stopped by its frame: it hits the stop with speed left and has
+ *   no overshoot
+ * @defaultValue `stop` is false
+ * @returns the `easing` and the `duration` (ms), for Web Animations
+ * @see https://developer.apple.com/videos/play/wwdc2023/10158/
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
+ * @example
+ * ```ts
+ * el.animate(keys, { ...spring(0.65, 200, true), fill: "forwards" });
+ * ```
  */
 export function spring(bounce: number, perceptual: number, stop = false) {
   const zeta = 1 - bounce;
@@ -93,9 +110,14 @@ const ARRIVE = "cubic-bezier(0.3, 0.7, 0.55, 0.9)";
 const SLIDE = "cubic-bezier(0.3, 0.3, 0.25, 1)";
 
 /**
- * The share of the time at which a cubic-bezier easing reaches progress y
- * (bisection on the curve parameter), so a step can run when a card passes
- * a point on its way.
+ * Finds when a cubic-bezier easing reaches a progress.
+ *
+ * Bisection on the curve parameter, so a step can run when a card passes a
+ * point on its way.
+ *
+ * @param easing - a `cubic-bezier(x1, y1, x2, y2)` string
+ * @param y - the progress, 0 to 1
+ * @returns the share of the time, 0 to 1
  */
 function timeAt(easing: string, y: number) {
   const [x1, y1, x2, y2] = (easing.match(/-?[\d.]+/g) ?? []).map(Number);
@@ -111,7 +133,12 @@ function timeAt(easing: string, y: number) {
   return at(x1, x2, lo);
 }
 
-/** "34.9 MB", "16 kB", "512 B". */
+/**
+ * Formats a file size in the reader's locale: "34.9 MB", "16 kB", "512 B".
+ *
+ * @param bytes - the size, in bytes
+ * @returns the size with a short unit, at most one decimal
+ */
 export function fileSize(bytes: number) {
   const units = ["byte", "kilobyte", "megabyte", "gigabyte"];
   const i = Math.min(3, Math.floor(Math.log10(Math.max(bytes, 1)) / 3));
@@ -126,11 +153,20 @@ export function fileSize(bytes: number) {
 
 /** One file card: the real name and size, known only after the drop. */
 export interface Card {
+  /** The file name, or "N more files" on the last card. */
   name: string;
+  /** The file size, as {@link fileSize} gives it. */
   meta: string;
 }
 
-/** The cards for a drop: one per file, up to MAX_CARDS; the last one holds the rest. */
+/**
+ * Makes the cards for a drop: one per file, up to {@link MAX_CARDS}.
+ *
+ * With more files, the last card holds the rest and their total size.
+ *
+ * @param files - the dropped files, in drop order
+ * @returns at most {@link MAX_CARDS} cards
+ */
 export function cardsFor(files: { name: string; size: number }[]): Card[] {
   const card = (f: { name: string; size: number }) => ({
     name: f.name,
@@ -147,33 +183,26 @@ export function cardsFor(files: { name: string; size: number }[]): Card[] {
   ];
 }
 
+/** The value of a CSS custom property on the root, such as `--ease-out`. */
 const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 /** Thrown inside the run when the drop moment is stopped (a newer drop). */
 const STOP = Symbol("stop");
 
 /**
- * Runs the drop moment for `cards` (drawn in .mail-card-clip wrappers in the
- * slot) dropped at `at` (client px). `read` settles when the files are read:
- * true when they loaded. Returns `done` (the flap is at rest) and `stop`,
- * which cancels every animation and removes what the run added.
+ * Runs the drop moment: the cards go into the post box, and the flap shuts.
  *
- * Step 1: Measure the opening, and hold the flap where it is (ajar when
- *         files came near). A card fits it with MARGIN px each side and
- *         goes in through its middle line. A shade over the opening under
- *         that line darkens the part of a card that is inside.
- * Step 2: Each card rests at the opening; its transform moves it to the
- *         drop point, where the cards fade in as a fanned stack.
- * Step 3: One after another (T.next apart), a card moves on an arc from the
- *         drop point to the opening, shrinking to fit and turning its top
- *         edge toward you, and arrives with speed left.
- * Step 4: Contact: the card's front edge pushes the flap open; the card is
- *         cut at the opening's bottom edge (the door hides the rest).
- * Step 5: The card slides in along its own plane, at its own pace. If the
- *         read still runs, the last card stops partly in and waits: a done
- *         read pushes it in, a failed one slides it back out.
- * Step 6: Once the last card is out of sight (mail-in), the flap snaps shut.
  * Reduced motion: no cards; the read alone shows.
+ *
+ * @param slot - The post box element.
+ * @param cards - The cards, drawn in .mail-card-clip wrappers in the slot.
+ * @param at - The drop point, in client px.
+ * @param read - Settles when the files are read: true when they loaded.
+ * @returns `done` (the flap is at rest) and `stop`, which cancels every
+ *   animation and removes what the run added.
+ * @see {@link cardsFor}
+ * @see components/mail-slot.tsx (`MailSlot`), which calls it
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion
  */
 export function insertCards(
   slot: HTMLElement,
@@ -187,6 +216,16 @@ export function insertCards(
   const added: HTMLElement[] = [];
   let rate = 1;
   let stopped = false;
+  /**
+   * Starts an animation and keeps it for `stop`.
+   *
+   * @param el - the element to animate
+   * @param keys - the keyframes
+   * @param opts - the timing
+   * @param own - true to keep its own pace when the read is done
+   * @defaultValue `own` is false
+   * @returns the animation
+   */
   const play = (
     el: Element,
     keys: Keyframe[],
@@ -199,21 +238,39 @@ export function insertCards(
     all.push(a);
     return a;
   };
-  /** Waits for an animation; ends the run if it was stopped meanwhile. */
+  /**
+   * Waits for an animation; ends the run if it was stopped meanwhile.
+   *
+   * @throws {@link STOP} when `stop` ran while it waited
+   */
   const step = async (a: Animation) => {
     await a.finished.catch(() => {});
     if (stopped) throw STOP;
   };
-  /** A pause; with `own`, it never runs faster. */
+  /**
+   * Pauses the run.
+   *
+   * @param ms - the length of the pause, in ms
+   * @param own - true so that it never runs faster
+   * @defaultValue `own` is false
+   * @throws {@link STOP} when `stop` ran during the pause
+   */
   const wait = (ms: number, own = false) =>
     step(play(slot, [], { duration: Math.max(0, ms) }, own));
-  /** How long ago (ms) an animation ended, so the next one can start where it would be by now. */
+  /**
+   * Tells how long ago an animation ended, so the next one can start where
+   * it would be by now.
+   *
+   * @param a - the animation that ended
+   * @returns the time since its end, in ms (0 or more)
+   */
   const late = (a: Animation) => {
     const end =
       (a.startTime as number) +
       (a.effect!.getComputedTiming().endTime as number) / a.playbackRate;
     return Math.max(0, (document.timeline.currentTime as number) - end);
   };
+  /** Cancels every animation and removes what the run added. */
   const stop = () => {
     stopped = true;
     all.forEach((a) => a.cancel());
@@ -233,7 +290,8 @@ export function insertCards(
     return { done: Promise.resolve(), stop };
   }
 
-  // Step 1
+  // Step 1: Measure the opening, and hold the flap where it is (ajar when
+  // files came near).
   const s = slot.getBoundingClientRect();
   const hole = slot.querySelector(".mail-hole")!.getBoundingClientRect();
   const flap = slot.querySelector<HTMLElement>(".mail-flap")!;
@@ -256,6 +314,8 @@ export function insertCards(
     w: hole.width,
     hh: hole.height,
   };
+  // Step 1.1: A card fits the opening with MARGIN px each side and goes in
+  // through its middle line.
   /** The line a card goes in through, and the opening's bottom edge. */
   const lineY = h.y + h.hh / 2;
   const bottom = h.y + h.hh;
@@ -263,6 +323,8 @@ export function insertCards(
   const fit = (h.w - 2 * MARGIN) / CARD.w;
   const len = CARD.h * fit;
   const layer = cards[0].parentElement!.parentElement!;
+  // Step 1.2: A shade over the opening under that line darkens the part of a
+  // card that is inside.
   const shade = document.createElement("span");
   shade.className = "mail-shade";
   shade.style.cssText = `left:${h.x}px;top:${lineY}px;width:${h.w}px;height:${bottom - lineY}px`;
@@ -270,12 +332,23 @@ export function insertCards(
   added.push(shade);
 
   /**
-   * A card's transform, by its bottom centre (x, y). The card turns on its
-   * bottom edge (transform-origin in app/globals.css) and slides `d` px along its
-   * own plane, into the door. One function list everywhere, so every pair
-   * of poses interpolates. A card rests at the opening (Step 2), so the
-   * translate is 0 there: perspective() looks from the card's resting
-   * place, and any offset from it slants the card.
+   * Makes a card's transform.
+   *
+   * @remarks
+   * The card turns on its bottom edge (transform-origin in app/globals.css).
+   * One function list everywhere, so every pair of poses interpolates. A
+   * card rests at the opening (Step 2), so the translate is 0 there:
+   * perspective() looks from the card's resting place, and any offset from
+   * it slants the card.
+   *
+   * @param x - the card's bottom centre, in px in the slot
+   * @param y - the card's bottom centre, in px in the slot
+   * @param sc - the scale
+   * @param lean - the turn of the top edge toward you, in deg
+   * @param rot - the turn in the card's plane, in deg
+   * @param d - the slide along the card's own plane into the door, in px
+   * @defaultValue `lean`, `rot` and `d` are 0
+   * @returns a CSS transform
    */
   const pose = (x: number, y: number, sc: number, lean = 0, rot = 0, d = 0) =>
     `translate(${x - cx}px, ${y - lineY}px) perspective(${DEPTH}px) rotateX(${-lean}deg) rotate(${rot}deg) translateY(${d}px) scale(${sc})`;
@@ -298,7 +371,7 @@ export function insertCards(
   });
 
   let flapOpen = false;
-  /** Step 4: the front edge pushes the flap; only the first card has to. */
+  /** The front edge pushes the flap; only the first card has to. */
   const pushFlap = () => {
     if (flapOpen) return;
     flapOpen = true;
@@ -332,7 +405,8 @@ export function insertCards(
     wrap.style.zIndex = String(30 + n - k);
     card.style.left = `${cx - CARD.w / 2}px`;
     card.style.top = `${lineY - CARD.h}px`;
-    // Step 2
+    // Step 2: Each card rests at the opening; its transform moves it to the
+    // drop point, where the cards fade in as a fanned stack.
     const appear = {
       duration: T.appear,
       delay: k * 20,
@@ -348,9 +422,11 @@ export function insertCards(
       ],
       appear,
     );
-    // Step 3: a quadratic arc whose control point sits over the opening, so
-    // the way ends going down into it.
+    // Step 3: One after another (T.next apart), a card arcs from the drop point to
+    // the opening and arrives with speed left.
     if (k) await wait(k * T.next);
+    // Step 3.1: A quadratic arc whose control point sits over the opening, so
+    // the way ends going down into it.
     const top = Math.min(y0, lineY) - LIFT;
     const arc = Array.from({ length: STEPS + 1 }, (_, i) => {
       const t = i / STEPS;
@@ -368,6 +444,7 @@ export function insertCards(
         dist[i - 1] +
           Math.hypot(arc[i].x - arc[i - 1].x, arc[i].y - arc[i - 1].y),
       );
+    // Step 3.2: On the way the card shrinks to fit and turns its top edge toward you.
     const keys: Keyframe[] = arc.map((p, i) => {
       // The card turns to the opening on the second half of the way (smoothstep).
       const turn = Math.min(1, Math.max(0, (p.t - 0.5) / 0.5));
@@ -388,7 +465,8 @@ export function insertCards(
       fill: "forwards",
     });
     await step(approach);
-    // Step 4
+    // Step 4: Contact: the front edge pushes the flap open; the card is cut at
+    // the opening's bottom edge (the door hides the rest).
     const lag = late(approach);
     if (k === n - 1) performance.mark("mail-contact");
     wrap.style.zIndex = String(10 + k);
@@ -400,7 +478,8 @@ export function insertCards(
       true,
     );
     pushFlap();
-    // Step 5
+    // Step 5: The card slides in along its own plane. While the read runs, the
+    // last card waits partly in: a done read pushes it in, a failed one backs out.
     if (k === n - 1 && !readOk) {
       const hold = play(
         card,
@@ -465,7 +544,8 @@ export function insertCards(
   const done = (async () => {
     try {
       await Promise.all(runs);
-      // Step 6: the app can show the heatmap at mail-shut, once the flap is shut.
+      // Step 6: The last card is out of sight (mail-in): the flap snaps shut.
+      // The app can show the heatmap at mail-shut.
       performance.mark("mail-in");
       if (flapOpen) {
         play(

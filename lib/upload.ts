@@ -4,13 +4,18 @@ import type { LoadedExport, Provider } from "./types";
 
 /** A picked or dropped file. A browser `File` and a `BunFile` both fit. */
 export interface UploadFile {
+  /** The file name, maybe with a path; "file" when missing. */
   name?: string;
+  /** The size in bytes, for the progress share. */
   size: number;
+  /** Opens the bytes of the file as a stream. */
   stream(): ReadableStream<Uint8Array>;
 }
 
+/** The loaded export of each provider. */
 export type Exports = Partial<Record<Provider, LoadedExport>>;
 
+/** The result of an upload: the exports, or why it failed. */
 export type ReadResult =
   { ok: true; exports: Exports } | { ok: false; error: string };
 
@@ -41,7 +46,12 @@ interface FileState {
   bytes: number;
 }
 
-/** Joins the files read so far into one export per provider; ChatGPT files merge in upload order. */
+/**
+ * Joins the files read so far into one export per provider.
+ *
+ * @param states - The files of the batch, in upload order.
+ * @returns One export per provider; ChatGPT files merge in upload order.
+ */
 function toExports(states: FileState[]): Exports {
   const gpt = states.filter((s) => s.format === "chatgpt");
   const claude = states.find((s) => s.format === "claude");
@@ -60,20 +70,21 @@ function toExports(states: FileState[]): Exports {
 }
 
 /**
- * Streams a batch of uploaded files into compact exports. All files stream
- * at the same time, so ChatGPT and Claude data fill in together.
+ * Streams a batch of uploaded files into compact exports.
  *
- * Step 1: Set up one state per file and a stop signal that ends every file
- *         when one fails or the caller aborts.
- * Step 2: Stream each file (`readOne`):
- *   Step 2.1: A zip fails at once. The first conversation sets the file's
- *             format; an unknown format or a second Claude file fails.
- *   Step 2.2: Keep only each conversation's title and prompt times.
- *   Step 2.3: At most every 200 ms, report progress with the partial result.
- *   Step 2.4: About every 12 ms, give the browser a turn.
- * Step 3: Return the first failure, or the merged exports.
+ * @remarks
+ * All files stream at the same time, so ChatGPT and Claude data fill in
+ * together.
  *
- * An abort through `signal` rejects with the signal's reason.
+ * @param files - The picked or dropped files.
+ * @param options - `signal` cancels the read; `onProgress` ({@link OnProgress})
+ *   gets the share of bytes read (0 to 1) and the partial result, at most
+ *   every 200 ms ({@link PROGRESS_EVERY}).
+ * @returns The exports, or the first error; one failed file stops the rest.
+ * @throws The signal's reason when `signal` aborts.
+ * @throws A read error that is not a {@link StreamError}.
+ * @defaultValue `options` is `{}`: no cancel and no progress.
+ * @see {@link readArray}, which streams each file.
  */
 export async function loadExports(
   files: UploadFile[],
@@ -82,7 +93,7 @@ export async function loadExports(
     onProgress,
   }: { signal?: AbortSignal; onProgress?: OnProgress } = {},
 ): Promise<ReadResult> {
-  // Step 1
+  // Step 1: Set up one state per file and a stop signal.
   signal?.throwIfAborted();
   const total = files.reduce((n, f) => n + f.size, 0) || 1;
   const states: FileState[] = files.map((f) => ({
@@ -98,12 +109,19 @@ export async function loadExports(
   let lastYield = performance.now();
   let lastProgress = 0;
 
-  /** Streams one file; returns why it failed, or nothing. */
+  /**
+   * Streams one file into its state.
+   *
+   * @param file - The file to read.
+   * @param s - The state of that file, shared with the progress report.
+   * @returns Why it failed, or undefined.
+   * @throws A read error that is not a {@link StreamError}.
+   */
   async function readOne(
     file: UploadFile,
     s: FileState,
   ): Promise<string | undefined> {
-    if (/\.zip$/i.test(s.name)) return `${s.name}: ${ZIP}`; // Step 2.1
+    if (/\.zip$/i.test(s.name)) return `${s.name}: ${ZIP}`; // Step 2.1: a zip fails at once.
     try {
       for await (const { items, bytes } of readArray(
         file.stream(),
@@ -111,7 +129,8 @@ export async function loadExports(
       )) {
         s.bytes = bytes;
         for (const item of items) {
-          // Step 2.1
+          // Step 2.1: The first conversation sets the file's format; an
+          // unknown format or a second Claude file fails.
           if (!s.format) {
             const format = detectFormat([item]);
             if (format === "unknown") return `${s.name}: ${NOT_CONVERSATIONS}`;
@@ -122,7 +141,7 @@ export async function loadExports(
               return "Upload at most one Claude export";
             s.format = format;
           }
-          // Step 2.2
+          // Step 2.2: Keep only each conversation's title and prompt times.
           s.chats.push(
             s.format === "chatgpt"
               ? summarizeChatGPT(item)
@@ -130,7 +149,7 @@ export async function loadExports(
           );
         }
         const now = performance.now();
-        // Step 2.3
+        // Step 2.3: At most every 200 ms, report progress with the partial result.
         if (onProgress && now - lastProgress >= PROGRESS_EVERY) {
           lastProgress = now;
           onProgress(
@@ -138,7 +157,7 @@ export async function loadExports(
             toExports(states),
           );
         }
-        // Step 2.4
+        // Step 2.4: About every 12 ms, give the browser a turn.
         if (now - lastYield >= YIELD_AFTER) {
           await yieldToBrowser();
           lastYield = performance.now();
@@ -153,7 +172,7 @@ export async function loadExports(
     return s.format ? undefined : `${s.name}: ${NOT_CONVERSATIONS}`;
   }
 
-  // Step 2
+  // Step 2: Stream all files at once (`readOne`); the first failure stops all.
   try {
     await Promise.all(
       files.map(async (file, i) => {
@@ -167,7 +186,7 @@ export async function loadExports(
   } finally {
     signal?.removeEventListener("abort", onAbort);
   }
-  // Step 3
+  // Step 3: Return the first failure, or the merged exports.
   if (signal?.aborted) throw signal.reason;
   if (failure) return { ok: false, error: failure };
   const exports = toExports(states);

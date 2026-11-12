@@ -7,10 +7,13 @@ import { AddExport } from "@/components/add-export";
 import { TimeZonePicker } from "@/components/time-zone-picker";
 
 /**
- * The phone's export panel under the top bar: closed, one line ("2 exports,
- * Asia/Dubai"); open, the loaded files with their counts, Add export and the
- * time zone. The page owns `open`, so a fold or an unfold, which builds
- * the bar again, keeps the panel open.
+ * The phone's export panel under the top bar.
+ *
+ * Closed, it is one line ("2 exports, Asia/Dubai"); open, it holds the
+ * loaded files with their counts ({@link LoadedFiles}), Add export
+ * ({@link AddExport}) and the time zone ({@link TimeZonePicker}).
+ *
+ * @see https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/
  */
 export function ExportPanel({
   loaded,
@@ -22,13 +25,22 @@ export function ExportPanel({
   open,
   onOpen,
 }: {
+  /** The export of each provider, or null when it has none. */
   loaded: Record<Provider, LoadedInfo | null>;
+  /** Removes the export of one provider. */
   onClear: (provider: Provider) => void;
+  /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
+  /** Reads the picked files. */
   onFiles: (files: FileList) => Promise<unknown>;
+  /** The IANA time zone that buckets the days. */
   timeZone: string;
+  /** Sets the time zone. */
   setTimeZone: (timeZone: string) => void;
+  /** The panel is open. The page owns it, so a fold or an unfold, which
+   *  builds the bar again, keeps the panel open. */
   open: boolean;
+  /** Gets the new open state after each toggle. */
   onOpen: (open: boolean) => void;
 }) {
   const keys = PROVIDERS.filter((p) => loaded[p.key]).map((p) => p.key);

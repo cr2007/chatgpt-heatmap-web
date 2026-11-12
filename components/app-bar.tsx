@@ -2,10 +2,13 @@ import type { ReactNode } from "react";
 import { SiteLinks } from "@/components/site-links";
 
 /**
- * The top bar on every screen: the app name, then `children` (the loaded
- * exports and the time zone), then the GitHub link and the theme button.
- * `below` sits under the bar row, inside the header (the phone's export
- * panel). While files are read, a thin line on the bottom edge fills up.
+ * The top bar on every screen.
+ *
+ * It holds the app name, then `children`, then the GitHub link and the
+ * theme button. While files are read, a thin line on the bottom edge fills
+ * up.
+ *
+ * @see {@link SiteLinks} for the GitHub link and the theme button.
  */
 export function AppBar({
   children,
@@ -13,11 +16,21 @@ export function AppBar({
   progress = null,
   uploads = 0,
 }: {
+  /** The middle of the bar row: the loaded exports and the time zone. */
   children?: ReactNode;
+  /** Sits under the bar row, inside the header (the phone's export panel). */
   below?: ReactNode;
-  /** Share of bytes read (0 to 1), or null when idle. */
+  /**
+   * Share of bytes read (0 to 1), or null when idle.
+   *
+   * @defaultValue null
+   */
   progress?: number | null;
-  /** Upload count; a new value starts the progress line empty. */
+  /**
+   * Upload count; a new value starts the progress line empty.
+   *
+   * @defaultValue 0
+   */
   uploads?: number;
 }) {
   return (

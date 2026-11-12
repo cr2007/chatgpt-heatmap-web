@@ -25,22 +25,24 @@ const HAS_POPOVER =
 /**
  * Draws the toasts in the browser's top layer, above everything else.
  *
- * Step 1: Open the container once as a manual popover; it stays open, so its
- *         polite live region is in place before the first message arrives.
- * Step 2: Draw each toast; screen readers hear it through that region.
+ * Without the Popover API the list is a plain fixed element instead.
+ *
+ * @see {@link getToasts}
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
  */
 export function Toaster() {
   const toasts = useSyncExternalStore(subscribeToasts, getToasts);
   const ref = useRef<HTMLElement>(null);
 
-  // Step 1
+  // Step 1: Open the container once as a manual popover. It stays open, so its
+  // polite live region is in place before the first message arrives.
   useEffect(() => {
     const el = ref.current;
     // StrictMode runs effects twice in dev; a second showPopover would throw.
     if (HAS_POPOVER && el && !el.matches(":popover-open")) el.showPopover();
   }, []);
 
-  // Step 2
+  // Step 2: Draw each toast; screen readers hear it through that region.
   return (
     <section
       ref={ref}
@@ -62,18 +64,18 @@ export function Toaster() {
 }
 
 /**
- * One toast: it leaves by itself after a while, waits while the pointer or
- * focus is on it, and has a dismiss button.
+ * Shows one toast message with a dismiss button.
  *
- * Step 1: Start the timer; hover and focus stop it, leaving starts it again.
- * Step 2: When the time is up (or on dismiss), play the leave transition,
- *         then remove the toast.
+ * It leaves by itself after a while ({@link SHOW_MS}), and waits while the
+ * pointer or focus is on it.
+ *
+ * @param props - `toast`, the message to show ({@link Toast})
  */
 function ToastItem({ toast }: { toast: Toast }) {
   const [leaving, setLeaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Step 1
+  // Step 1: Start the timer; hover and focus stop it, leaving starts it again.
   const start = useCallback(() => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setLeaving(true), SHOW_MS[toast.kind]);
@@ -84,7 +86,8 @@ function ToastItem({ toast }: { toast: Toast }) {
     return () => clearTimeout(timer.current);
   }, [start]);
 
-  // Step 2
+  // Step 2: When the time is up (or on dismiss), play the leave transition,
+  // then remove the toast.
   useEffect(() => {
     if (!leaving) return;
     const done = setTimeout(() => dismissToast(toast.id), LEAVE_MS);

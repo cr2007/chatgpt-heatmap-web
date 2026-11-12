@@ -3,8 +3,15 @@ import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { count, plural } from "@/lib/utils";
 
-/** "1 to 3 prompts" for each of the 4 levels of a provider; a level that no
- *  day can have (equal edges) says so. */
+/**
+ * Names the prompt range of each of the 4 shade levels, for the legend tooltips.
+ *
+ * A level that no day can have (equal edges) says "no days".
+ *
+ * @param edges - the top prompt count of levels 1, 2 and 3 ({@link Edges})
+ * @returns 4 labels such as "1 to 3 prompts", level 1 first
+ * @see {@link HeatLegend}
+ */
 export function ranges([a, b, c]: Edges): string[] {
   const span = (lo: number, hi: number) =>
     lo > hi
@@ -20,15 +27,22 @@ export function ranges([a, b, c]: Edges): string[] {
   ];
 }
 
-/** A small square in the calendar's own shade classes. It is sized in em
- *  (10 px at 12 px text), so it grows with the text on wide screens. */
+/**
+ * A small square in the calendar's own shade classes.
+ *
+ * It is sized in em (10 px at 12 px text), so it grows with the text on wide
+ * screens.
+ */
 function Swatch({
   className,
   title,
   id,
 }: {
+  /** The shade class of the square, such as `lv-g3`. */
   className: string;
+  /** The tooltip, for example the level's prompt range. */
   title?: string;
+  /** The id of the SVG, for a swatch that the page cites. */
   id?: string;
 }) {
   return (
@@ -45,13 +59,19 @@ function Swatch({
 }
 
 /**
- * What the colors mean: 4 shades per provider (hover a shade for its range
- * of prompts a day), split days, and days outside the export.
+ * Shows what the colors mean: 4 shades per provider, split days, and days
+ * outside the export.
+ *
+ * Hover a shade for its range of prompts a day.
+ *
+ * @see {@link ranges}
+ * @see app/globals.css for the shade colors (`--g1` to `--o4`)
  */
 export function HeatLegend({
   edges,
   providers,
 }: {
+  /** The level edges of each provider, from `quartiles`. */
   edges: Record<Provider, Edges>;
   /** Providers with prompts; only they get a scale. */
   providers: Provider[];

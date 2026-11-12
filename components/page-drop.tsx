@@ -6,16 +6,24 @@ import { DropZone } from "@/components/drop-zone";
 const HOLD = 260;
 
 /**
- * Once an export is loaded, files dragged anywhere over the page show one
- * full-window drop target, so a second export needs no hunting for a zone.
+ * Shows one full-window drop target while files are dragged over the page.
+ *
+ * It is for the loaded screen, so a second export needs no hunting for a
+ * zone.
+ *
+ * @see {@link DropZone}
+ * @see {@link getFileDrag}
  */
 export function PageDrop({
   progress,
   uploads,
   onFiles,
 }: {
+  /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
+  /** Upload count; a new value restarts the progress line. */
   uploads: number;
+  /** Reads the dropped files. */
   onFiles: (files: FileList) => Promise<unknown>;
 }) {
   const drag = useSyncExternalStore(subscribeFileDrag, getFileDrag);
