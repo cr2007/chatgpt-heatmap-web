@@ -210,6 +210,8 @@ export function CalendarHeatmap({
   );
   /** The kind of a pointer press under way, so the focus it gives is not taken for the keyboard's. */
   const pressedWith = useRef("");
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(pressTimer.current), []);
   /** The day that keeps the tab stop; null means the latest day with prompts. */
   const [active, setActive] = useState<string | null>(null);
   /** The day that has keyboard focus (`:focus-visible`), for its ring. */
@@ -531,9 +533,16 @@ export function CalendarHeatmap({
             hasData ? (e) => on.current.handleHover(e, day) : undefined
           }
           onPointerDown={(e) => {
-            // A scroll or a swipe never focuses the cell: forget the press soon.
+            // A scroll or a swipe never focuses the cell: forget the press
+            // soon. A new press restarts the wait: an older press's timer
+            // cleared it during a quick next tap, whose focus then looked
+            // like the keyboard's and put the small card over the sheet.
             pressedWith.current = e.pointerType;
-            setTimeout(() => (pressedWith.current = ""), 1000);
+            clearTimeout(pressTimer.current);
+            pressTimer.current = setTimeout(
+              () => (pressedWith.current = ""),
+              1000,
+            );
           }}
           onFocus={(e) => {
             setActive(day);
