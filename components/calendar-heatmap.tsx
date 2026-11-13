@@ -304,19 +304,20 @@ export function CalendarHeatmap({
   // until the next pick.
   // Step 4.1: On hover, at the cursor.
   /**
-   * Shows the details of a day at the mouse.
+   * Shows the details of a day at a hovering mouse or pen, once per day.
    *
    * @param e - The pointer event; a finger or a press is ignored (a mouse or a
    *   pen hovers with no button down).
    * @param day - The `YYYY-MM-DD` day under the pointer.
    */
-  function handleEnter(e: React.PointerEvent, day: string) {
+  function handleHover(e: React.PointerEvent, day: string) {
     // A finger has no hover, and a pen on the screen or a held mouse button
     // is a press (a tap or a swipe); an open sheet stays until a tap or a close.
     if (e.pointerType === "touch" || e.buttons || held.current || tip?.sheet)
       return;
     if (!containerRef.current) return;
     clearTimeout(hideTimer.current);
+    if (tip?.day === day) return;
     const b = containerRef.current.getBoundingClientRect();
     show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
   }
@@ -435,9 +436,9 @@ export function CalendarHeatmap({
     else showAtCell(day, e.currentTarget, true, true);
   }
   // The cells call the handlers of the latest render through this ref.
-  const on = useRef({ handleEnter, handleLeave, showAtCell, onTapUp });
+  const on = useRef({ handleHover, handleLeave, showAtCell, onTapUp });
   useLayoutEffect(() => {
-    on.current = { handleEnter, handleLeave, showAtCell, onTapUp };
+    on.current = { handleHover, handleLeave, showAtCell, onTapUp };
   });
   // A hover ends with the native pointerleave: React's onPointerLeave comes
   // from pointerout, which a browser may skip when a pen leaves hover range.
@@ -523,8 +524,11 @@ export function CalendarHeatmap({
           tabIndex={day === tabStop ? 0 : -1}
           // Pointer events with a mouse check: a tap also fires
           // compatibility mouse events, which would close its details.
-          onPointerEnter={
-            hasData ? (e) => on.current.handleEnter(e, day) : undefined
+          // A move, not an enter: Chrome sends enters with no move at a
+          // still spot (its mouse after a tap, a pen's last place) when the
+          // page changes under it, and those must show no card.
+          onPointerMove={
+            hasData ? (e) => on.current.handleHover(e, day) : undefined
           }
           onPointerDown={(e) => {
             // A scroll or a swipe never focuses the cell: forget the press soon.
