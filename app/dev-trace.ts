@@ -50,7 +50,11 @@ export function startTrace() {
       card: !!document.querySelector("#calendar-tip"),
       press: sent,
     });
-    void fetch("/__trace", { method: "POST", body, keepalive: true });
+    // A lost upload (the ADB link drops for a moment) loses that press only;
+    // an unhandled rejection put Bun's error overlay over the page.
+    fetch("/__trace", { method: "POST", body, keepalive: true }).catch(
+      () => {},
+    );
   };
   const record = (e: PointerEvent) => {
     const t = e.target instanceof Element ? e.target : null;
