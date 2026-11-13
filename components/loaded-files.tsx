@@ -80,7 +80,7 @@ export function LoadedFiles({
             <button
               type="button"
               onClick={() => onClear(p.key)}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-900/5 hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-50"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-[background-color,color,scale] duration-(--dur-micro) ease-out hover:bg-zinc-900/5 active:scale-[0.92] hover:text-zinc-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-50"
               aria-label={`Remove ${p.label} file`}
             >
               <X size={14} />

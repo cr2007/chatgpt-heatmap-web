@@ -207,6 +207,25 @@
     cursor: help;
   }
 
+  /* Controls on a touch screen: a tap clicks at once (no wait for a double
+     tap), and a long press does not select a control's label. Body text
+     stays selectable. Preflight already removes the tap highlight. */
+  a[href],
+  button,
+  summary,
+  label,
+  [role="button"],
+  [role="option"] {
+    touch-action: manipulation;
+  }
+  button,
+  summary,
+  [role="button"],
+  [role="option"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   ::selection {
     background-color: color-mix(in oklab, var(--color-accent) 25%, transparent);
     color: inherit;
@@ -369,6 +388,25 @@
 /* Tabs that fit need no scrolling: the row does not clip (year-tabs.tsx sets data-fits). */
 .year-tabs[data-fits] {
   overflow: visible;
+}
+/* A row that scrolls fades on each side where more years hide
+   (data-more-left, data-more-right, set on scroll), so a phone shows that
+   the row goes on. A focused year scrolls to the middle (year-tabs.tsx),
+   clear of a fade. */
+.year-tabs:not([data-fits]) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-left, 0px),
+    #000 calc(100% - var(--fade-right, 0px)),
+    transparent
+  );
+}
+.year-tabs[data-more-left] {
+  --fade-left: 2.5rem;
+}
+.year-tabs[data-more-right] {
+  --fade-right: 2.5rem;
 }
 .year-pill {
   z-index: 10;

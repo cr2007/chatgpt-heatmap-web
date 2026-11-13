@@ -7,6 +7,8 @@ type Preference = "light" | "dark" | "system";
 const KEY = "theme";
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 const listeners = new Set<() => void>();
+/** The page colour under the top bar (zinc-50, zinc-950 in app/globals.css), as in index.html's theme-color. */
+const BAR = { light: "#f8fafe", dark: "#08090c" };
 
 /**
  * Reads the saved choice.
@@ -43,12 +45,18 @@ function apply() {
   // Step 2: Set the class and the color scheme.
   root.classList.toggle("dark", isDark());
   root.style.colorScheme = isDark() ? "dark" : "light";
-  // Step 3: Resume transitions after the new theme is painted. Removing the
+  // Step 3: The status bar takes the page colour, also when the picked theme
+  // is not the computer's (the media queries in index.html follow the computer).
+  for (const meta of document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  ))
+    meta.content = isDark() ? BAR.dark : BAR.light;
+  // Step 4: Resume transitions after the new theme is painted. Removing the
   // class costs a second style pass; after the paint it does not delay the switch.
   requestAnimationFrame(() =>
     requestAnimationFrame(() => root.classList.remove("theme-switching")),
   );
-  // Step 4: Tell the subscribed components.
+  // Step 5: Tell the subscribed components.
   listeners.forEach((listener) => listener());
 }
 

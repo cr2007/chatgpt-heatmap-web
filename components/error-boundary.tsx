@@ -42,7 +42,7 @@ export class ErrorBoundary extends React.Component<
       return (
         <div
           id="error-screen"
-          className="flex min-h-screen items-center justify-center p-8 text-center"
+          className="flex min-h-dvh items-center justify-center p-8 text-center"
         >
           <div className="max-w-sm space-y-4">
             <p className="text-sm font-medium">Something went wrong.</p>

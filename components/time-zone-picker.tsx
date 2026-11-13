@@ -192,8 +192,9 @@ export function TimeZonePicker({
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
+          // 16 px on a touch screen: iOS zooms the page into a smaller field.
           className={cn(
-            "h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500",
+            "h-9 w-full rounded-md border border-zinc-200 bg-white pr-8 text-sm shadow-xs pointer-coarse:text-base transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-500",
             compact ? "pl-8" : "pl-3",
           )}
           // Step 1: On focus, empty the field (the zone is the placeholder) and open

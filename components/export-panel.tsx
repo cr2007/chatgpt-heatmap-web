@@ -52,7 +52,7 @@ export function ExportPanel({
       onToggle={(e) => onOpen(e.currentTarget.open)}
       className="group/panel border-t border-zinc-200/80 dark:border-zinc-800/80"
     >
-      <summary className="mx-auto flex h-11 w-full max-w-6xl cursor-pointer list-none items-center gap-2 px-5 text-sm text-zinc-600 select-none sm:px-8 dark:text-zinc-400 [&::-webkit-details-marker]:hidden">
+      <summary className="mx-auto flex h-11 w-full max-w-6xl cursor-pointer list-none items-center gap-2 px-5 text-sm text-zinc-600 transition-colors duration-(--dur-press) ease-out select-none active:bg-zinc-900/5 sm:px-8 dark:text-zinc-400 dark:active:bg-white/10 [&::-webkit-details-marker]:hidden">
         {PROVIDERS.filter((p) => loaded[p.key]).map((p) => (
           <span
             key={p.key}

@@ -26,9 +26,12 @@
  * year tabs (105.3 and 12.0 kB); JS to 106.5 kB for the audit and break-ui
  * fixes: the day card kept below the bar, every file in the phone panel,
  * readable zone names, the wide bar's overflow check and the memoized
- * calendar cells (106.3 kB).
+ * calendar cells (106.3 kB); JS to 110 kB and CSS to 13.25 kB for the phone
+ * gestures and fixes: the calendar swipe between views, the day sheet
+ * with its swipe down, the toast swipe, the year row edge fade and the
+ * touch rules for controls (109.4 and 13.0 kB).
  */
-const BUDGET = { js: 106_500, css: 12_500 } as const;
+const BUDGET = { js: 110_000, css: 13_250 } as const;
 
 // Step 1: Gzip every JS and CSS file in dist/ and add up the sizes per type.
 const totals = { js: 0, css: 0 };

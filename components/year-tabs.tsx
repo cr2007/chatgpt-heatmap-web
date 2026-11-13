@@ -137,6 +137,11 @@ export function YearTabs({
   };
   /** Puts the pill on a button (the CSS spring moves it unless a drag holds it). */
   const placeOn = (b: HTMLElement) => paint(b.offsetLeft, b.offsetWidth);
+  /** Scrolls the row (never the page) so a tab sits in its middle, clear of the edge fades. */
+  const center = (b: HTMLElement) => {
+    row.current!.scrollLeft =
+      b.offsetLeft + b.offsetWidth / 2 - row.current!.clientWidth / 2;
+  };
   /** Pressed or dragging, or none (rest). */
   const setState = (s?: "pressed" | "dragging") => {
     if (s) row.current!.dataset.state = s;
@@ -177,10 +182,20 @@ export function YearTabs({
         last.offsetLeft + last.offsetWidth + PAD <= el.clientWidth + 0.5,
       );
     };
+    /** Marks each side where more years hide, for the edge fades (app/globals.css). */
+    const edges = () => {
+      el.toggleAttribute("data-more-left", el.scrollLeft > 1);
+      el.toggleAttribute(
+        "data-more-right",
+        el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+      );
+    };
     fit();
     // Step 1.1: On a phone the row scrolls sideways (it clips only when its
     // years do not fit). Scroll the row only, never the page.
-    el.scrollLeft = on.offsetLeft + on.offsetWidth / 2 - el.clientWidth / 2;
+    center(on);
+    edges();
+    el.addEventListener("scroll", edges, { passive: true });
     // Step 1.2: Place the pill; it slides only after its first placement.
     placeOn(on);
     // A keyboard pick placed the pill at once; later moves slide again.
@@ -188,10 +203,14 @@ export function YearTabs({
     const resize = new ResizeObserver(() => {
       if (drag.current?.on) return;
       fit();
+      edges();
       placeOn(on);
     });
     resize.observe(el);
-    return () => resize.disconnect();
+    return () => {
+      resize.disconnect();
+      el.removeEventListener("scroll", edges);
+    };
   }, [view, labels]);
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
@@ -341,7 +360,7 @@ export function YearTabs({
       // Before a drag the pointer is not captured, so a release outside
       // never reaches the row: leaving it ends the press.
       onPointerLeave={(e) => drag.current && !drag.current.on && end(e, true)}
-      className="year-tabs relative isolate flex max-w-full min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
+      className="year-tabs relative isolate flex max-w-full min-w-0 gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
     >
       <legend className="sr-only">Years to show</legend>
       {items.map(({ v, label, total }) => (
@@ -363,6 +382,8 @@ export function YearTabs({
             name={name}
             value={String(v)}
             checked={view === v}
+            // The browser scrolls a focused year only to the row's edge, under a fade.
+            onFocus={(e) => center(e.currentTarget.parentElement!)}
             onKeyDown={() => {
               via.current = "key";
               // WebKit drops :focus-visible when an arrow key moves focus in a
