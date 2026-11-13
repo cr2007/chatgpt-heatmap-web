@@ -1,13 +1,27 @@
-﻿import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
+/**
+ * Follows a media query; re-renders when the match changes.
+ *
+ * @remarks
+ * The subscribe function is kept per query, so a render does not remove and
+ * add the listener again.
+ *
+ * @param query - A CSS media query, for example `DESKTOP_QUERY`.
+ * @returns True while `query` matches.
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/matchMedia | MDN: matchMedia}
+ */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    setMatches(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [query]);
-  return matches;
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+  );
 }

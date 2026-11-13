@@ -1,0 +1,165 @@
+[
+  {
+    "uuid": "k1",
+    "name": "Claude across midnight",
+    "created_at": "2024-03-10T01:59:00.000000Z",
+    "updated_at": "2024-03-10T20:01:00.000000Z",
+    "account": {
+      "uuid": "acct"
+    },
+    "chat_messages": [
+      {
+        "uuid": "m1",
+        "text": "question",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-03-10T02:00:00.000000Z",
+        "updated_at": "2024-03-10T02:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "m2",
+        "text": "answer",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2024-03-10T02:00:30.000000Z",
+        "updated_at": "2024-03-10T02:00:30.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "m3",
+        "text": "question",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-03-10T20:00:00.000000Z",
+        "updated_at": "2024-03-10T20:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "m4",
+        "text": "answer",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2024-03-10T20:00:30.000000Z",
+        "updated_at": "2024-03-10T20:00:30.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "mOld",
+        "text": "clock was wrong",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "1970-01-01T00:00:00.000000Z",
+        "updated_at": "1970-01-01T00:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "k2",
+    "name": "",
+    "created_at": "2024-07-01T10:00:00.000000Z",
+    "updated_at": "2024-07-01T10:00:00.000000Z",
+    "account": {
+      "uuid": "acct"
+    },
+    "chat_messages": [
+      {
+        "uuid": "m5",
+        "text": "question",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-07-01T10:00:00.000000Z",
+        "updated_at": "2024-07-01T10:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "m6",
+        "text": "answer",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2024-07-01T10:00:20.000000Z",
+        "updated_at": "2024-07-01T10:00:20.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "k4",
+    "name": "Untitled",
+    "created_at": "2024-07-03T10:00:00.000000Z",
+    "updated_at": "2024-07-03T10:00:00.000000Z",
+    "account": {
+      "uuid": "acct"
+    },
+    "chat_messages": [
+      {
+        "uuid": "m7",
+        "text": "real title Untitled",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-07-03T10:00:00.000000Z",
+        "updated_at": "2024-07-03T10:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "k3",
+    "name": "Empty Claude chat",
+    "created_at": "2024-08-15T09:00:00.000000Z",
+    "updated_at": "2024-08-15T09:00:00.000000Z",
+    "account": {
+      "uuid": "acct"
+    },
+    "chat_messages": []
+  }
+]

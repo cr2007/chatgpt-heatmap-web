@@ -1,20 +1,348 @@
+/** Cell edge length in SVG units, before the panel-fit scale. */
+export const CELL = 11;
+/** Distance from one cell to the next: the edge plus a 2-unit gap. */
+const STEP = CELL + 2;
+/** Milliseconds in a UTC day. */
+const DAY_MS = 864e5;
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Horizontal: years stack top to bottom, weeks are columns, weekdays rows. */
+const H = {
+  dowW: 27,
+  monthH: 18,
+  yearH: 20,
+  yearGap: 22,
+  pad: { t: 6, r: 8, b: 8, l: 8 },
+} as const;
 /**
- * Buckets a count into one of three shades of a palette, used to give the
- * heatmap its light/medium/dark intensity steps.
+ * Narrow (a phone, a fold pane): each year is a grid of month calendars,
+ * 3 across and 4 down, as the iOS Calendar year view shows them. A week is
+ * a row of its month; the weekday letters head each column of months.
  *
- * Step 1: Normalize the count against the day with the most activity.
- * Step 2: Pick the low/medium/high shade by that ratio.
+ * @remarks
+ * A year of weekday columns was about 1,180 px tall on a 412 px phone; the
+ * grid is about 510 px, so a year fits one screen.
  */
-export function shade(count: number, max: number, palette: readonly [string, string, string]): string {
-  const ratio = count / max; // Step 1: 0..1 intensity relative to the busiest day.
-  return ratio < 0.34 ? palette[0] : ratio < 0.67 ? palette[1] : palette[2]; // Step 2.
+const V = {
+  cols: 3,
+  /** Space between two months side by side. */
+  colGap: 10,
+  /** Space between two rows of months. */
+  rowGap: 8,
+  /** The month name above each month. */
+  monthH: 13,
+  dowH: 11,
+  yearH: 16,
+  yearGap: 18,
+  pad: { t: 6, r: 6, b: 6, l: 6 },
+} as const;
+/** A month block: 7 days wide, 6 weeks tall (the most a month spans). */
+const MONTH_W = 7 * STEP - 2;
+const MONTH_H = V.monthH + 6 * STEP - 2;
+
+/** One day cell: its `YYYY-MM-DD` key, top-left corner, and place in the range (0 to 1). */
+export interface CellBox {
+  /** The day, as `YYYY-MM-DD`. */
+  day: string;
+  /** Left edge in SVG units. */
+  x: number;
+  /** Top edge in SVG units. */
+  y: number;
+  /** Place in the date range, 0 (first day) to 1 (last day). */
+  t: number;
+}
+
+/** One SVG text label. */
+export interface Label {
+  /** Unique React key: `y`, `d` or `m` and the year and place. */
+  key: string;
+  /** Anchor x in SVG units. */
+  x: number;
+  /** Baseline y in SVG units. */
+  y: number;
+  /** The label text. */
+  text: string;
+  /** Font size in SVG units. */
+  size: number;
+  /** True for the year label. */
+  bold?: boolean;
+  /** SVG `text-anchor`; the start of the text when missing. */
+  anchor?: "middle" | "end";
+}
+
+/** Everything one calendar draws, in SVG units. */
+export interface CalendarLayout {
+  /** SVG width in SVG units. */
+  width: number;
+  /** SVG height in SVG units. */
+  height: number;
+  /** One cell per day of the years, in date order. */
+  cells: CellBox[];
+  /** The year, weekday and month labels. */
+  labels: Label[];
+}
+
+/** Upper counts of shade levels 1 to 3; a larger count is level 4. */
+export type Edges = readonly [number, number, number];
+
+/**
+ * Finds the quartiles of the days with prompts (nearest rank).
+ *
+ * @remarks
+ * Each shade level then holds about a quarter of the active days, so one
+ * very busy day does not push every other day into the palest shade.
+ *
+ * @param counts - The prompt count of each day; days with 0 are left out.
+ * @returns The upper counts of levels 1 to 3; all 0 when no day has a prompt.
+ * @see {@link level}, which reads the edges.
+ */
+export function quartiles(counts: readonly number[]): Edges {
+  const sorted = counts.filter((n) => n > 0).sort((a, b) => a - b);
+  const at = (p: number) =>
+    sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)] ?? 0;
+  return [at(0.25), at(0.5), at(0.75)];
 }
 
 /**
- * Zero-based day-of-year offset (Jan 1st is 0), used to place a date into
- * its week column on the calendar grid.
+ * Picks the shade level of a count.
+ *
+ * @param count - The prompts of one day.
+ * @param edges - The upper counts of levels 1 to 3 (see {@link quartiles}).
+ * @returns 0 for no prompts, else 1 (fewest) to 4.
  */
-export function dayOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date.getTime() - startOfYear.getTime()) / 864e5); // 864e5 = ms per day.
+export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) return 0;
+  return count <= a ? 1 : count <= b ? 2 : count <= c ? 3 : 4;
+}
+
+/**
+ * Places every day and label of the years `startYear` to `endYear` on the
+ * SVG grid.
+ *
+ * @remarks
+ * It walks UTC day numbers, so the result is the same in every time zone and
+ * a daylight saving change cannot shift a column.
+ *
+ * @param startYear - The first year to draw.
+ * @param endYear - The last year to draw, included.
+ * @param vertical - True for the narrow layout (a phone, a fold pane): a
+ *   grid of month calendars; false for one row of week columns per year.
+ * @param span - The first and last day of the export (`YYYY-MM-DD`). The
+ *   narrow layout leaves out the months wholly outside it: before the export
+ *   began they hold no data, and on a phone they cost a screen of empty days.
+ * @returns The SVG size, the cells and the labels, in SVG units.
+ * @see {@link fitScale}, which scales the result to its panel.
+ */
+export function layoutCalendar(
+  startYear: number,
+  endYear: number,
+  vertical: boolean,
+  span: { from?: string; to?: string } = {},
+): CalendarLayout {
+  // Step 1: Pick the months each year shows (narrow: not those wholly outside
+  // the export), then size the SVG.
+  const years = endYear - startYear + 1;
+  const [from, to] = [span.from?.slice(0, 7), span.to?.slice(0, 7)];
+  const monthsOf = (year: number) => {
+    const all = MONTHS.map((_, m) => m);
+    if (!vertical) return all;
+    const ym = (m: number) => `${year}-${String(m + 1).padStart(2, "0")}`;
+    const kept = all.filter(
+      (m) => (!from || ym(m) >= from) && (!to || ym(m) <= to),
+    );
+    return kept.length ? kept : all;
+  };
+  /** Height of a narrow year section with `n` months. */
+  const vSection = (n: number) => {
+    const rows = Math.ceil(n / V.cols);
+    return V.yearH + V.dowH + rows * MONTH_H + (rows - 1) * V.rowGap;
+  };
+  const hSection = H.yearH + H.monthH + 7 * STEP;
+  let vHeight = V.pad.t + (years - 1) * V.yearGap + V.pad.b;
+  for (let y = startYear; y <= endYear; y++)
+    vHeight += vSection(monthsOf(y).length);
+  const width = vertical
+    ? V.pad.l + V.cols * MONTH_W + (V.cols - 1) * V.colGap + V.pad.r
+    : H.pad.l + H.dowW + 54 * STEP + H.pad.r;
+  const height = vertical
+    ? vHeight
+    : H.pad.t + years * hSection + (years - 1) * H.yearGap + H.pad.b;
+
+  const rangeStart = Date.UTC(startYear, 0, 1);
+  const rangeSpan = Date.UTC(endYear, 11, 31) - rangeStart || 1;
+  const cells: CellBox[] = [];
+  const labels: Label[] = [];
+
+  // Step 2: Lay out each year.
+  let vTop = V.pad.t;
+  for (let year = startYear; year <= endYear; year++) {
+    const months = monthsOf(year);
+    const yi = year - startYear;
+    const jan1 = Date.UTC(year, 0, 1);
+    const jan1Weekday = new Date(jan1).getUTCDay();
+    const weekOf = (dayIndex: number) =>
+      Math.floor((dayIndex + jan1Weekday) / 7);
+
+    // Grid origin and the year label's place for this year's section.
+    const hTop = H.pad.t + yi * (hSection + H.yearGap);
+    const gridX = vertical ? V.pad.l : H.pad.l + H.dowW;
+    const gridY = vertical
+      ? vTop + V.yearH + V.dowH
+      : hTop + H.yearH + H.monthH;
+    /** The top-left of month `m`'s day grid in the narrow layout: the
+     *  shown months fill the grid in order, 3 across. */
+    const block = (m: number) => {
+      const p = months.indexOf(m);
+      return {
+        x: gridX + (p % V.cols) * (MONTH_W + V.colGap),
+        y: gridY + Math.floor(p / V.cols) * (MONTH_H + V.rowGap) + V.monthH,
+      };
+    };
+
+    // Step 2.1: Add the year label and the weekday labels.
+    labels.push(
+      vertical
+        ? {
+            key: `y${year}`,
+            x: gridX,
+            y: vTop + V.yearH - 5,
+            text: String(year),
+            size: 11,
+            bold: true,
+          }
+        : {
+            key: `y${year}`,
+            x: gridX,
+            y: hTop + H.yearH - 4,
+            text: String(year),
+            size: 12,
+            bold: true,
+          },
+    );
+    if (vertical) {
+      for (let c = 0; c < Math.min(V.cols, months.length); c++)
+        [..."SMTWTFS"].forEach((text, col) =>
+          labels.push({
+            key: `d${year}${c}${col}`,
+            x: block(months[c]).x + col * STEP + CELL / 2,
+            y: gridY - 3,
+            text,
+            size: 7,
+            anchor: "middle",
+          }),
+        );
+    } else {
+      for (const [row, text] of [
+        [1, "Mon"],
+        [3, "Wed"],
+        [5, "Fri"],
+      ] as const)
+        labels.push({
+          key: `d${year}${row}`,
+          x: H.pad.l + 2,
+          y: gridY + row * STEP + CELL - 2,
+          text,
+          size: 9,
+        });
+    }
+
+    // Step 2.2: Add each month label: over its block (narrow), or at the
+    // week of its first day.
+    MONTHS.forEach((text, m) => {
+      if (!months.includes(m)) return;
+      const week = weekOf((Date.UTC(year, m, 1) - jan1) / DAY_MS);
+      labels.push(
+        vertical
+          ? {
+              key: `m${year}${m}`,
+              x: block(m).x,
+              y: block(m).y - 4,
+              text,
+              size: 9,
+            }
+          : {
+              key: `m${year}${m}`,
+              x: gridX + week * STEP,
+              y: gridY - 4,
+              text,
+              size: 10,
+            },
+      );
+    });
+
+    // Step 2.3: Add each day cell; a week is a column (horizontal) or a row
+    // of its month's block (narrow).
+    const days = (Date.UTC(year + 1, 0, 1) - jan1) / DAY_MS;
+    for (let i = 0; i < days; i++) {
+      const ms = jan1 + i * DAY_MS;
+      const weekday = (jan1Weekday + i) % 7;
+      const date = new Date(ms);
+      let x = gridX + weekOf(i) * STEP;
+      let y = gridY + weekday * STEP;
+      if (vertical) {
+        const m = date.getUTCMonth();
+        if (!months.includes(m)) continue;
+        const first = new Date(Date.UTC(year, m, 1)).getUTCDay();
+        const b = block(m);
+        x = b.x + weekday * STEP;
+        y = b.y + Math.floor((date.getUTCDate() - 1 + first) / 7) * STEP;
+      }
+      cells.push({
+        day: date.toISOString().slice(0, 10),
+        x,
+        y,
+        t: (ms - rangeStart) / rangeSpan,
+      });
+    }
+    vTop += vSection(months.length) + V.yearGap;
+  }
+
+  return { width, height, cells, labels };
+}
+
+/**
+ * Finds the scale that fits a calendar of `layout` size into its panel.
+ *
+ * @remarks
+ * In the fold layouts the panel has a fixed height, so the
+ * calendar fits both sides and may grow. Where the page scrolls, the panel
+ * height comes from the calendar itself; using it would let a short narrow
+ * moment (a phone rotation, a window resize) shrink the calendar for good.
+ * There it fits the width only, up to its natural size.
+ *
+ * @param panel - The panel size, in CSS px.
+ * @param layout - The calendar size, in SVG units.
+ * @param fixedHeight - True when the panel has a fixed height (the fold
+ *   layouts).
+ * @param maxScale - Largest scale where the page scrolls; above 1 lets one
+ *   narrow year grow.
+ * @returns CSS px per SVG unit; 1 before the panel has a width.
+ * @defaultValue `maxScale` is 1 (the natural size).
+ */
+export function fitScale(
+  panel: { width: number; height: number },
+  layout: { width: number; height: number },
+  fixedHeight: boolean,
+  maxScale = 1,
+): number {
+  if (!panel.width) return 1;
+  const byHeight = fixedHeight
+    ? panel.height
+      ? panel.height / layout.height
+      : Infinity
+    : maxScale;
+  return Math.min(panel.width / layout.width, byHeight);
 }

@@ -1,380 +1,688 @@
-﻿
-import React, { useId, useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
-import { useTheme } from "next-themes";
-import type { CalHeatmapDay, DayTitleBreakdown } from "@/lib/types";
-import { shade, dayOfYear } from "@/lib/calendar-geometry";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { CalHeatmapDay, DayTitleBreakdown, Provider } from "@/lib/types";
+import {
+  CELL,
+  fitScale,
+  layoutCalendar,
+  level,
+  type Edges,
+} from "@/lib/calendar-geometry";
+import { providerInfo } from "@/lib/providers";
+import { cn, formatDay, plural } from "@/lib/utils";
+import { useElementSize } from "@/hooks/use-element-size";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DaySheet, DayTooltip } from "@/components/day-details";
+import { useCalendarSwipe, type Swipe } from "@/components/calendar-swipe";
+import { playMorph } from "@/components/calendar-morph";
+import { HOVER_END } from "@/app/hover-input";
 
-/** Cell edge length in SVG units, before panel-fit scaling. */
-const CELL = 11;
-/** Gap between adjacent cells in SVG units. */
-const GAP  = 2;
-/** Cell edge length plus its gap - the repeat distance between cells. */
-const STEP = CELL + GAP;
+/** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
+const HIDE_DELAY = 80;
+/** Shade class prefixes of each provider (`ramp` in lib/providers.ts, from
+ *  {@link providerInfo}). */
+const GPT = providerInfo("chatgpt").ramp;
+const CLAUDE = providerInfo("claude").ramp;
 
-/** Low/medium/high intensity shades for ChatGPT activity cells. */
-const GPT_COLORS    = ["#CCFFCC", "#5CE65C", "#008000"] as const;
-/** Low/medium/high intensity shades for Claude activity cells. */
-const CLAUDE_COLORS = ["#FED7AA", "#F97316", "#C2410C"] as const;
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-export interface CalendarHeatmapProps {
-  data: Record<string, CalHeatmapDay>;
-  dayTitles: Record<string, DayTitleBreakdown>;
-  maxChatgpt: number;
-  maxClaude: number;
-  from: Date;
-  to: Date;
-  vertical?: boolean;
+/**
+ * Gives the accessible name of a day cell.
+ *
+ * @param name - The readable day, for example "Sun, Mar 10, 2024".
+ * @param chatgpt - ChatGPT prompts on the day.
+ * @param claude - Claude prompts on the day.
+ * @param outside - The day is outside the export.
+ * @returns For example "Sun, Mar 10, 2024: 3 prompts (ChatGPT 2, Claude 1)".
+ */
+function describeDay(
+  name: string,
+  chatgpt: number,
+  claude: number,
+  outside: boolean,
+): string {
+  if (outside) return `${name}: outside the export`;
+  if (chatgpt + claude === 0) return `${name}: no prompts`;
+  const parts = [
+    chatgpt > 0 && `ChatGPT ${chatgpt}`,
+    claude > 0 && `Claude ${claude}`,
+  ].filter(Boolean);
+  return `${name}: ${plural(chatgpt + claude, "prompt")} (${parts.join(", ")})`;
 }
 
 /**
- * Renders one or more years of ChatGPT/Claude activity as an inline SVG
- * calendar grid, scaled to fill its container while preserving aspect
- * ratio, with a hover tooltip breaking down each day's conversation titles.
+ * Moves a day by a number of days, in UTC so no clock change shifts it.
+ *
+ * @param day - A `YYYY-MM-DD` day.
+ * @param n - Days to add; a negative number goes back.
+ * @returns The `YYYY-MM-DD` day `n` days after `day`.
+ */
+const addDays = (day: string, n: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + n * 864e5)
+    .toISOString()
+    .slice(0, 10);
+
+/**
+ * Picks the shade class of a day.
+ *
+ * A day outside the export is hollow, so it does not read as a day with
+ * no prompts.
+ *
+ * @param day - The `YYYY-MM-DD` day.
+ * @param chatgpt - ChatGPT prompts on the day.
+ * @param claude - Claude prompts on the day.
+ * @param edges - The shade level edges per provider.
+ * @param firstDay - The first day of the export, if known.
+ * @param lastDay - The last day of the export, if known.
+ * @returns One provider's level class; `undefined` for a day with both
+ *   (its gradient fill sets the colors); `lv-0` when empty; `lv-out` when
+ *   outside the export.
+ */
+function shadeClass(
+  day: string,
+  chatgpt: number,
+  claude: number,
+  edges: Record<Provider, Edges>,
+  firstDay?: string,
+  lastDay?: string,
+): string | undefined {
+  if (chatgpt > 0 && claude > 0) return undefined;
+  if (chatgpt > 0) return `lv-${GPT}${level(chatgpt, edges.chatgpt)}`;
+  if (claude > 0) return `lv-${CLAUDE}${level(claude, edges.claude)}`;
+  if ((firstDay && day < firstDay) || (lastDay && day > lastDay))
+    return "lv-out";
+  return "lv-0";
+}
+
+/** Props of {@link CalendarHeatmap}. */
+interface CalendarHeatmapProps {
+  /** Prompt counts per provider, by `YYYY-MM-DD` day. */
+  data: Record<string, CalHeatmapDay>;
+  /** The chats of each day, for the day details. */
+  dayTitles: Record<string, DayTitleBreakdown>;
+  /** Shade level edges per provider. */
+  edges: Record<Provider, Edges>;
+  /** First day of the export (`YYYY-MM-DD`); days before it are hollow. */
+  firstDay?: string;
+  /** Last day of the export (`YYYY-MM-DD`); days after it are hollow. */
+  lastDay?: string;
+  /** Only its year counts: the calendar starts on January 1. */
+  from: Date;
+  /** Only its year counts: the calendar ends on December 31. */
+  to: Date;
+  /**
+   * Weeks run down the page (the phone layout), not across.
+   *
+   * @defaultValue false
+   */
+  vertical?: boolean;
+  /**
+   * Counts time zone changes; each new value runs the date-order sweep.
+   * 0 means none.
+   *
+   * @defaultValue 0
+   */
+  sweep?: number;
+  /**
+   * The panel has a fixed height (the fold layouts), so the calendar fits it.
+   *
+   * @defaultValue false
+   */
+  fixedHeight?: boolean;
+  /**
+   * Largest scale where the page scrolls (see {@link fitScale}).
+   *
+   * @defaultValue 1
+   */
+  maxScale?: number;
+  /** Id of the root; the day details get `${id}-tip` and the drawing
+   *  `${id}-svg`. */
+  id?: string;
+  /** Half-open foldables: show the day details in this pane (DayPane) in
+   *  place of a floating card. `id` is the pane's id; `onPick` gets each
+   *  picked day, or null. */
+  pane?: { id: string; onPick: (day: string | null) => void };
+  /** A sideways touch swipe goes to the previous or next view ({@link useCalendarSwipe}). */
+  swipe?: Swipe;
+}
+
+/**
+ * Draws one or more years of ChatGPT and Claude activity as an SVG calendar.
+ *
+ * It scales to fit its panel and shows a tooltip for each day on hover,
+ * keyboard focus or a tap.
+ *
+ * @see {@link layoutCalendar} for the place of each cell and label.
+ * @see {@link playMorph} for the year change motion.
+ * @see {@link DayTooltip} for the day details.
  */
 export function CalendarHeatmap({
-  data, dayTitles, maxChatgpt, maxClaude, from, to, vertical = false,
+  data,
+  dayTitles,
+  edges,
+  firstDay,
+  lastDay,
+  from,
+  to,
+  vertical = false,
+  sweep = 0,
+  fixedHeight = false,
+  maxScale = 1,
+  id,
+  pane,
+  swipe,
 }: CalendarHeatmapProps) {
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
-
   const uid = useId().replace(/:/g, "");
-  const outerRef    = useRef<HTMLDivElement>(null);
+  const tipId = `${id ?? uid}-tip`;
+  const sheetId = `${id ?? uid}-sheet`;
+  const [outerRef, panel] = useElementSize<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tip,   setTip]   = useState<{ day: string; cx: number; cy: number } | null>(null);
-  const [avail, setAvail] = useState({ w: 0, h: 0 });
-
-  // Measure on first paint (synchronous) to avoid a visible flash.
-  useLayoutEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
-    if (width > 0 || height > 0) setAvail({ w: width, h: height });
-  }, []);
-
-  // Track panel resizes.
-  useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(([e]) => {
-      const { width, height } = e.contentRect;
-      setAvail({ w: width, h: height });
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const emptyFill  = isDark ? "#2a2a2a" : "#eee";
-  const textFill   = isDark ? "#888"    : "#666";
-  // A faint edge on every cell keeps the palest greens (e.g. #CCFFCC) from
-  // blending into the empty-cell grey in light mode, without darkening the
-  // grey itself or touching the colour scale.
-  const cellStroke = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-
-  // Step 1: derive the pixel geometry for the requested year range and
-  // orientation, then compute a single scale factor that fits it to the
-  // panel while preserving aspect ratio.
-  const startYear = from.getFullYear();
-  const endYear   = to.getFullYear();
-  const numYears  = endYear - startYear + 1;
-
-  // Layout constants
-  // Horizontal: years stack top-to-bottom, weeks -> columns, dow -> rows
-  const H = {
-    dowW:   27,           // day-of-week label column
-    monthH: 18,           // month label row
-    yearH:  20,           // year label row
-    yearGap: 22,
-    pad: { t: 6, r: 8, b: 8, l: 8 },
-  } as const;
-  const H_SEC_H = H.yearH + H.monthH + 7 * STEP;
-
-  // Vertical: years stack left-to-right, dow -> columns, weeks -> rows
-  const V = {
-    monthW:  28,          // month label column (left side)
-    dowH:    15,          // day-of-week label row
-    yearH:   16,          // year label row
-    yearGap: 18,
-    pad: { t: 6, r: 6, b: 6, l: 6 },
-  } as const;
-  const V_SEC_W = V.monthW + 7 * STEP;
-
-  const svgW = vertical
-    ? V.pad.l + numYears * V_SEC_W + (numYears - 1) * V.yearGap + V.pad.r
-    : H.pad.l + H.dowW + 54 * STEP + H.pad.r;
-
-  const svgH = vertical
-    ? V.pad.t + V.yearH + V.dowH + 54 * STEP + V.pad.b
-    : H.pad.t + numYears * H_SEC_H + (numYears - 1) * H.yearGap + H.pad.b;
-
-  // Scale SVG to fill the available panel area while preserving aspect ratio.
-  // No upper cap: upscaling is fine for narrow single-year panels.
-  const scale = (() => {
-    if (!avail.w) return 1;
-    const sw = avail.w / svgW;
-    if (!avail.h) return sw;
-    return Math.min(sw, avail.h / svgH);
-  })();
-  const renderedW = Math.round(svgW * scale) || svgW;
-  const renderedH = Math.round(svgH * scale) || svgH;
-
-  // Step 2: build a per-day linear gradient for any day with both ChatGPT
-  // and Claude activity, split at the point matching their share of the day.
-  const gradDefs: React.ReactElement[] = [];
-  Object.entries(data).forEach(([day, { chatgpt, claude }]) => {
-    if (chatgpt <= 0 || claude <= 0 || maxChatgpt <= 0 || maxClaude <= 0) return;
-    const pct = Math.round((chatgpt / (chatgpt + claude)) * 100);
-    const s1  = Math.max(2,  pct - 12);
-    const s2  = Math.min(98, pct + 12);
-    gradDefs.push(
-      <linearGradient key={day} id={`${uid}g${day}`} x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset={`${s1}%`} stopColor={shade(chatgpt, maxChatgpt, GPT_COLORS)} />
-        <stop offset={`${s2}%`} stopColor={shade(claude,  maxClaude,  CLAUDE_COLORS)} />
-      </linearGradient>
-    );
+  const svgRef = useRef<SVGSVGElement>(null);
+  /** The day whose details show, and where, relative to the grid. A tap
+   *  keeps them open until the next tap. */
+  const [shownTip, setTip] = useState<{
+    /** The view (first and last year) they opened in. */
+    view: string;
+    day: string;
+    x: number;
+    y: number;
+    tap?: boolean;
+    sheet?: boolean;
+  } | null>(null);
+  /** The day in the sheet; it stays while the sheet slides out. */
+  const [sheetDay, setSheetDay] = useState<string | null>(null);
+  const hints = useRef<{ prev: HTMLElement | null; next: HTMLElement | null }>({
+    prev: null,
+    next: null,
   });
+  // A swipe hides a hover card; a sheet a tap opened stays.
+  const { swiped, held } = useCalendarSwipe(
+    swipe?.area ?? outerRef,
+    containerRef,
+    hints,
+    swipe,
+    () => setTip((t) => (t?.tap ? t : null)),
+  );
+  /** The kind of a pointer press under way, so the focus it gives is not taken for the keyboard's. */
+  const pressedWith = useRef("");
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(pressTimer.current), []);
+  /** The day that keeps the tab stop; null means the latest day with prompts. */
+  const [active, setActive] = useState<string | null>(null);
+  /** The day that has keyboard focus (`:focus-visible`), for its ring. */
+  const [keyed, setKeyed] = useState<string | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+  /**
+   * Sets the shown day, and tells the pane when there is one.
+   *
+   * @param next - The day and its place in the grid, or null to hide.
+   */
+  function show(next: Omit<NonNullable<typeof tip>, "view"> | null) {
+    setTip(next && { ...next, view });
+    if (next?.sheet) setSheetDay(next.day);
+    pane?.onPick(next?.day ?? null);
+  }
 
-  // Cell renderer
-  const handleEnter = useCallback((e: React.MouseEvent, day: string) => {
+  // Step 1: Lay out the years (lib/calendar-geometry.ts); scale the SVG to the panel.
+  // Keyed on the years: the page passes new Date objects on each render.
+  const [startYear, endYear] = [from.getFullYear(), to.getFullYear()];
+  // A new view closes floating details: their day may not be in it (a pane keeps it).
+  const view = `${startYear}-${endYear}`;
+  const tip = pane || shownTip?.view === view ? shownTip : null;
+  const layout = useMemo(
+    () =>
+      layoutCalendar(startYear, endYear, vertical, {
+        from: firstDay,
+        to: lastDay,
+      }),
+    [startYear, endYear, vertical, firstDay, lastDay],
+  );
+  // Very large screens grow the root font (app/globals.css); the calendar
+  // grows with it, so it keeps its share of the page.
+  const rem =
+    typeof document === "undefined"
+      ? 1
+      : parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
+  const scale = fitScale(panel, layout, fixedHeight, maxScale * rem);
+  // A new view of the years plays the morph that the page prepared
+  // (components/calendar-morph.ts); without one it is a no-op.
+  useLayoutEffect(() => {
+    if (svgRef.current) playMorph(svgRef.current);
+  }, [startYear, endYear]);
+  /** Each drawn day's readable name, made once per layout. */
+  const names = useMemo(
+    () => new Map(layout.cells.map((c) => [c.day, formatDay(c.day)])),
+    [layout],
+  );
+  /** The latest drawn day with prompts, or the first drawn day. */
+  const latestDay = useMemo(
+    () =>
+      Object.keys(data)
+        .filter((d) => names.has(d))
+        .sort()
+        .at(-1) ?? layout.cells[0]?.day,
+    [data, names, layout],
+  );
+  const tabStop = active && names.has(active) ? active : latestDay;
+  const renderedW = Math.round(layout.width * scale) || layout.width;
+  const renderedH = Math.round(layout.height * scale) || layout.height;
+
+  // Step 2: Make a two-color gradient for each day with both providers.
+  const gradients = useMemo(
+    () =>
+      Object.entries(data).flatMap(([day, { chatgpt, claude }]) => {
+        if (chatgpt <= 0 || claude <= 0) return [];
+        const pct = Math.round((chatgpt / (chatgpt + claude)) * 100);
+        return (
+          <linearGradient
+            key={day}
+            id={`${uid}g${day}`}
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="0%"
+          >
+            <stop
+              offset={`${Math.max(2, pct - 12)}%`}
+              className={`st-${GPT}${level(chatgpt, edges.chatgpt)}`}
+            />
+            <stop
+              offset={`${Math.min(98, pct + 12)}%`}
+              className={`st-${CLAUDE}${level(claude, edges.claude)}`}
+            />
+          </linearGradient>
+        );
+      }),
+    [data, edges, uid],
+  );
+
+  // Step 4: Show the day details. With `pane`, they go to the pane and stay
+  // until the next pick.
+  // Step 4.1: On hover, at the cursor.
+  /**
+   * Shows the details of a day at a hovering mouse or pen, once per day.
+   *
+   * @param e - The pointer event; a finger or a press is ignored (a mouse or a
+   *   pen hovers with no button down).
+   * @param day - The `YYYY-MM-DD` day under the pointer.
+   */
+  function handleHover(e: React.PointerEvent, day: string) {
+    // A finger has no hover, and a pen on the screen or a held mouse button
+    // is a press (a tap or a swipe); an open sheet stays until a tap or a close.
+    if (e.pointerType === "touch" || e.buttons || held.current || tip?.sheet)
+      return;
     if (!containerRef.current) return;
+    clearTimeout(hideTimer.current);
+    if (tip?.day === day) return;
     const b = containerRef.current.getBoundingClientRect();
-    setTip({ day, cx: e.clientX - b.left, cy: e.clientY - b.top });
-  }, []);
-  const handleLeave = useCallback(() => setTip(null), []);
-
-  /** Renders one day's `<rect>`, filled solid, gradient-split (both
-   *  providers active), or the empty shade, with a hover handler only
-   *  wired up when the day actually has data. */
-  function makeCell(day: string, x: number, y: number): React.ReactElement {
-    const { chatgpt = 0, claude = 0 } = data[day] ?? {};
-    const hasData = chatgpt + claude > 0;
-    let fill: string;
-    if      (chatgpt > 0 && claude  > 0 && maxChatgpt > 0 && maxClaude > 0) fill = `url(#${uid}g${day})`;
-    else if (chatgpt > 0 && maxChatgpt > 0) fill = shade(chatgpt, maxChatgpt, GPT_COLORS);
-    else if (claude  > 0 && maxClaude  > 0) fill = shade(claude,  maxClaude,  CLAUDE_COLORS);
-    else fill = emptyFill;
-    return (
-      <rect
-        key={day} x={x} y={y} width={CELL} height={CELL} rx={2} fill={fill}
-        stroke={cellStroke} strokeWidth={1}
-        onMouseEnter={hasData ? e => handleEnter(e, day) : undefined}
-        onMouseLeave={hasData ? handleLeave : undefined}
-      />
+    show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
+  }
+  // Step 4.2: Leaving waits a moment, so the next cell updates the open tooltip
+  // instead of reopening it. A pane keeps the last day.
+  /**
+   * Hides floating details after {@link HIDE_DELAY}; a tap or a pane keeps
+   * them.
+   *
+   * @param day - The `YYYY-MM-DD` day left. Details of another day stay: the
+   *   pointer already entered it (React sends that enter first).
+   */
+  function handleLeave(day: string) {
+    if (pane) return;
+    hideTimer.current = setTimeout(
+      () => setTip((t) => (t?.tap || t?.day !== day ? t : null)),
+      HIDE_DELAY,
     );
   }
 
-  // Step 3: lay out each year's labels and cells, one section per year,
-  // branching on orientation (weeks as columns vs. weeks as rows).
-  const els: React.ReactElement[] = [];
+  // Step 4.3: On keyboard focus or a tap, at the cell.
+  /**
+   * Shows the details of a day under its cell (keyboard focus or a tap).
+   *
+   * A day with no prompts hides the details.
+   *
+   * @param day - The `YYYY-MM-DD` day.
+   * @param cell - The day's cell, which gives the place.
+   * @param tap - A tap opened them, so they stay until the next tap.
+   * @param sheet - A finger opened them: they show in the sheet.
+   * @defaultValue `tap` and `sheet` are false.
+   */
+  function showAtCell(day: string, cell: Element, tap = false, sheet = false) {
+    const box = containerRef.current?.getBoundingClientRect();
+    if (!box || !data[day]) return show(null);
+    clearTimeout(hideTimer.current);
+    const c = cell.getBoundingClientRect();
+    show({
+      day,
+      x: c.left + c.width / 2 - box.left,
+      y: c.bottom - box.top,
+      tap,
+      sheet: sheet && !pane,
+    });
+  }
 
-  for (let yi = 0; yi < numYears; yi++) {
-    const year   = startYear + yi;
-    const jan1   = new Date(year, 0, 1);
-    const jan1wd = jan1.getDay();
+  // Step 4.4: One cell is a tab stop; the arrow keys move by day and by week.
+  /**
+   * Moves the tab stop between days with the keyboard.
+   *
+   * Arrow keys move by a day along a week and by a week across weeks; Home
+   * and End go to the first and last drawn day; Escape hides the details.
+   *
+   * @param e - A key press on a focused cell.
+   * @see https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/ for the
+   *   roving tab stop.
+   * @see https://www.w3.org/WAI/ARIA/apg/patterns/grid/ for the arrow, Home
+   *   and End keys.
+   */
+  function onKeyDown(e: React.KeyboardEvent<SVGSVGElement>) {
+    const day = (e.target as Element).getAttribute("data-day");
+    if (!day) return;
+    if (e.key === "Escape") return show(null);
+    const along = vertical
+      ? ["ArrowLeft", "ArrowRight"]
+      : ["ArrowUp", "ArrowDown"];
+    const across = vertical
+      ? ["ArrowUp", "ArrowDown"]
+      : ["ArrowLeft", "ArrowRight"];
+    const next =
+      e.key === along[0]
+        ? addDays(day, -1)
+        : e.key === along[1]
+          ? addDays(day, 1)
+          : e.key === across[0]
+            ? addDays(day, -7)
+            : e.key === across[1]
+              ? addDays(day, 7)
+              : e.key === "Home"
+                ? layout.cells[0]?.day
+                : e.key === "End"
+                  ? layout.cells.at(-1)?.day
+                  : undefined;
+    if (!next) return;
+    e.preventDefault();
+    if (!names.has(next)) return;
+    setActive(next);
+    containerRef.current
+      ?.querySelector<SVGRectElement>(`[data-day="${next}"]`)
+      ?.focus();
+  }
 
-    if (!vertical) {
-      // Horizontal
-      const yOff  = H.pad.t + yi * (H_SEC_H + H.yearGap);
-      const gridY = yOff + H.yearH + H.monthH;
+  // A tap outside the calendar closes details that a tap opened (a pane keeps them).
+  useEffect(() => {
+    if (!tip?.tap || pane) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.(`[data-day], #${sheetId}`))
+        setTip(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [tip?.tap, pane, sheetId]);
 
-      // Year label
-      els.push(
-        <text key={`yr${year}`}
-          x={H.pad.l + H.dowW} y={yOff + H.yearH - 4}
-          fill={textFill} fontSize={12} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
-        >{year}</text>
-      );
+  /**
+   * Hides tap details on a second tap of the same day, else shows them.
+   *
+   * A tap or a click opens the sheet, with a finger, a pen or a mouse (a
+   * hover shows the card). The release of a swipe is no tap.
+   *
+   * @param e - The pointer up event.
+   * @param day - The `YYYY-MM-DD` day.
+   */
+  function onTapUp(e: React.PointerEvent<SVGRectElement>, day: string) {
+    if (swiped.current || e.button > 0) return;
+    if (tip?.tap && tip.day === day && !pane) show(null);
+    else showAtCell(day, e.currentTarget, true, true);
+  }
+  // The cells call the handlers of the latest render through this ref.
+  const on = useRef({ handleHover, handleLeave, showAtCell, onTapUp });
+  useLayoutEffect(() => {
+    on.current = { handleHover, handleLeave, showAtCell, onTapUp };
+  });
+  // A pen that lifts away sends no leave at all (app/hover-input.ts): the
+  // hover card goes when the hover ends. A tap's sheet and a pane stay.
+  const hasPane = !!pane;
+  useEffect(() => {
+    if (hasPane) return;
+    const ended = () => setTip((t) => (t?.tap ? t : null));
+    addEventListener(HOVER_END, ended);
+    return () => removeEventListener(HOVER_END, ended);
+  }, [hasPane]);
+  // A hover ends with the native pointerleave: React's onPointerLeave comes
+  // from pointerout, which a browser may skip when a pen leaves hover range.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const leave = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      const day = (e.target as Element).getAttribute?.("data-day");
+      if (day) on.current.handleLeave(day);
+    };
+    // Capture: pointerleave does not bubble, but the capture phase still runs.
+    svg.addEventListener("pointerleave", leave, true);
+    return () => svg.removeEventListener("pointerleave", leave, true);
+  }, []);
+  // The open details describe their cell, and a tapped day is marked as
+  // picked (set here, so the cells stay memoized).
+  // The ring of the picked or keyed day: drawn over the cells, apart from its
+  // cell by a page-coloured gap, so it shows on every shade.
+  const ringDay = tip?.tap ? tip.day : keyed;
+  const ring = useMemo(
+    () => ringDay && layout.cells.find((c) => c.day === ringDay),
+    [layout, ringDay],
+  );
+  const describedBy = pane?.id ?? (tip?.sheet ? sheetId : tipId);
+  useLayoutEffect(() => {
+    const cell = tip
+      ? svgRef.current?.querySelector(`[data-day="${tip.day}"]`)
+      : null;
+    if (!cell) return;
+    cell.setAttribute("aria-describedby", describedBy);
+    cell.toggleAttribute("data-picked", !!tip?.tap);
+    return () => {
+      cell.removeAttribute("aria-describedby");
+      cell.removeAttribute("data-picked");
+    };
+  }, [tip, describedBy, layout]);
 
-      // Day-of-week labels (Mon / Wed / Fri)
-      ([[1, "Mon"], [3, "Wed"], [5, "Fri"]] as [number, string][]).forEach(([row, lbl]) =>
-        els.push(
-          <text key={`dh${year}${row}`}
-            x={H.pad.l + 2} y={gridY + row * STEP + CELL - 2}
-            fill={textFill} fontSize={9} fontFamily="GeistSans, system-ui, sans-serif"
-          >{lbl}</text>
-        )
-      );
+  /** Closes the sheet; stable, so the sheet keeps one Escape listener. */
+  const closeSheet = useCallback(() => setTip(null), []);
+  // A sheet that opens over its cell scrolls the page, so the cell stays in view.
+  const sheetFor = tip?.sheet ? tip.day : null;
+  useEffect(() => {
+    const sheet = sheetFor && document.getElementById(sheetId);
+    const cell = svgRef.current?.querySelector(`[data-day="${sheetFor}"]`);
+    if (!sheet || !cell) return;
+    const over =
+      cell.getBoundingClientRect().bottom -
+      (innerHeight - sheet.offsetHeight - 16);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (over > 0)
+      scrollBy({ top: over, behavior: reduced ? "instant" : "smooth" });
+  }, [sheetFor, sheetId]);
 
-      // Month labels
-      for (let m = 0; m < 12; m++) {
-        const col = Math.floor((dayOfYear(new Date(year, m, 1)) + jan1wd) / 7);
-        els.push(
-          <text key={`mh${year}${m}`}
-            x={H.pad.l + H.dowW + col * STEP}
-            y={yOff + H.yearH + H.monthH - 4}
-            fill={textFill} fontSize={10} fontFamily="GeistSans, system-ui, sans-serif"
-          >{MONTHS[m]}</text>
-        );
-      }
-
-      // Cells
-      const cur = new Date(year, 0, 1);
-      while (cur.getFullYear() === year) {
-        const day = cur.toLocaleDateString("sv-SE");
-        const col = Math.floor((dayOfYear(cur) + jan1wd) / 7);
-        const row = cur.getDay();
-        els.push(makeCell(day, H.pad.l + H.dowW + col * STEP, gridY + row * STEP));
-        cur.setDate(cur.getDate() + 1);
-      }
-
-    } else {
-      // Vertical
-      const xOff  = V.pad.l + yi * (V_SEC_W + V.yearGap);
-      const gridX = xOff + V.monthW;
-      const gridY = V.pad.t + V.yearH + V.dowH;
-
-      // Year label
-      els.push(
-        <text key={`yr${year}`}
-          x={gridX} y={V.pad.t + V.yearH - 4}
-          fill={textFill} fontSize={11} fontWeight="600" fontFamily="GeistSans, system-ui, sans-serif"
-        >{year}</text>
-      );
-
-      // Day-of-week labels (S M T W T F S)
-      "SMTWTFS".split("").forEach((lbl, col) =>
-        els.push(
-          <text key={`dv${year}${col}`}
-            x={gridX + col * STEP + CELL / 2}
-            y={V.pad.t + V.yearH + V.dowH - 3}
-            fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="middle"
-          >{lbl}</text>
-        )
-      );
-
-      // Month labels (left side, one per month at its first week row)
-      const seenM = new Set<number>();
-      {
-        const cur = new Date(year, 0, 1);
-        while (cur.getFullYear() === year) {
-          const m = cur.getMonth();
-          if (!seenM.has(m)) {
-            seenM.add(m);
-            const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
-            els.push(
-              <text key={`mv${year}${m}`}
-                x={xOff + V.monthW - 3}
-                y={gridY + weekIdx * STEP + CELL - 2}
-                fill={textFill} fontSize={8} fontFamily="GeistSans, system-ui, sans-serif" textAnchor="end"
-              >{MONTHS[m]}</text>
-            );
+  // Step 3: Draw the cells; `--t` orders color changes by date, 2 sweep names restart it.
+  // The faint edge keeps the palest shade apart from the empty grey.
+  const cells = useMemo(() => {
+    const cellClass = cn(
+      "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",
+      sweep > 0 && (sweep % 2 ? "sweep-a" : "sweep-b"),
+    );
+    return layout.cells.map(({ day, x, y, t }) => {
+      const { chatgpt = 0, claude = 0 } = data[day] ?? {};
+      const hasData = chatgpt + claude > 0;
+      const outside =
+        (!!firstDay && day < firstDay) || (!!lastDay && day > lastDay);
+      return (
+        <rect
+          key={day}
+          x={x}
+          y={y}
+          width={CELL}
+          height={CELL}
+          rx={2}
+          fill={chatgpt > 0 && claude > 0 ? `url(#${uid}g${day})` : undefined}
+          strokeWidth={1}
+          className={cn(
+            cellClass,
+            shadeClass(day, chatgpt, claude, edges, firstDay, lastDay),
+          )}
+          style={{ "--t": t.toFixed(3) } as React.CSSProperties}
+          data-day={day}
+          tabIndex={day === tabStop ? 0 : -1}
+          // Pointer events with a mouse check: a tap also fires
+          // compatibility mouse events, which would close its details.
+          // A move, not an enter: Chrome sends enters with no move at a
+          // still spot (its mouse after a tap, a pen's last place) when the
+          // page changes under it, and those must show no card.
+          onPointerMove={
+            hasData ? (e) => on.current.handleHover(e, day) : undefined
           }
-          cur.setDate(cur.getDate() + 1);
-        }
-      }
-
-      // Cells
-      const cur = new Date(year, 0, 1);
-      while (cur.getFullYear() === year) {
-        const day     = cur.toLocaleDateString("sv-SE");
-        const weekIdx = Math.floor((dayOfYear(cur) + jan1wd) / 7);
-        const col     = cur.getDay();
-        els.push(makeCell(day, gridX + col * STEP, gridY + weekIdx * STEP));
-        cur.setDate(cur.getDate() + 1);
-      }
-    }
-  }
-
-  // Step 4: position the hover tooltip next to the cursor, flipping to the
-  // left edge (clamped to the viewport) when it would overflow the right.
-  const tipData  = tip ? (data[tip.day] ?? { chatgpt: 0, claude: 0 }) : null;
-  const tipTotal = tipData ? tipData.chatgpt + tipData.claude : 0;
-  const TIP_W    = 260;
-
-  let tipLeft = 0;
-  if (tip && containerRef.current) {
-    const b = containerRef.current.getBoundingClientRect();
-    const wouldOverflowRight = b.left + tip.cx + 14 + TIP_W > window.innerWidth;
-    if (wouldOverflowRight) {
-      // Flip left, but clamp so it never exits the viewport's left edge
-      tipLeft = Math.max(-b.left + 4, tip.cx - TIP_W - 6);
-    } else {
-      tipLeft = tip.cx + 14;
-    }
-  }
+          onPointerDown={(e) => {
+            // A scroll or a swipe never focuses the cell: forget the press
+            // soon. A new press restarts the wait: an older press's timer
+            // cleared it during a quick next tap, whose focus then looked
+            // like the keyboard's and put the small card over the sheet.
+            pressedWith.current = e.pointerType;
+            clearTimeout(pressTimer.current);
+            pressTimer.current = setTimeout(
+              () => (pressedWith.current = ""),
+              1000,
+            );
+          }}
+          onFocus={(e) => {
+            setActive(day);
+            setKeyed(e.currentTarget.matches(":focus-visible") ? day : null);
+            // A pointer press is handled on its release (onTapUp); the
+            // keyboard shows the card at the cell.
+            if (pressedWith.current === "")
+              on.current.showAtCell(day, e.currentTarget);
+            pressedWith.current = "";
+          }}
+          onBlur={() => {
+            setKeyed(null);
+            on.current.handleLeave(day);
+          }}
+          onPointerUp={(e) => on.current.onTapUp(e, day)}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
+          role="img"
+          aria-label={describeDay(
+            names.get(day) ?? day,
+            chatgpt,
+            claude,
+            outside,
+          )}
+        />
+      );
+    });
+  }, [layout, data, edges, firstDay, lastDay, sweep, uid, tabStop, names]);
 
   return (
     <div
       ref={outerRef}
-      style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+      id={id}
+      className={cn(
+        "relative flex h-full w-full items-center justify-center",
+        // The browser keeps the vertical scroll and the zoom; a sideways move
+        // is the swipe. A mouse drag selects no text.
+        swipe && "touch-pan-y touch-pinch-zoom select-none",
+      )}
     >
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <svg
-        role="img"
-        aria-label={`Calendar heatmap of AI chat activity from ${from.getFullYear()} to ${to.getFullYear()}`}
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        width={renderedW}
-        height={renderedH}
-        style={{ display: "block" }}
-      >
-        <defs>{gradDefs}</defs>
-        {els}
-      </svg>
+      <div ref={containerRef} className="relative">
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the key handler moves the roving tab stop between the focusable cells */}
+        <svg
+          ref={svgRef}
+          id={`${id ?? uid}-svg`}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- SVG has no group element with that meaning
+          role="group"
+          aria-label={`Calendar heatmap of AI chat activity from ${startYear} to ${endYear}. Use the arrow keys to move between days.`}
+          viewBox={`0 0 ${layout.width} ${layout.height}`}
+          width={renderedW}
+          height={renderedH}
+          className="block"
+          onKeyDown={onKeyDown}
+        >
+          <defs>{gradients}</defs>
+          {layout.labels.map((l) => (
+            <text
+              key={l.key}
+              data-key={l.key}
+              x={l.x}
+              y={l.y}
+              className="fill-[#666] dark:fill-[#888]"
+              fontSize={l.size}
+              fontWeight={l.bold ? 600 : undefined}
+              textAnchor={l.anchor}
+            >
+              {l.text}
+            </text>
+          ))}
+          {cells}
+          {ring && (
+            <rect
+              aria-hidden="true"
+              className="cell-ring"
+              x={ring.x - 2.5}
+              y={ring.y - 2.5}
+              width={CELL + 5}
+              height={CELL + 5}
+              rx={3.5}
+            />
+          )}
+        </svg>
 
-      {tip && tipData && tipTotal > 0 && (() => {
-        const titles  = dayTitles[tip.day];
-        const gptT    = titles?.chatgpt ?? {};
-        const claudeT = titles?.claude  ?? {};
-        const hasBoth = tipData.chatgpt > 0 && tipData.claude > 0;
-        const fg      = isDark ? "#f9fafb" : "#111827";
-        const sub     = isDark ? "#d1d5db" : "#374151";
-        const muted   = isDark ? "#9ca3af" : "#6b7280";
-
-        return (
-          <div style={{
-            position: "absolute",
-            left: tipLeft,
-            top: tip.cy - 10,
-            pointerEvents: "none",
-            zIndex: 20,
-            background: isDark ? "#1f2937" : "#fff",
-            border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
-            borderRadius: 8,
-            boxShadow: "0 4px 12px rgba(0,0,0,.12)",
-            padding: "8px 10px",
-            minWidth: 140,
-            maxWidth: TIP_W,
-          }}>
-            <p style={{ fontWeight: 600, color: fg, fontSize: 13, marginBottom: 6 }}>
-              {tip.day}:{" "}
-              <span style={{ fontWeight: 400 }}>{tipTotal} messages</span>
-            </p>
-
-            {tipData.chatgpt > 0 && (
-              <div style={{ marginBottom: hasBoth ? 6 : 0 }}>
-                {hasBoth && (
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "#16a34a", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    ChatGPT
-                  </p>
-                )}
-                {Object.entries(gptT).map(([title, count]) => (
-                  <p key={title} style={{ color: sub, fontSize: 11, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 1 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{title}</span>
-                    <span style={{ color: muted, flexShrink: 0 }}>{count}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-
-            {tipData.claude > 0 && (
-              <div>
-                {hasBoth && (
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "#ea580c", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Claude
-                  </p>
-                )}
-                {Object.entries(claudeT).map(([title, count]) => (
-                  <p key={title} style={{ color: sub, fontSize: 11, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 1 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{title}</span>
-                    <span style={{ color: muted, flexShrink: 0 }}>{count}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-    </div>
+        {!pane && tip && !tip.sheet && data[tip.day] && (
+          <DayTooltip
+            id={tipId}
+            day={tip.day}
+            counts={data[tip.day]}
+            chats={dayTitles[tip.day]}
+            x={tip.x}
+            y={tip.y}
+          />
+        )}
+      </div>
+      {/* Swipe hints: the view a release goes to (components/calendar-swipe.ts). */}
+      {(["prev", "next"] as const).map(
+        (key) =>
+          swipe?.[key] && (
+            <span
+              key={key}
+              ref={(el) => {
+                hints.current[key] = el;
+              }}
+              aria-hidden="true"
+              className={cn(
+                "swipe-hint pointer-events-none absolute top-0 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-white/90 text-sm font-medium text-zinc-700 opacity-0 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200",
+                key === "prev" ? "left-0 pr-3 pl-2" : "right-0 pr-2 pl-3",
+              )}
+            >
+              {key === "prev" && <ChevronLeft aria-hidden="true" size={16} />}
+              {swipe[key]}
+              {key === "next" && <ChevronRight aria-hidden="true" size={16} />}
+            </span>
+          ),
+      )}
+      {/* The sheet sits in <body>: a transformed ancestor (the page's
+          entrance, the swipe) would move a fixed element with it. */}
+      {!pane &&
+        sheetDay &&
+        data[sheetDay] &&
+        createPortal(
+          <DaySheet
+            id={sheetId}
+            open={!!tip?.sheet}
+            onClose={closeSheet}
+            day={sheetDay}
+            counts={data[sheetDay]}
+            chats={dayTitles[sheetDay]}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
