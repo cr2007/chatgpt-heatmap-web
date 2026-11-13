@@ -324,12 +324,29 @@
 .dark #heat-legend-outside .lv-out {
   stroke: var(--color-zinc-500);
 }
-/* Keyboard focus on a day: an accent outline drawn with the stroke, which
-   works on SVG in every engine. */
-.heat-cell:focus-visible {
+/* Keyboard focus on a day, and the day a tap picked: the cell takes a
+   page-coloured edge, and an accent ring (`.cell-ring`, drawn over the
+   cells) sits outside it. The ring then meets only the page colour, never
+   a shade: an accent edge on a light teal day was hard to see. A tap
+   focuses the cell, and Chrome on Android then draws its own grey ring
+   (outline: auto on :focus); this replaces it. */
+.heat-cell:focus {
   outline: none;
-  stroke: var(--color-accent);
+}
+.heat-cell:focus-visible,
+.heat-cell[data-picked] {
+  stroke: var(--color-zinc-50);
   stroke-width: 2px;
+}
+.dark .heat-cell:focus-visible,
+.dark .heat-cell[data-picked] {
+  stroke: var(--color-zinc-950);
+}
+.cell-ring {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.5px;
+  pointer-events: none;
 }
 .lv-g1 {
   fill: var(--g1);

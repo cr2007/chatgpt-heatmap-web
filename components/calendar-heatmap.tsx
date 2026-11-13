@@ -205,6 +205,8 @@ export function CalendarHeatmap({
   const pressedWith = useRef("");
   /** The day that keeps the tab stop; null means the latest day with prompts. */
   const [active, setActive] = useState<string | null>(null);
+  /** The day that has keyboard focus (`:focus-visible`), for its ring. */
+  const [keyed, setKeyed] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
   /**
@@ -415,7 +417,15 @@ export function CalendarHeatmap({
   useLayoutEffect(() => {
     on.current = { handleEnter, handleLeave, showAtCell, onTapUp };
   });
-  // The open details describe their cell (set here, so the cells stay memoized).
+  // The open details describe their cell, and a tapped day is marked as
+  // picked (set here, so the cells stay memoized).
+  // The ring of the picked or keyed day: drawn over the cells, apart from its
+  // cell by a page-coloured gap, so it shows on every shade.
+  const ringDay = tip?.tap ? tip.day : keyed;
+  const ring = useMemo(
+    () => ringDay && layout.cells.find((c) => c.day === ringDay),
+    [layout, ringDay],
+  );
   const describedBy = pane?.id ?? (tip?.sheet ? sheetId : tipId);
   useLayoutEffect(() => {
     const cell = tip
@@ -423,7 +433,11 @@ export function CalendarHeatmap({
       : null;
     if (!cell) return;
     cell.setAttribute("aria-describedby", describedBy);
-    return () => cell.removeAttribute("aria-describedby");
+    cell.toggleAttribute("data-picked", !!tip?.tap);
+    return () => {
+      cell.removeAttribute("aria-describedby");
+      cell.removeAttribute("data-picked");
+    };
   }, [tip, describedBy, layout]);
 
   /** Closes the sheet; stable, so the sheet keeps one Escape listener. */
@@ -484,6 +498,7 @@ export function CalendarHeatmap({
           onPointerDown={(e) => (pressedWith.current = e.pointerType)}
           onFocus={(e) => {
             setActive(day);
+            setKeyed(e.currentTarget.matches(":focus-visible") ? day : null);
             on.current.showAtCell(
               day,
               e.currentTarget,
@@ -492,7 +507,10 @@ export function CalendarHeatmap({
             );
             pressedWith.current = "";
           }}
-          onBlur={() => on.current.handleLeave()}
+          onBlur={() => {
+            setKeyed(null);
+            on.current.handleLeave();
+          }}
           onPointerUp={(e) => on.current.onTapUp(e, day)}
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
           role="img"
@@ -547,6 +565,17 @@ export function CalendarHeatmap({
             </text>
           ))}
           {cells}
+          {ring && (
+            <rect
+              aria-hidden="true"
+              className="cell-ring"
+              x={ring.x - 2.5}
+              y={ring.y - 2.5}
+              width={CELL + 5}
+              height={CELL + 5}
+              rx={3.5}
+            />
+          )}
         </svg>
 
         {!pane && tip && !tip.sheet && data[tip.day] && (
