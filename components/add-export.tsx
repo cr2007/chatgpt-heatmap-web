@@ -1,9 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { CircleQuestionMark, LoaderCircle, Plus } from "lucide-react";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
-import { hovering } from "@/app/hover-input";
+import { HOVER_END, hovering } from "@/app/hover-input";
 
 /**
  * Safari before 17 has no Popover API: the help would show all the time.
@@ -48,6 +48,20 @@ export function AddExport({
    *  a pin. */
   const opening = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // A pen that lifts away sends no leave (app/hover-input.ts): a help that a
+  // hover opened closes when the hover ends.
+  useEffect(() => {
+    const ended = () => {
+      clearTimeout(timer.current);
+      const pop = document.getElementById("export-help");
+      if (byHover.current && pop?.matches(":popover-open")) pop.hidePopover();
+    };
+    addEventListener(HOVER_END, ended);
+    return () => {
+      removeEventListener(HOVER_END, ended);
+      clearTimeout(timer.current);
+    };
+  }, []);
   const reading = progress !== null;
   const order = [...PROVIDERS].sort(
     (a, b) => Number(loaded.includes(a.key)) - Number(loaded.includes(b.key)),

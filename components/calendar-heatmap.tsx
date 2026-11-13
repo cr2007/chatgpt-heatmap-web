@@ -23,6 +23,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DaySheet, DayTooltip } from "@/components/day-details";
 import { useCalendarSwipe, type Swipe } from "@/components/calendar-swipe";
 import { playMorph } from "@/components/calendar-morph";
+import { HOVER_END } from "@/app/hover-input";
 
 /** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
 const HIDE_DELAY = 80;
@@ -442,6 +443,15 @@ export function CalendarHeatmap({
   useLayoutEffect(() => {
     on.current = { handleHover, handleLeave, showAtCell, onTapUp };
   });
+  // A pen that lifts away sends no leave at all (app/hover-input.ts): the
+  // hover card goes when the hover ends. A tap's sheet and a pane stay.
+  const hasPane = !!pane;
+  useEffect(() => {
+    if (hasPane) return;
+    const ended = () => setTip((t) => (t?.tap ? t : null));
+    addEventListener(HOVER_END, ended);
+    return () => removeEventListener(HOVER_END, ended);
+  }, [hasPane]);
   // A hover ends with the native pointerleave: React's onPointerLeave comes
   // from pointerout, which a browser may skip when a pen leaves hover range.
   useEffect(() => {
