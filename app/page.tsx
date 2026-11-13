@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, FlaskConical } from "lucide-react";
 import { AddExport } from "@/components/add-export";
 import { AppBar } from "@/components/app-bar";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
@@ -256,7 +256,26 @@ export default function Home() {
       />
     </div>
   );
-  if (!hasData) return <>{welcome}</>;
+  // Dev only: a button that opens the test-data page. The build defines
+  // NODE_ENV as "production", so the bundler drops it (AGENTS.md, Toolchain).
+  const devTools = process.env.NODE_ENV !== "production" && (
+    <a
+      id="dev-test-data"
+      href="/test.html"
+      title="Dev only: load synthetic test data"
+      className="fixed bottom-3 left-3 z-40 inline-flex h-8 items-center gap-1.5 rounded-full border border-dashed border-zinc-300 bg-white/90 px-3 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur-sm transition-[background-color,scale] duration-(--dur-micro) ease-out hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden active:scale-[0.97] print:hidden dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:bg-zinc-800"
+    >
+      <FlaskConical aria-hidden="true" className="size-3.5" />
+      Test data
+    </a>
+  );
+  if (!hasData)
+    return (
+      <>
+        {welcome}
+        {devTools}
+      </>
+    );
 
   // Step 3: Build the parts once: the top bar, the figures, the year tabs and
   // the legend, the calendar.
@@ -479,6 +498,7 @@ export default function Home() {
       >
         {screen}
       </div>
+      {devTools}
     </>
   );
 }

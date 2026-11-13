@@ -59,7 +59,7 @@
 
       .card {
         width: 100%;
-        max-width: 28rem;
+        max-width: min(48rem, 100% - 2rem);
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 1rem;
@@ -250,6 +250,29 @@
         border: none;
         border-top: 1px solid var(--border);
       }
+
+      /* Preset switch: plain dev chrome, links so the choice is in the URL */
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 2px;
+        border-radius: 0.5rem;
+        background: var(--border);
+      }
+      .presets a {
+        flex: 1;
+        padding: 0.375rem 0.5rem;
+        border-radius: 0.375rem;
+        color: var(--text);
+        text-align: center;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .presets a[aria-current] {
+        background: var(--surface);
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
@@ -260,6 +283,27 @@
           Generates dummy conversation history and loads it into the heatmap.
           Data is stored in sessionStorage and cleared when you close the tab.
         </p>
+      </div>
+
+      <hr />
+
+      <div class="section">
+        <div class="section-title">Preset (opens the app)</div>
+        <nav class="presets" id="presets" aria-label="Data preset">
+          <a href="?">Generator</a>
+          <a href="?data=worst">Worst case</a>
+          <a href="?data=year">One year</a>
+          <a href="?data=empty">Empty</a>
+          <a href="?data=one">One</a>
+          <a href="?data=huge">Huge</a>
+        </nav>
+        <p>
+          The app names test data "Test data". To test file names, download the
+          worst case as files and drop them on the app.
+        </p>
+        <button class="btn-ghost" id="btn-files">
+          Download worst case as files
+        </button>
       </div>
 
       <hr />
@@ -409,6 +453,258 @@
         }
         return result;
       }
+
+      // ── Worst-case presets (break-ui) ──────────────────────────────────────
+      const DAY_MS = 864e5;
+      const HOUR = 3600e3;
+      /** Midnight UTC of a `YYYY-MM-DD` day, in ms. */
+      const utc = (day) => Date.parse(day + "T00:00:00Z");
+
+      /** A ChatGPT chat with one visible user prompt per time (ms). */
+      function gptChat(title, times) {
+        const mapping = {};
+        times.forEach((t, j) => {
+          mapping["u" + j] = {
+            message: { author: { role: "user" }, create_time: t / 1000 },
+          };
+        });
+        return { title, create_time: (times[0] ?? 1.7e12) / 1000, mapping };
+      }
+
+      /** A Claude chat with one human message per time (ms). */
+      function claudeChat(name, times) {
+        return {
+          name,
+          created_at: new Date(times[0] ?? 1.7e12).toISOString(),
+          chat_messages: times.map((t) => ({
+            sender: "human",
+            created_at: new Date(t).toISOString(),
+          })),
+        };
+      }
+
+      /** Titles real users produce that break layouts (renamed chats, pasted text). */
+      const WORST_TITLES = [
+        "https://example.com/workspaces/acme/projects/q3-launch/docs/9f8e7d6c5b4a?tab=comments&filter=unresolved",
+        "/Users/aleksandra/Projects/northwind-industries/infrastructure/terraform/modules/networking/vpc-peering/main.tf",
+        "مراجعة عقد الإيجار السنوي للمكتب الجديد في دبي",
+        "סיכום פגישת צוות המוצר לרבעון השלישי",
+        "如何在不同时区之间正确转换日期和时间戳并保存到数据库",
+        "👩🏽‍💻 Debugging the 🦊 Firefox flexbox bug 🐛🔥",
+        "",
+        "   ",
+        "Untitled",
+        "Benachrichtigungseinstellungen",
+        "Help me write a cover letter for a Senior Product Design Engineer, Platform Infrastructure role at a fintech company in Berlin that values accessibility",
+        "<script>alert(1)<\/script> &amp; **bold**",
+        "Line one\nLine two",
+        "Đặng Thị Ngọc Hân: tóm tắt cuộc họp",
+        "IMG_20250914_183022_HDR_portrait_edited_edited.HEIC",
+        "Jo",
+      ];
+      const PLAIN_TITLES = [
+        "Fix TypeScript generic error",
+        "Weekly meal plan",
+        "Explain OAuth refresh tokens",
+        "Draft email to landlord",
+        "SQL window functions",
+        "Trip to Lisbon itinerary",
+        "Regex for phone numbers",
+        "Summarize meeting notes",
+        "React useEffect cleanup",
+        "Birthday gift ideas",
+      ];
+      /** File names for "Download worst case as files". */
+      const FILE_NAMES = {
+        chatgpt: [
+          "conversations-2026-11-12-full-export-from-work-account-final-v3.json",
+          "conversations (2) - Personal laptop backup copy.json",
+          "conversations.json",
+        ],
+        claude:
+          "claude-export-data-2026-11-12-aleksandra-wisniewska-kowalczyk-workspace.json",
+      };
+
+      /**
+       * The worst case: every worst title mixed into plain ones, one day with
+       * 1,000+ prompts in 200+ chats, a year and a day with exactly 1 prompt.
+       * With `yearOnly`, the same shape inside 2026 only.
+       */
+      function worst(yearOnly) {
+        const rng = makeRng(0x5eed);
+        const gpt = [];
+        const claude = [];
+        const today = utc(new Date().toISOString().slice(0, 10));
+        const busy = yearOnly ? "2026-03-14" : "2025-03-14";
+        const leap = "2024-02-29"; // exactly 1 prompt in 1 chat
+        const claudeFrom = utc("2023-07-11");
+        let w = 0;
+        let n = 0;
+        const title = () =>
+          rng() < 0.2
+            ? WORST_TITLES[w++ % WORST_TITLES.length]
+            : PLAIN_TITLES[n++ % PLAIN_TITLES.length];
+        const times = (day, count) => {
+          const start = day + 8 * HOUR + Math.floor(rng() * 12) * HOUR;
+          return Array.from({ length: count }, (_, j) => start + j * 180e3);
+        };
+        // Step 1: background, a few chats on most days
+        for (
+          let d = yearOnly ? utc("2026-01-05") : utc("2023-01-02");
+          d <= today;
+          d += DAY_MS
+        ) {
+          const iso = new Date(d).toISOString().slice(0, 10);
+          if (iso === leap || iso === busy) continue;
+          if (rng() < 0.3) continue;
+          for (let i = Math.floor(rng() * 4); i >= 0; i--)
+            gpt.push(gptChat(title(), times(d, 1 + Math.floor(rng() * 6))));
+          if (d >= claudeFrom && rng() < 0.6)
+            for (let i = Math.floor(rng() * 3); i >= 0; i--)
+              claude.push(
+                claudeChat(title(), times(d, 1 + Math.floor(rng() * 5))),
+              );
+        }
+        // Step 2: the busiest day, worst titles busiest so the day card lists them
+        const b = utc(busy);
+        [40, 35, 30, 25, 20, 15, 12].forEach((c, i) =>
+          gpt.push(gptChat(WORST_TITLES[i], times(b, c))),
+        );
+        for (let i = 0; i < 133; i++)
+          gpt.push(gptChat(PLAIN_TITLES[i % 10] + " " + (i + 1), times(b, 4)));
+        [30, 25, 20, 15, 10, 8, 6].forEach((c, i) =>
+          claude.push(claudeChat(WORST_TITLES[i + 7], times(b, c))),
+        );
+        for (let i = 0; i < 73; i++)
+          claude.push(
+            claudeChat(PLAIN_TITLES[i % 10] + " " + (i + 1), times(b, 4)),
+          );
+        // Step 3: counts of exactly 1, and prompts outside the export
+        if (!yearOnly) {
+          gpt.unshift(gptChat("", [utc("2022-11-30") + 15 * HOUR]));
+          claude.push(claudeChat("Jo", [utc(leap) + 12 * HOUR]));
+        }
+        claude.push(
+          claudeChat("Imported from an old backup", [
+            utc("2019-06-01") + 10 * HOUR,
+            Date.now() + 5 * DAY_MS,
+          ]),
+        );
+        return { chatgpt: gpt, claude };
+      }
+
+      /** Exports with chats but no dated prompt. */
+      function empty() {
+        const t = utc("2025-01-01") / 1000;
+        return {
+          chatgpt: [
+            {
+              title: "Custom instructions only",
+              create_time: t,
+              mapping: {
+                a: {
+                  message: {
+                    author: { role: "user" },
+                    create_time: t,
+                    content: { content_type: "user_editable_context" },
+                  },
+                },
+              },
+            },
+            { title: "", create_time: t, mapping: {} },
+          ],
+          claude: [
+            {
+              name: "Draft",
+              created_at: "2025-01-01T00:00:00Z",
+              chat_messages: [],
+            },
+            {
+              name: "Assistant only",
+              created_at: "2025-01-01T00:00:00Z",
+              chat_messages: [
+                { sender: "assistant", created_at: "2025-01-01T00:00:00Z" },
+              ],
+            },
+          ],
+        };
+      }
+
+      /** One chat, one prompt, one day. */
+      const one = () => ({
+        chatgpt: [gptChat("Hi", [Date.UTC(2026, 5, 15, 12)])],
+        claude: null,
+      });
+
+      /**
+       * 30,000 chats over 4 years (about 21 a day), 1 to 2 prompts each.
+       * shortcut: sessionStorage holds about 5M characters, so prompts per
+       * chat stay low; upload a file for a heavier export.
+       */
+      function huge() {
+        const rng = makeRng(0xb16);
+        const gpt = [];
+        const claude = [];
+        const from = utc("2022-11-30");
+        const days = Math.floor((Date.now() - from) / DAY_MS);
+        for (let i = 0; i < 30000; i++) {
+          const day = from + Math.floor(rng() * days) * DAY_MS;
+          const t = day + Math.floor(rng() * 24) * HOUR;
+          const ts = rng() < 0.3 ? [t, t + 120e3] : [t];
+          const name =
+            i % 97 === 0
+              ? WORST_TITLES[i % WORST_TITLES.length]
+              : PLAIN_TITLES[i % 10];
+          if (i % 5 < 3 || day < utc("2023-07-11")) gpt.push(gptChat(name, ts));
+          else claude.push(claudeChat(name, ts));
+        }
+        return { chatgpt: gpt, claude };
+      }
+
+      const PRESETS = {
+        worst: () => worst(false),
+        year: () => worst(true),
+        empty,
+        one,
+        huge,
+      };
+
+      // Step 1: mark the preset in the URL; a known preset loads and opens the app
+      const preset = new URLSearchParams(location.search).get("data");
+      for (const a of document.querySelectorAll("#presets a"))
+        if ((new URL(a.href).searchParams.get("data") ?? null) === preset)
+          a.setAttribute("aria-current", "page");
+      if (PRESETS[preset]) {
+        const data = PRESETS[preset]();
+        sessionStorage.removeItem("test-chatgpt");
+        sessionStorage.removeItem("test-claude");
+        try {
+          for (const key of ["chatgpt", "claude"])
+            if (data[key])
+              sessionStorage.setItem("test-" + key, JSON.stringify(data[key]));
+          location.replace("/");
+        } catch {
+          alert("The preset is too large for sessionStorage.");
+        }
+      }
+
+      // Step 2: the worst case as files with long names, to drop on the app
+      document.getElementById("btn-files").addEventListener("click", () => {
+        const data = worst(false);
+        const save = (name, arr) => {
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(
+            new Blob([JSON.stringify(arr)], { type: "application/json" }),
+          );
+          a.download = name;
+          a.click();
+        };
+        const third = Math.ceil(data.chatgpt.length / 3);
+        FILE_NAMES.chatgpt.forEach((name, i) =>
+          save(name, data.chatgpt.slice(i * third, (i + 1) * third)),
+        );
+        save(FILE_NAMES.claude, data.claude);
+      });
 
       // ── State ──────────────────────────────────────────────────────────────
       const rowChatgpt = document.getElementById("row-chatgpt");
