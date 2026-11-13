@@ -23,9 +23,12 @@
  * post box drop zone on the welcome screen: the card motion and the box
  * (102.2 and 11.7 kB); JS to 106 kB and CSS to 12.5 kB for the year
  * change wave between single years and the draggable glass pill of the
- * year tabs (105.3 and 12.0 kB).
+ * year tabs (105.3 and 12.0 kB); JS to 106.5 kB for the audit and break-ui
+ * fixes: the day card kept below the bar, every file in the phone panel,
+ * readable zone names, the wide bar's overflow check and the memoized
+ * calendar cells (106.3 kB).
  */
-const BUDGET = { js: 106_000, css: 12_500 } as const;
+const BUDGET = { js: 106_500, css: 12_500 } as const;
 
 // Step 1: Gzip every JS and CSS file in dist/ and add up the sizes per type.
 const totals = { js: 0, css: 0 };

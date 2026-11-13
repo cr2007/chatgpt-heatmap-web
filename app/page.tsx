@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { AddExport } from "@/components/add-export";
 import { AppBar } from "@/components/app-bar";
@@ -35,6 +35,24 @@ import { loadTestData, type Exports } from "@/app/dev-data";
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
 const NO_YEARS: number[] = [];
+/** Shortest time in ms between two partial results drawn while files stream
+ *  in. Each one counts every prompt read so far again, so a shorter gap makes
+ *  a large upload slower; the progress line still moves every 200 ms. */
+const STREAM_EVERY = 1000;
+/**
+ * Shows a loaded export as the bar shows it.
+ *
+ * @param e - The export, or null for none.
+ * @returns The name, the files, the chat count and the prompt count (the
+ *   heatmap's count); null for no export.
+ */
+const info = (e: LoadedExport | null) =>
+  e && {
+    name: e.name,
+    files: e.files,
+    count: e.chats.length,
+    prompts: e.chats.reduce((n, c) => n + c.times.length, 0),
+  };
 /** localStorage key: book posture with the controls on the right. */
 const SWAP_KEY = "fold-swap";
 
@@ -69,6 +87,8 @@ export default function Home() {
   const [exports, setExports] = useState<Exports>(loadTestData);
   /** What an upload in progress has read so far; null when idle. */
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
+  /** When the last partial result was drawn (performance.now() ms); 0 after an upload. */
+  const lastStream = useRef(0);
   /** Files are going into the welcome screen's post box: keep that screen
    *  until its flap is shut, and draw no partial result meanwhile. */
   const [posting, setPosting] = useState(false);
@@ -130,6 +150,11 @@ export default function Home() {
     () => agg && (view === "all" ? allStats : summarize(agg.data, view)),
     [agg, allStats, view],
   );
+  /** What the bar shows of each export; counted once per upload, not per render. */
+  const loaded = useMemo(
+    () => ({ chatgpt: info(exports.chatgpt), claude: info(exports.claude) }),
+    [exports],
+  );
 
   /**
    * Adds new exports, keeping a provider the upload did not include.
@@ -152,6 +177,9 @@ export default function Home() {
    * @param partial - What the upload read so far, or null when it ended.
    */
   const onStream = (partial: PartialExports | null) => {
+    const now = performance.now();
+    if (partial && now - lastStream.current < STREAM_EVERY) return;
+    lastStream.current = partial ? now : 0;
     setStreaming(partial);
     if (partial) setSweep(0);
   };
@@ -216,24 +244,6 @@ export default function Home() {
 
   // Step 3: Build the parts once: the top bar, the figures, the year tabs and
   // the legend, the calendar.
-  /**
-   * Shows a loaded export as the bar shows it.
-   *
-   * @param e - The export, or null for none.
-   * @returns The name, the files, the chat count and the prompt count (the
-   *   heatmap's count); null for no export.
-   */
-  const info = (e: LoadedExport | null) =>
-    e && {
-      name: e.name,
-      files: e.files,
-      count: e.chats.length,
-      prompts: e.chats.reduce((n, c) => n + c.times.length, 0),
-    };
-  const loaded = {
-    chatgpt: info(exports.chatgpt),
-    claude: info(exports.claude),
-  };
   const bar = (
     <AppBar
       progress={upload.progress}

@@ -15,7 +15,7 @@ import {
   type Edges,
 } from "@/lib/calendar-geometry";
 import { providerInfo } from "@/lib/providers";
-import { cn, plural } from "@/lib/utils";
+import { cn, formatDay, plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
 import { DayTooltip } from "@/components/day-details";
 import { playMorph } from "@/components/calendar-morph";
@@ -27,15 +27,6 @@ const HIDE_DELAY = 80;
 const GPT = providerInfo("chatgpt").ramp;
 const CLAUDE = providerInfo("claude").ramp;
 
-/** "Sun, Mar 10, 2024" in the reader's locale. */
-const dayName = new Intl.DateTimeFormat(undefined, {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 /**
  * Gives the accessible name of a day cell.
  *
@@ -43,7 +34,7 @@ const dayName = new Intl.DateTimeFormat(undefined, {
  * @param chatgpt - ChatGPT prompts on the day.
  * @param claude - Claude prompts on the day.
  * @param outside - The day is outside the export.
- * @returns For example "Sun, Mar 10, 2024: 3 messages (ChatGPT 2, Claude 1)".
+ * @returns For example "Sun, Mar 10, 2024: 3 prompts (ChatGPT 2, Claude 1)".
  */
 function describeDay(
   name: string,
@@ -57,7 +48,7 @@ function describeDay(
     chatgpt > 0 && `ChatGPT ${chatgpt}`,
     claude > 0 && `Claude ${claude}`,
   ].filter(Boolean);
-  return `${name}: ${plural(chatgpt + claude, "message")} (${parts.join(", ")})`;
+  return `${name}: ${plural(chatgpt + claude, "prompt")} (${parts.join(", ")})`;
 }
 
 /**
@@ -72,8 +63,40 @@ const addDays = (day: string, n: number) =>
     .toISOString()
     .slice(0, 10);
 
+/**
+ * Picks the shade class of a day.
+ *
+ * A day outside the export is hollow, so it does not read as a day with
+ * no prompts.
+ *
+ * @param day - The `YYYY-MM-DD` day.
+ * @param chatgpt - ChatGPT prompts on the day.
+ * @param claude - Claude prompts on the day.
+ * @param edges - The shade level edges per provider.
+ * @param firstDay - The first day of the export, if known.
+ * @param lastDay - The last day of the export, if known.
+ * @returns One provider's level class; `undefined` for a day with both
+ *   (its gradient fill sets the colors); `lv-0` when empty; `lv-out` when
+ *   outside the export.
+ */
+function shadeClass(
+  day: string,
+  chatgpt: number,
+  claude: number,
+  edges: Record<Provider, Edges>,
+  firstDay?: string,
+  lastDay?: string,
+): string | undefined {
+  if (chatgpt > 0 && claude > 0) return undefined;
+  if (chatgpt > 0) return `lv-${GPT}${level(chatgpt, edges.chatgpt)}`;
+  if (claude > 0) return `lv-${CLAUDE}${level(claude, edges.claude)}`;
+  if ((firstDay && day < firstDay) || (lastDay && day > lastDay))
+    return "lv-out";
+  return "lv-0";
+}
+
 /** Props of {@link CalendarHeatmap}. */
-export interface CalendarHeatmapProps {
+interface CalendarHeatmapProps {
   /** Prompt counts per provider, by `YYYY-MM-DD` day. */
   data: Record<string, CalHeatmapDay>;
   /** The chats of each day, for the day details. */
@@ -197,47 +220,49 @@ export function CalendarHeatmap({
   }, [startYear, endYear]);
   /** Each drawn day's readable name, made once per layout. */
   const names = useMemo(
-    () =>
-      new Map(
-        layout.cells.map((c) => [c.day, dayName.format(Date.parse(c.day))]),
-      ),
+    () => new Map(layout.cells.map((c) => [c.day, formatDay(c.day)])),
     [layout],
   );
-  const tabStop =
-    active && names.has(active)
-      ? active
-      : (Object.keys(data)
-          .filter((d) => names.has(d))
-          .sort()
-          .at(-1) ?? layout.cells[0]?.day);
+  /** The latest drawn day with prompts, or the first drawn day. */
+  const latestDay = useMemo(
+    () =>
+      Object.keys(data)
+        .filter((d) => names.has(d))
+        .sort()
+        .at(-1) ?? layout.cells[0]?.day,
+    [data, names, layout],
+  );
+  const tabStop = active && names.has(active) ? active : latestDay;
   const renderedW = Math.round(layout.width * scale) || layout.width;
   const renderedH = Math.round(layout.height * scale) || layout.height;
 
   // Step 2: Make a two-color gradient for each day with both providers.
-  const gradients = Object.entries(data).flatMap(
-    ([day, { chatgpt, claude }]) => {
-      if (chatgpt <= 0 || claude <= 0) return [];
-      const pct = Math.round((chatgpt / (chatgpt + claude)) * 100);
-      return (
-        <linearGradient
-          key={day}
-          id={`${uid}g${day}`}
-          x1="0%"
-          y1="0%"
-          x2="100%"
-          y2="0%"
-        >
-          <stop
-            offset={`${Math.max(2, pct - 12)}%`}
-            className={`st-${GPT}${level(chatgpt, edges.chatgpt)}`}
-          />
-          <stop
-            offset={`${Math.min(98, pct + 12)}%`}
-            className={`st-${CLAUDE}${level(claude, edges.claude)}`}
-          />
-        </linearGradient>
-      );
-    },
+  const gradients = useMemo(
+    () =>
+      Object.entries(data).flatMap(([day, { chatgpt, claude }]) => {
+        if (chatgpt <= 0 || claude <= 0) return [];
+        const pct = Math.round((chatgpt / (chatgpt + claude)) * 100);
+        return (
+          <linearGradient
+            key={day}
+            id={`${uid}g${day}`}
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="0%"
+          >
+            <stop
+              offset={`${Math.max(2, pct - 12)}%`}
+              className={`st-${GPT}${level(chatgpt, edges.chatgpt)}`}
+            />
+            <stop
+              offset={`${Math.min(98, pct + 12)}%`}
+              className={`st-${CLAUDE}${level(claude, edges.claude)}`}
+            />
+          </linearGradient>
+        );
+      }),
+    [data, edges, uid],
   );
 
   // Step 4: Show the day details. With `pane`, they go to the pane and stay
@@ -348,37 +373,95 @@ export function CalendarHeatmap({
   }, [tip?.tap, pane]);
 
   /**
-   * Picks the shade class of a day.
+   * Hides tap details on a second tap of the same day, else shows them.
    *
-   * A day outside the export is hollow, so it does not read as a day with
-   * no prompts.
-   *
+   * @param e - The pointer up event; a mouse is ignored (it hovers).
    * @param day - The `YYYY-MM-DD` day.
-   * @param chatgpt - ChatGPT prompts on the day.
-   * @param claude - Claude prompts on the day.
-   * @returns One provider's level class; `undefined` for a day with both
-   *   (its gradient fill sets the colors); `lv-0` when empty; `lv-out` when
-   *   outside the export.
    */
-  function shadeClass(
-    day: string,
-    chatgpt: number,
-    claude: number,
-  ): string | undefined {
-    if (chatgpt > 0 && claude > 0) return undefined;
-    if (chatgpt > 0) return `lv-${GPT}${level(chatgpt, edges.chatgpt)}`;
-    if (claude > 0) return `lv-${CLAUDE}${level(claude, edges.claude)}`;
-    if ((firstDay && day < firstDay) || (lastDay && day > lastDay))
-      return "lv-out";
-    return "lv-0";
+  function onTapUp(e: React.PointerEvent<SVGRectElement>, day: string) {
+    if (e.pointerType === "mouse") return;
+    if (tip?.tap && tip.day === day && !pane) show(null);
+    else showAtCell(day, e.currentTarget, true);
   }
+  // The cells call the handlers of the latest render through this ref.
+  const on = useRef({ handleEnter, handleLeave, showAtCell, onTapUp });
+  useLayoutEffect(() => {
+    on.current = { handleEnter, handleLeave, showAtCell, onTapUp };
+  });
+  // The open details describe their cell (set here, so the cells stay memoized).
+  const describedBy = pane?.id ?? tipId;
+  useLayoutEffect(() => {
+    const cell = tip
+      ? svgRef.current?.querySelector(`[data-day="${tip.day}"]`)
+      : null;
+    if (!cell) return;
+    cell.setAttribute("aria-describedby", describedBy);
+    return () => cell.removeAttribute("aria-describedby");
+  }, [tip, describedBy, layout]);
 
   // Step 3: Draw the cells; `--t` orders color changes by date, 2 sweep names restart it.
   // The faint edge keeps the palest shade apart from the empty grey.
-  const cellClass = cn(
-    "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",
-    sweep > 0 && (sweep % 2 ? "sweep-a" : "sweep-b"),
-  );
+  const cells = useMemo(() => {
+    const cellClass = cn(
+      "heat-cell stroke-[rgba(0,0,0,0.08)] dark:stroke-[rgba(255,255,255,0.06)]",
+      sweep > 0 && (sweep % 2 ? "sweep-a" : "sweep-b"),
+    );
+    return layout.cells.map(({ day, x, y, t }) => {
+      const { chatgpt = 0, claude = 0 } = data[day] ?? {};
+      const hasData = chatgpt + claude > 0;
+      const outside =
+        (!!firstDay && day < firstDay) || (!!lastDay && day > lastDay);
+      return (
+        <rect
+          key={day}
+          x={x}
+          y={y}
+          width={CELL}
+          height={CELL}
+          rx={2}
+          fill={chatgpt > 0 && claude > 0 ? `url(#${uid}g${day})` : undefined}
+          strokeWidth={1}
+          className={cn(
+            cellClass,
+            shadeClass(day, chatgpt, claude, edges, firstDay, lastDay),
+          )}
+          style={{ "--t": t.toFixed(3) } as React.CSSProperties}
+          data-day={day}
+          tabIndex={day === tabStop ? 0 : -1}
+          // Pointer events with a mouse check: a tap also fires
+          // compatibility mouse events, which would close its details.
+          onPointerEnter={
+            hasData ? (e) => on.current.handleEnter(e, day) : undefined
+          }
+          onPointerLeave={
+            hasData
+              ? (e) => e.pointerType === "mouse" && on.current.handleLeave()
+              : undefined
+          }
+          onPointerDown={(e) => (pressedWith.current = e.pointerType)}
+          onFocus={(e) => {
+            setActive(day);
+            on.current.showAtCell(
+              day,
+              e.currentTarget,
+              pressedWith.current !== "" && pressedWith.current !== "mouse",
+            );
+            pressedWith.current = "";
+          }}
+          onBlur={() => on.current.handleLeave()}
+          onPointerUp={(e) => on.current.onTapUp(e, day)}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
+          role="img"
+          aria-label={describeDay(
+            names.get(day) ?? day,
+            chatgpt,
+            claude,
+            outside,
+          )}
+        />
+      );
+    });
+  }, [layout, data, edges, firstDay, lastDay, sweep, uid, tabStop, names]);
 
   return (
     <div
@@ -415,68 +498,7 @@ export function CalendarHeatmap({
               {l.text}
             </text>
           ))}
-          {layout.cells.map(({ day, x, y, t }) => {
-            const { chatgpt = 0, claude = 0 } = data[day] ?? {};
-            const hasData = chatgpt + claude > 0;
-            const outside =
-              (!!firstDay && day < firstDay) || (!!lastDay && day > lastDay);
-            return (
-              <rect
-                key={day}
-                x={x}
-                y={y}
-                width={CELL}
-                height={CELL}
-                rx={2}
-                fill={
-                  chatgpt > 0 && claude > 0 ? `url(#${uid}g${day})` : undefined
-                }
-                strokeWidth={1}
-                className={cn(cellClass, shadeClass(day, chatgpt, claude))}
-                style={{ "--t": t.toFixed(3) } as React.CSSProperties}
-                data-day={day}
-                tabIndex={day === tabStop ? 0 : -1}
-                // Pointer events with a mouse check: a tap also fires
-                // compatibility mouse events, which would close its details.
-                onPointerEnter={
-                  hasData ? (e) => handleEnter(e, day) : undefined
-                }
-                onPointerLeave={
-                  hasData
-                    ? (e) => e.pointerType === "mouse" && handleLeave()
-                    : undefined
-                }
-                onPointerDown={(e) => (pressedWith.current = e.pointerType)}
-                onFocus={(e) => {
-                  setActive(day);
-                  showAtCell(
-                    day,
-                    e.currentTarget,
-                    pressedWith.current !== "" &&
-                      pressedWith.current !== "mouse",
-                  );
-                  pressedWith.current = "";
-                }}
-                onBlur={handleLeave}
-                onPointerUp={(e) => {
-                  if (e.pointerType === "mouse") return;
-                  if (tip?.tap && tip.day === day && !pane) show(null);
-                  else showAtCell(day, e.currentTarget, true);
-                }}
-                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
-                role="img"
-                aria-label={describeDay(
-                  names.get(day) ?? day,
-                  chatgpt,
-                  claude,
-                  outside,
-                )}
-                aria-describedby={
-                  tip?.day === day ? (pane?.id ?? tipId) : undefined
-                }
-              />
-            );
-          })}
+          {cells}
         </svg>
 
         {!pane && tip && data[tip.day] && (
