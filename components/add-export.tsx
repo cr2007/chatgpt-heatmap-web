@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CircleQuestionMark, LoaderCircle, Plus } from "lucide-react";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
 import { HOVER_END, hovering } from "@/app/hover-input";
+import { cn } from "@/lib/utils";
 
 /**
  * Safari before 17 has no Popover API: the help would show all the time.
@@ -63,9 +64,14 @@ export function AddExport({
     };
   }, []);
   const reading = progress !== null;
-  const order = [...PROVIDERS].sort(
-    (a, b) => Number(loaded.includes(a.key)) - Number(loaded.includes(b.key)),
-  );
+  /** The provider whose steps the help shows; null until the user picks one. */
+  const [picked, setPicked] = useState<Provider | null>(null);
+  // One provider at a time, so the help fits a phone with no scroll; at first
+  // the one with no export loaded yet.
+  const shown =
+    PROVIDERS.find((p) => p.key === picked) ??
+    PROVIDERS.find((p) => !loaded.includes(p.key)) ??
+    PROVIDERS[0];
 
   // Step 2: The help is a native popover, placed under the button, right edges
   // aligned, inside the button's fold pane (or the window), never across a fold.
@@ -211,15 +217,57 @@ export function AddExport({
           }}
           onPointerEnter={hoverIn}
           onPointerLeave={hoverOut}
-          className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
+          // A press inside keeps a hover-opened help open: the user is using it.
+          // It pops in from its button, except when the keyboard opens it.
+          onPointerDown={() => {
+            clearTimeout(timer.current);
+            byHover.current = false;
+          }}
+          className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain origin-top-right rounded-xl border border-zinc-200 bg-white p-4 text-zinc-900 sm:p-5 shadow-xl shadow-zinc-950/10 open:animate-pop-in [:focus-visible~&]:animate-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
         >
-          <h2 id="export-help-title" className="text-base font-semibold">
-            How to export
-          </h2>
+          {/* The title and the switch share a row where they fit. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="export-help-title" className="text-base font-semibold">
+              How to export
+            </h2>
+            {/* Step 4: The provider switch: a native radio group, so the arrow
+              keys move it. The picked half rises (a colour change, no motion;
+              instant from the keyboard, as the year tabs);
+              its zinc-500 ring differs from the track by 3:1, as the year
+              tabs' pill (WCAG 1.4.11). */}
+            <fieldset
+              id="export-help-providers"
+              className="grid grid-cols-2 gap-0.5 rounded-lg [&:has(:focus-visible)_label]:transition-none bg-zinc-100 p-0.5 text-sm font-medium dark:bg-zinc-800"
+            >
+              <legend className="sr-only">Steps for</legend>
+              {PROVIDERS.map((p) => (
+                <label
+                  key={p.key}
+                  data-provider={p.key}
+                  className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 text-zinc-500 transition-[background-color,color,box-shadow,scale] duration-(--dur-micro) ease-out select-none hover:text-zinc-900 active:scale-[0.97] has-checked:bg-white has-checked:text-zinc-900 has-checked:shadow-xs has-checked:ring-1 has-checked:ring-zinc-500 has-focus-visible:ring-2 has-focus-visible:ring-accent dark:text-zinc-400 dark:hover:text-zinc-50 dark:has-checked:bg-zinc-950 dark:has-checked:text-zinc-50"
+                >
+                  <input
+                    type="radio"
+                    name="export-help-provider"
+                    value={p.key}
+                    checked={p.key === shown.key}
+                    onChange={() => setPicked(p.key)}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={cn("size-2 rounded-sm", p.dot)}
+                  />
+                  {p.label}
+                </label>
+              ))}
+            </fieldset>
+          </div>
           <ExportGuide
-            providers={order}
+            providers={[shown]}
             idPrefix="export-help"
-            className="mt-4 flex flex-col gap-6"
+            headings={false}
+            className="mt-3"
           />
         </div>
       )}

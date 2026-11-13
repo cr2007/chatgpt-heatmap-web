@@ -31,6 +31,7 @@ export function ExportGuide({
   providers,
   idPrefix,
   className,
+  headings = true,
 }: {
   /** The providers to show, in order; each gives its `guide` steps ({@link ProviderInfo}). */
   providers: readonly ProviderInfo[];
@@ -38,6 +39,13 @@ export function ExportGuide({
   idPrefix: string;
   /** Classes for the wrapper of the sections. */
   className?: string;
+  /**
+   * Shows each provider's heading; false keeps it for screen readers only
+   * (the help's switch already names the provider).
+   *
+   * @defaultValue true
+   */
+  headings?: boolean;
 }) {
   return (
     <div className={className}>
@@ -45,7 +53,9 @@ export function ExportGuide({
         <section key={p.key} id={`${idPrefix}-${p.key}`}>
           <h3
             className={cn(
-              "flex items-center gap-2 text-sm font-semibold",
+              headings
+                ? "flex items-center gap-2 text-sm font-semibold"
+                : "sr-only",
               p.text,
             )}
           >
@@ -55,7 +65,12 @@ export function ExportGuide({
             />
             {p.label}
           </h3>
-          <ol className="mt-3 flex flex-col gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+          <ol
+            className={cn(
+              "flex flex-col gap-2.5 text-sm text-zinc-600 dark:text-zinc-400",
+              headings && "mt-3",
+            )}
+          >
             {p.guide.map((step, i) => (
               <li key={i} className="flex gap-3">
                 <span className="w-3 shrink-0 text-right font-medium text-zinc-400 tabular-nums dark:text-zinc-500">
