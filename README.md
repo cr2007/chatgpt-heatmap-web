@@ -111,7 +111,7 @@ The figures above the calendar use the same counted prompts, in the same time zo
 docker run -d -p 3000:3000 ghcr.io/cr2007/chatgpt-heatmap-web:latest
 ```
 
-Each release (a `vX.Y.Z` tag) publishes `X.Y.Z`, `X.Y` and `latest`. Pin a version with, for example, `ghcr.io/cr2007/chatgpt-heatmap-web:1.2`.
+Each release (a `vX.Y.Z` tag) publishes `X.Y.Z` and `X.Y`; the newest release also moves `latest`. Pin a version with, for example, `ghcr.io/cr2007/chatgpt-heatmap-web:1.2`.
 
 ### Option 2: Build locally
 

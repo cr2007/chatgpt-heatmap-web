@@ -1,0 +1,10 @@
+# Keeps the pinned action commits in the workflows up to date.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait a week before a new release, so a bad or hijacked one is found first.
+    cooldown:
+      default-days: 7
