@@ -1,17 +1,10 @@
 import type { ReactNode } from "react";
 import type { Stats } from "@/lib/stats";
-import { count, plural } from "@/lib/utils";
+import { count, formatDay, plural } from "@/lib/utils";
 import { zoneLabel } from "@/lib/time-zones";
 
 /** "Mar 11, 2024" in the reader's locale. */
 const longDate = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-/** "Mon, May 25, 2026" in the reader's locale. */
-const weekdayDate = new Intl.DateTimeFormat(undefined, {
-  weekday: "short",
   month: "short",
   day: "numeric",
   year: "numeric",
@@ -133,7 +126,7 @@ export function Summary({
           id="figure-busiest-day"
           label="Busiest day"
           value={plural(stats.busiest.count, "prompt")}
-          note={weekdayDate.format(local(stats.busiest.day))}
+          note={formatDay(stats.busiest.day)}
         />
         {both ? (
           <Figure

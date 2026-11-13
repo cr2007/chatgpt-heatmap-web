@@ -37,7 +37,6 @@ export function TimeZonePicker({
   setTimeZone,
   inline = false,
   compact = false,
-  label = inline ? "Days start at midnight in" : "Time zone",
 }: {
   /** The id prefix: the input id is `${id}-time-zone`; the list adds
    *  `-list`, an option `-option-N`. */
@@ -59,13 +58,8 @@ export function TimeZonePicker({
    * @defaultValue false
    */
   compact?: boolean;
-  /**
-   * The label text.
-   *
-   * @defaultValue "Days start at midnight in" when `inline`, else "Time zone"
-   */
-  label?: string;
 }) {
+  const label = inline ? "Days start at midnight in" : "Time zone";
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);

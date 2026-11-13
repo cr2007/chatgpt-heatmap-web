@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { CircleQuestionMark, LoaderCircle, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
@@ -33,7 +32,6 @@ export function AddExport({
   progress,
   onFiles,
   loaded,
-  className,
 }: {
   /** Share of bytes read (0 to 1), or null when idle. */
   progress: number | null;
@@ -41,8 +39,6 @@ export function AddExport({
   onFiles: (files: FileList) => Promise<unknown>;
   /** The providers that have an export. */
   loaded: Provider[];
-  /** Classes for the row that holds the button and the help. */
-  className?: string;
 }) {
   const help = useRef<HTMLButtonElement>(null);
   /** The help is open because a mouse rests on it (not clicked open). */
@@ -127,7 +123,7 @@ export function AddExport({
   }
 
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className="flex items-center gap-1">
       {/* Step 1: The label opens the file picker; while files stream in, it
           shows the share read. */}
       <label

@@ -48,3 +48,20 @@ export function splitName(name: string, tail = 11): [string, string] {
     ? [name, ""]
     : [name.slice(0, -tail), name.slice(-tail)];
 }
+
+/** Weekday and date in the reader's locale, read in UTC so the day never shifts. */
+const dayFormat = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/**
+ * Formats a calendar day with its weekday.
+ *
+ * @param day - A `YYYY-MM-DD` day.
+ * @returns For example "Mon, May 25, 2026" in the reader's locale.
+ */
+export const formatDay = (day: string) => dayFormat.format(Date.parse(day));

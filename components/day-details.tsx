@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import type { CalHeatmapDay, ChatCount, DayTitleBreakdown } from "@/lib/types";
-import { cn, plural } from "@/lib/utils";
+import { cn, formatDay, plural } from "@/lib/utils";
 import { PROVIDERS } from "@/lib/providers";
 
 /** Chats listed per provider before the rest fold into "+N more chats". */
@@ -10,16 +10,8 @@ const CURSOR_GAP = 14;
 /** Smallest distance in px between the tooltip and the viewport edge. */
 const EDGE = 8;
 
-/** "Sun, Mar 10, 2024" in the reader's locale. */
-const dateLabel = new Intl.DateTimeFormat(undefined, {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
 /** What one day shows: its counts and its chats per provider. */
-export interface DayProps {
+interface DayProps {
   /** `YYYY-MM-DD`. */
   day: string;
   /** Prompts of each provider on the day. */
@@ -31,14 +23,11 @@ export interface DayProps {
 /** One day's details: the date, the prompt count and the busiest chats per
  *  provider. */
 function DayDetails({ day, counts, chats }: DayProps) {
-  const [year, month, date] = day.split("-").map(Number);
   const both = counts.chatgpt > 0 && counts.claude > 0;
   return (
     <>
       <div className="flex items-baseline justify-between gap-4">
-        <span className="text-[13px] font-semibold">
-          {dateLabel.format(new Date(year, month - 1, date))}
-        </span>
+        <span className="text-[13px] font-semibold">{formatDay(day)}</span>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
           {plural(counts.chatgpt + counts.claude, "message")}
         </span>

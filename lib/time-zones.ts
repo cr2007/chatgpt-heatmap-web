@@ -190,7 +190,7 @@ export function zoneLabel(zone: string): string {
  * @returns Lower case, no accents, and spaces for underscores: "São_Paulo"
  *   gives "sao paulo".
  */
-export const normalize = (s: string) =>
+const normalize = (s: string) =>
   s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -205,7 +205,7 @@ export const normalize = (s: string) =>
  * @returns The offset in minutes ("+4", "gmt+5:30", "UTC-08:00"), or null
  *   when the query is not an offset.
  */
-export function offsetQuery(q: string): number | null {
+function offsetQuery(q: string): number | null {
   const m = /^(?:utc|gmt)?\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?$/.exec(q);
   if (!m) return null;
   const minutes = Number(m[2]) * 60 + Number(m[3] ?? 0);
@@ -296,7 +296,7 @@ export function buildIndex(
  *   neighbours).
  * @see {@link https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance | Damerau-Levenshtein distance}
  */
-export function editDistance(a: string, b: string): number {
+function editDistance(a: string, b: string): number {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [
     i,
     ...Array<number>(b.length).fill(0),

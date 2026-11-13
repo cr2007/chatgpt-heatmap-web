@@ -5,7 +5,7 @@ import type { LoadedExport, Provider } from "@/lib/types";
 export type Exports = Record<Provider, LoadedExport | null>;
 
 /** Nothing loaded. */
-export const NO_EXPORTS: Exports = { chatgpt: null, claude: null };
+const NO_EXPORTS: Exports = { chatgpt: null, claude: null };
 
 /**
  * Dev only: reads the exports that `dev/test.html` (or a browser check)
