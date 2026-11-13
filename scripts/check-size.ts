@@ -31,9 +31,10 @@
  * with its swipe down, the toast swipe, the year row edge fade and the
  * touch rules for controls (109.4 and 13.0 kB); JS to 110.5 kB for the
  * year swipe with a pen and a mouse, and a hover card that ends with the
- * native pointerleave (110.1 kB).
+ * native pointerleave (110.1 kB); JS to 111 kB for the swipe area, the
+ * pinned year tabs and hover styles for a pen over a phone (110.6 kB).
  */
-const BUDGET = { js: 110_500, css: 13_250 } as const;
+const BUDGET = { js: 111_000, css: 13_250 } as const;
 
 // Step 1: Gzip every JS and CSS file in dist/ and add up the sizes per type.
 const totals = { js: 0, css: 0 };

@@ -8,6 +8,10 @@
 
 /* hooks/use-theme-toggle.ts puts the "dark" class on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Hover styles follow the pointer in use, not the device's main one: a pen
+   that hovers over a phone gets them, and a finger tap leaves none behind
+   (app/hover-input.ts sets data-hover). */
+@custom-variant hover (&:where([data-hover] *):hover);
 
 /* Motion tokens. They also make utilities (`ease-out`, `ease-spring`).
    The springs are CSS linear() samples of SwiftUI's
