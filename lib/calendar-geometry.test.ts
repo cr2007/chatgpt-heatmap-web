@@ -43,16 +43,18 @@ describe("layoutCalendar", () => {
   });
 
   it.each([false, true])(
-    "puts each day after the one before it (vertical: %p)",
+    "puts each day after the one before it (narrow: %p)",
     (vertical) => {
       const { cells } = layoutCalendar(2023, 2025, vertical);
       // A week moves on at each Sunday; other days step to the next weekday.
+      // Narrow, a week is a row of its month's block.
       const [weekAxis, dayAxis] = vertical
         ? (["y", "x"] as const)
         : (["x", "y"] as const);
       for (let i = 1; i < cells.length; i++) {
         const [a, b] = [cells[i - 1], cells[i]];
         if (a.day.slice(0, 4) !== b.day.slice(0, 4)) continue; // a new year section
+        if (vertical && a.day.slice(5, 7) !== b.day.slice(5, 7)) continue; // a new month block
         const sunday = new Date(`${b.day}T00:00:00Z`).getUTCDay() === 0;
         expect(b[weekAxis] - a[weekAxis]).toBe(sunday ? STEP : 0);
         expect(b[dayAxis] - a[dayAxis]).toBe(sunday ? -6 * STEP : STEP);
@@ -76,6 +78,26 @@ describe("layoutCalendar", () => {
     expect(new Set(cells.map((c) => c.day)).size).toBe(cells.length);
     expect(cells[0].t).toBe(0);
     expect(cells.at(-1)!.t).toBe(1);
+  });
+
+  it("lays a narrow year out as 3 months across and 4 down", () => {
+    const { cells, labels, width } = layoutCalendar(2026, 2026, true);
+    const first = (m: string) => cells.find((c) => c.day === `2026-${m}-01`)!;
+    // 2026-01-01 is a Thursday: column 4 of the first row.
+    expect(first("01").x - labels.find((l) => l.text === "Jan")!.x).toBe(
+      4 * STEP,
+    );
+    expect(first("02").y).toBe(first("01").y); // Feb sits beside Jan
+    expect(first("04").y).toBeGreaterThan(first("03").y); // Apr starts row 2
+    expect(first("04").x).toBe(
+      labels.find((l) => l.text === "Apr")!.x + 3 * STEP,
+    );
+    // Every day of a month stays inside its 7 by 6 block.
+    for (const c of cells) {
+      const f = first(c.day.slice(5, 7));
+      expect(c.y - f.y).toBeLessThan(6 * STEP);
+    }
+    expect(width).toBeLessThan(310); // fits a 375 px phone at scale 1.1
   });
 
   it("puts each month label over the week of its first day", () => {

@@ -124,8 +124,8 @@ export interface HeatmapOrientationInput {
  *
  * @param input - The posture and the window size (see
  *   {@link HeatmapOrientationInput}).
- * @returns "vertical" for the narrow layout (months down the side, about
- *   120 px per year), or "horizontal" for the wide GitHub-style layout
+ * @returns "vertical" for the narrow layout (a grid of months, 3 across and
+ *   4 down, about 520 px per year on a phone), or "horizontal" for the wide GitHub-style layout
  *   (54 weeks across).
  */
 export function getHeatmapOrientation({

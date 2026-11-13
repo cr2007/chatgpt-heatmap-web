@@ -27,15 +27,31 @@ const H = {
   yearGap: 22,
   pad: { t: 6, r: 8, b: 8, l: 8 },
 } as const;
-/** Vertical: years stack top to bottom in one column (a phone scrolls down
- *  through them), weekdays are columns, weeks rows. */
+/**
+ * Narrow (a phone, a fold pane): each year is a grid of month calendars,
+ * 3 across and 4 down, as the iOS Calendar year view shows them. A week is
+ * a row of its month; the weekday letters head each column of months.
+ *
+ * @remarks
+ * A year of weekday columns was about 1,180 px tall on a 412 px phone; the
+ * grid is about 510 px, so a year fits one screen.
+ */
 const V = {
-  monthW: 28,
-  dowH: 15,
+  cols: 3,
+  /** Space between two months side by side. */
+  colGap: 10,
+  /** Space between two rows of months. */
+  rowGap: 8,
+  /** The month name above each month. */
+  monthH: 13,
+  dowH: 11,
   yearH: 16,
   yearGap: 18,
   pad: { t: 6, r: 6, b: 6, l: 6 },
 } as const;
+/** A month block: 7 days wide, 6 weeks tall (the most a month spans). */
+const MONTH_W = 7 * STEP - 2;
+const MONTH_H = V.monthH + 6 * STEP - 2;
 
 /** One day cell: its `YYYY-MM-DD` key, top-left corner, and place in the range (0 to 1). */
 export interface CellBox {
@@ -122,8 +138,8 @@ export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
  *
  * @param startYear - The first year to draw.
  * @param endYear - The last year to draw, included.
- * @param vertical - True for weeks as rows (a phone), false for weeks as
- *   columns.
+ * @param vertical - True for the narrow layout (a phone, a fold pane): a
+ *   grid of month calendars; false for one row of week columns per year.
  * @returns The SVG size, the cells and the labels, in SVG units.
  * @see {@link fitScale}, which scales the result to its panel.
  */
@@ -135,9 +151,9 @@ export function layoutCalendar(
   // Step 1: Size the SVG for the orientation and the number of years.
   const years = endYear - startYear + 1;
   const hSection = H.yearH + H.monthH + 7 * STEP;
-  const vSection = V.yearH + V.dowH + 54 * STEP;
+  const vSection = V.yearH + V.dowH + 4 * MONTH_H + 3 * V.rowGap;
   const width = vertical
-    ? V.pad.l + V.monthW + 7 * STEP + V.pad.r
+    ? V.pad.l + V.cols * MONTH_W + (V.cols - 1) * V.colGap + V.pad.r
     : H.pad.l + H.dowW + 54 * STEP + H.pad.r;
   const height = vertical
     ? V.pad.t + years * vSection + (years - 1) * V.yearGap + V.pad.b
@@ -159,10 +175,15 @@ export function layoutCalendar(
     // Grid origin and the year label's place for this year's section.
     const hTop = H.pad.t + yi * (hSection + H.yearGap);
     const vTop = V.pad.t + yi * (vSection + V.yearGap);
-    const gridX = vertical ? V.pad.l + V.monthW : H.pad.l + H.dowW;
+    const gridX = vertical ? V.pad.l : H.pad.l + H.dowW;
     const gridY = vertical
       ? vTop + V.yearH + V.dowH
       : hTop + H.yearH + H.monthH;
+    /** The top-left of month `m`'s day grid in the narrow layout. */
+    const block = (m: number) => ({
+      x: gridX + (m % V.cols) * (MONTH_W + V.colGap),
+      y: gridY + Math.floor(m / V.cols) * (MONTH_H + V.rowGap) + V.monthH,
+    });
 
     // Step 2.1: Add the year label and the weekday labels.
     labels.push(
@@ -170,7 +191,7 @@ export function layoutCalendar(
         ? {
             key: `y${year}`,
             x: gridX,
-            y: vTop + V.yearH - 4,
+            y: vTop + V.yearH - 5,
             text: String(year),
             size: 11,
             bold: true,
@@ -185,16 +206,17 @@ export function layoutCalendar(
           },
     );
     if (vertical) {
-      [..."SMTWTFS"].forEach((text, col) =>
-        labels.push({
-          key: `d${year}${col}`,
-          x: gridX + col * STEP + CELL / 2,
-          y: gridY - 3,
-          text,
-          size: 8,
-          anchor: "middle",
-        }),
-      );
+      for (let c = 0; c < V.cols; c++)
+        [..."SMTWTFS"].forEach((text, col) =>
+          labels.push({
+            key: `d${year}${c}${col}`,
+            x: block(c).x + col * STEP + CELL / 2,
+            y: gridY - 3,
+            text,
+            size: 7,
+            anchor: "middle",
+          }),
+        );
     } else {
       for (const [row, text] of [
         [1, "Mon"],
@@ -210,18 +232,18 @@ export function layoutCalendar(
         });
     }
 
-    // Step 2.2: Add each month label at the week of its first day.
+    // Step 2.2: Add each month label: over its block (narrow), or at the
+    // week of its first day.
     MONTHS.forEach((text, m) => {
       const week = weekOf((Date.UTC(year, m, 1) - jan1) / DAY_MS);
       labels.push(
         vertical
           ? {
               key: `m${year}${m}`,
-              x: V.pad.l + V.monthW - 3,
-              y: gridY + week * STEP + CELL - 2,
+              x: block(m).x,
+              y: block(m).y - 4,
               text,
-              size: 8,
-              anchor: "end",
+              size: 9,
             }
           : {
               key: `m${year}${m}`,
@@ -234,16 +256,25 @@ export function layoutCalendar(
     });
 
     // Step 2.3: Add each day cell; a week is a column (horizontal) or a row
-    // (vertical).
+    // of its month's block (narrow).
     const days = (Date.UTC(year + 1, 0, 1) - jan1) / DAY_MS;
     for (let i = 0; i < days; i++) {
       const ms = jan1 + i * DAY_MS;
-      const week = weekOf(i);
       const weekday = (jan1Weekday + i) % 7;
+      const date = new Date(ms);
+      let x = gridX + weekOf(i) * STEP;
+      let y = gridY + weekday * STEP;
+      if (vertical) {
+        const m = date.getUTCMonth();
+        const first = new Date(Date.UTC(year, m, 1)).getUTCDay();
+        const b = block(m);
+        x = b.x + weekday * STEP;
+        y = b.y + Math.floor((date.getUTCDate() - 1 + first) / 7) * STEP;
+      }
       cells.push({
-        day: new Date(ms).toISOString().slice(0, 10),
-        x: gridX + (vertical ? weekday : week) * STEP,
-        y: gridY + (vertical ? week : weekday) * STEP,
+        day: date.toISOString().slice(0, 10),
+        x,
+        y,
         t: (ms - rangeStart) / rangeSpan,
       });
     }

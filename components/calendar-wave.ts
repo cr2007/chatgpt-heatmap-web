@@ -5,8 +5,9 @@
  * and hops a little. Columns start one after another, so a wave runs left
  * to right to a later year and right to left to an earlier one. The jump is
  * short against the time between columns, so the column at the front
- * stands above its neighbours, like one pressed piano key. A vertical
- * calendar (phones) has 7 weekday columns, so its wave is 7 columns.
+ * stands above its neighbours, like one pressed piano key. The narrow
+ * calendar (phones) is a grid of months, 3 across: its wave runs over
+ * their 21 weekday columns.
  * Changes to or from "All years" use the morph (`calendar-morph.ts`).
  *
  * The timings come from a lab study of real hits (a split-flap board, piano
@@ -59,8 +60,8 @@ const JUMP = 9;
 /** A column squashes or stretches as a whole too, by this share of its
  *  cells' change, so the cells pack up under the ceiling. */
 const COLUMN = 0.3;
-/** The column length that squashes: 7 cells, also in a vertical calendar,
- *  whose column is a year long. */
+/** The column length that squashes: 7 cells, also in the narrow calendar,
+ *  whose column runs down 4 months. */
 const BODY = 7 * 13;
 /** Slow at both ends. */
 const EASE_IN_OUT = "cubic-bezier(0.45, 0, 0.55, 1)";
@@ -176,8 +177,8 @@ export function shape(along: number, span: number, p: Pose) {
  *
  * @remarks
  * The starts spread over {@link SPREAD} whatever the number of columns, so
- * 53 week columns and the 7 weekday columns of a vertical calendar take as
- * long.
+ * 53 week columns and the 21 weekday columns of the narrow calendar take
+ * as long.
  *
  * @param column - The column index, 0 at the left.
  * @param columns - The number of columns.
