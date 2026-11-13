@@ -167,6 +167,12 @@ export function useCalendarSwipe(
       // Step 1.1: Not from a part with its own sideways drag (the year
       // tabs); a mouse only on the calendar, so it can select other text.
       const t = e.target as Element;
+      // The room that keepInPlace holds below the page is the root's, so a
+      // page-wide area takes a press there too.
+      const room =
+        !!latest.current.swipe?.area &&
+        (t === document.documentElement || t === document.body);
+      if (!el!.contains(t) && !room) return;
       if (t.closest?.("[data-no-swipe]")) return;
       if (e.pointerType === "mouse" && !moved.current?.contains(t)) return;
       press = {
@@ -251,7 +257,7 @@ export function useCalendarSwipe(
       if (press?.mouse) e.preventDefault();
     }
 
-    el.addEventListener("pointerdown", down);
+    document.addEventListener("pointerdown", down);
     document.addEventListener("selectstart", select);
     // The rest on the window: a press that loses its capture and ends
     // outside the area still ends, so the calendar never stays moved.
@@ -259,7 +265,7 @@ export function useCalendarSwipe(
     addEventListener("pointerup", end);
     addEventListener("pointercancel", end);
     return () => {
-      el.removeEventListener("pointerdown", down);
+      document.removeEventListener("pointerdown", down);
       document.removeEventListener("selectstart", select);
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", end);

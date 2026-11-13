@@ -163,6 +163,10 @@
        centred page 7.5 px sideways. The room shows the page colour. */
     scrollbar-gutter: stable;
     background-color: var(--color-zinc-50);
+    /* The room that a view change holds below the page is the root's: a
+       sideways swipe there is the calendar's (components/calendar-swipe.ts),
+       so the browser keeps only the vertical scroll and the zoom. */
+    touch-action: pan-y pinch-zoom;
   }
   .dark {
     background-color: var(--color-zinc-950);
