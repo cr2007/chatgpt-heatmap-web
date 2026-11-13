@@ -1,8 +1,87 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { PROVIDERS } from "@/lib/providers";
-import { loadExports, type Exports } from "@/lib/upload";
+import { loadExports, type Exports, type UploadFile } from "@/lib/upload";
 import { plural } from "@/lib/utils";
+
+/** What {@link readUpload} reports to: the page and the upload state. */
+export interface UploadHandlers {
+  /** The share of bytes read (0 to 1). */
+  onProgress: (fraction: number) => void;
+  /** A partial result while files stream in, then null. */
+  onStream: (partial: Exports | null) => void;
+  /** The final exports. */
+  onLoad: (exports: Exports) => void;
+  /** An error the user must see. */
+  showError: (msg: string) => void;
+}
+
+/**
+ * Reads one upload and reports it: the partial results, the final exports
+ * and a toast per provider, or the error.
+ *
+ * @remarks
+ * Kept apart from the hook so a test can run two uploads that overlap. An
+ * upload that a newer one cancelled reports nothing, because the newer one
+ * owns the state now.
+ *
+ * @param files - The dropped or picked files.
+ * @param signal - Aborts when a newer upload starts.
+ * @param h - Where the results go ({@link UploadHandlers}).
+ * @returns True when the exports loaded; false on an error or a cancel.
+ * @see {@link loadExports}, which reads the files.
+ */
+export async function readUpload(
+  files: UploadFile[],
+  signal: AbortSignal,
+  h: UploadHandlers,
+): Promise<boolean> {
+  try {
+    // Step 1: Stream the files; each progress step shows the partial result.
+    const result = await loadExports(files, {
+      signal,
+      onProgress: (fraction, partial) => {
+        h.onProgress(fraction);
+        h.onStream(partial);
+      },
+    });
+    // Step 2: On success, keep the exports and toast each provider. On an
+    // error, drop the partial result and show why.
+    h.onStream(null);
+    if (!result.ok) {
+      h.showError(result.error);
+      return false;
+    }
+    h.onLoad(result.exports);
+    for (const p of PROVIDERS) {
+      const chats = result.exports[p.key]?.chats;
+      if (!chats?.length) continue;
+      const outside = chats.reduce((n, c) => n + (c.outside ?? 0), 0);
+      if (!chats.some((c) => c.times.length)) {
+        toast(
+          "error",
+          `${p.label} export has no dated prompts, so there is nothing to draw.`,
+        );
+        continue;
+      }
+      toast(
+        "success",
+        `${p.label} export loaded - ${plural(chats.length, "chat")}` +
+          (outside
+            ? `. ${plural(outside, "prompt")} with a date before November 2022 or in the future ${outside === 1 ? "does" : "do"} not count.`
+            : ""),
+      );
+    }
+    return true;
+  } catch (e) {
+    if (signal.aborted) return false; // the newer upload owns the state now
+    h.onStream(null);
+    h.showError(
+      `Could not read the file: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return false;
+  }
+}
 
 /**
  * Holds the upload state and streams dropped or picked files into the page.
@@ -11,7 +90,7 @@ import { plural } from "@/lib/utils";
  *   results, then null.
  * @returns The progress (0 to 1, or null when idle), the upload count, the
  *   error text, the shake state with `resetShake`, and `processFiles`.
- * @see {@link loadExports}, which reads the files.
+ * @see {@link readUpload}, which reads and reports one upload.
  */
 export function useUpload({
   onLoad,
@@ -62,50 +141,14 @@ export function useUpload({
       setError("");
       setProgress(0);
       setUploads((n) => n + 1);
+      // Step 2: Read and report it (`readUpload`).
       try {
-        // Step 2: Stream the files; each progress step shows the partial result.
-        const result = await loadExports(Array.from(fileList), {
-          signal: upload.signal,
-          onProgress: (fraction, partial) => {
-            setProgress(fraction);
-            onStream(partial);
-          },
+        return await readUpload(Array.from(fileList), upload.signal, {
+          onProgress: setProgress,
+          onStream,
+          onLoad,
+          showError,
         });
-        // Step 3: On success, keep the exports and toast each provider. On an
-        // error, drop the partial result and show why.
-        onStream(null);
-        if (!result.ok) {
-          showError(result.error);
-          return false;
-        }
-        onLoad(result.exports);
-        for (const p of PROVIDERS) {
-          const chats = result.exports[p.key]?.chats;
-          if (!chats?.length) continue;
-          const outside = chats.reduce((n, c) => n + (c.outside ?? 0), 0);
-          if (!chats.some((c) => c.times.length)) {
-            toast(
-              "error",
-              `${p.label} export has no dated prompts, so there is nothing to draw.`,
-            );
-            continue;
-          }
-          toast(
-            "success",
-            `${p.label} export loaded - ${plural(chats.length, "conversation")}` +
-              (outside
-                ? `. ${plural(outside, "prompt")} with a date before November 2022 or in the future ${outside === 1 ? "does" : "do"} not count.`
-                : ""),
-          );
-        }
-        return true;
-      } catch (e) {
-        if (upload.signal.aborted) return false; // the newer upload owns the state now
-        onStream(null);
-        showError(
-          `Could not read the file: ${e instanceof Error ? e.message : String(e)}`,
-        );
-        return false;
       } finally {
         if (uploadRef.current === upload) setProgress(null);
       }
