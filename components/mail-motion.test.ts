@@ -51,5 +51,9 @@ describe("cards", () => {
   test("sizes", () => {
     expect(fileSize(0)).toBe("0 B");
     expect(fileSize(34_900_000)).toBe("34.9 MB");
+    // Rounding up to 1000 moves to the next unit.
+    expect(fileSize(999_950)).toBe("1 MB");
+    expect(fileSize(999_950_000)).toBe("1 GB");
+    expect(fileSize(999_940)).toBe("999.9 kB");
   });
 });

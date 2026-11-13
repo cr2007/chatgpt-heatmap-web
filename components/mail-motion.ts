@@ -141,7 +141,9 @@ function timeAt(easing: string, y: number) {
  */
 export function fileSize(bytes: number) {
   const units = ["byte", "kilobyte", "megabyte", "gigabyte"];
-  const i = Math.min(3, Math.floor(Math.log10(Math.max(bytes, 1)) / 3));
+  let i = Math.min(3, Math.floor(Math.log10(Math.max(bytes, 1)) / 3));
+  // Rounding to one decimal can reach 1000: show "1 MB", not "1,000 kB".
+  if (i > 0 && i < 3 && bytes / 1000 ** i >= 999.95) i++;
   if (i === 0) return `${bytes} B`;
   return new Intl.NumberFormat(undefined, {
     style: "unit",
