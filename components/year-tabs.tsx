@@ -338,6 +338,9 @@ export function YearTabs({
       onPointerMove={onPointerMove}
       onPointerUp={(e) => end(e, false)}
       onPointerCancel={(e) => end(e, true)}
+      // Before a drag the pointer is not captured, so a release outside
+      // never reaches the row: leaving it ends the press.
+      onPointerLeave={(e) => drag.current && !drag.current.on && end(e, true)}
       className="year-tabs relative isolate flex max-w-full min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 [scrollbar-width:none] dark:bg-zinc-900"
     >
       <legend className="sr-only">Years to show</legend>

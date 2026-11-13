@@ -12,7 +12,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target.isContentEditable ||
     target.closest(
-      "input, textarea, select, [role=combobox], [role=listbox]",
+      "input:not([type=radio],[type=checkbox],[type=file]), textarea, select, [role=combobox], [role=listbox]",
     ) !== null
   );
 }

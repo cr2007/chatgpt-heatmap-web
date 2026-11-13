@@ -249,7 +249,12 @@ export function playMorph(svg: SVGSVGElement) {
   // Step 2.1: Put the calendar back first (`restore`), so the motion starts
   // from where the cells are on screen now.
   restore(svg);
-  // Step 2.2: Play the wave if one was prepared; else stop a running morph.
+  // Step 2.2: Stop a running morph on every change, a keyboard one too.
+  // `prepareMorph` already stopped any wave, so a ghost left is the morph's.
+  for (const a of svg.getAnimations({ subtree: true }))
+    if (a.id === ID) a.cancel();
+  svg.querySelector("[data-ghost]")?.remove();
+  // Step 2.3: Play the wave if one was prepared, or the morph.
   if (wave) {
     playWave(svg, wave.was, wave.dir);
     wave = null;
@@ -258,11 +263,8 @@ export function playMorph(svg: SVGSVGElement) {
   const was = pending;
   pending = null;
   if (!was) return;
-  for (const a of svg.getAnimations({ subtree: true }))
-    if (a.id === ID) a.cancel();
-  svg.querySelector("[data-ghost]")?.remove();
 
-  // Step 2.3: Give each cell a FLIP animation (transform and fill only) from its
+  // Step 2.4: Give each cell a FLIP animation (transform and fill only) from its
   // recorded look, by date (two single years: by month and day); no match grows in.
   const root = getComputedStyle(document.documentElement);
   const easing = root.getPropertyValue("--ease-spring").trim() || "ease-out";
@@ -314,7 +316,7 @@ export function playMorph(svg: SVGSVGElement) {
       run(r, { transform: "scale(0.6)", opacity: 0 }, delay);
     }
 
-  // Step 2.4: From "All years" to one year, the years that leave stay where
+  // Step 2.5: From "All years" to one year, the years that leave stay where
   // they were, as one group, and fade out.
   if (was.layer && oneYear) fadeLeaving(svg, was.layer, was.box, box, root);
 
@@ -339,7 +341,7 @@ export function playMorph(svg: SVGSVGElement) {
       );
   }
 
-  // Step 2.5: Do not clip while the morph runs: the new view can be shorter, and
+  // Step 2.6: Do not clip while the morph runs: the new view can be shorter, and
   // the year that stays moves up from below its new edge. A newer morph sets it again.
   const all = svg.getAnimations({ subtree: true }).filter((a) => a.id === ID);
   svg.style.overflow = "visible";
