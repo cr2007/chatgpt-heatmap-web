@@ -1,4 +1,5 @@
-FROM oven/bun:1.4.4 AS builder
+# dist/ is the same on every platform: build once, natively, not under arm64 emulation.
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.4 AS builder
 
 WORKDIR /app
 
