@@ -202,7 +202,7 @@ export function CalendarHeatmap({
   });
   // A swipe hides a hover card; a sheet a tap opened stays.
   const { swiped, held } = useCalendarSwipe(
-    outerRef,
+    swipe?.area ?? outerRef,
     containerRef,
     hints,
     swipe,

@@ -66,6 +66,8 @@ export interface Swipe {
   next?: string;
   /** Changes the view: 1 for the next one, -1 for the previous one. */
   onSwipe: (dir: 1 | -1) => void;
+  /** The element that takes the swipe, if larger than the calendar (the page's content). */
+  area?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -111,14 +113,19 @@ export function useCalendarSwipe(
     if (!el || !on) return;
     let press: {
       id: number;
+      /** The pressed element: it takes the capture, so a mouse drag that
+       *  starts on the calendar (no text selection) selects nothing. */
+      target: Element;
+      mouse: boolean;
       x0: number;
       y0: number;
       locked: boolean;
       armed: boolean;
       /** Where the calendar stood at the lock (px): a spring back caught mid-way. */
       base: number;
-      /** The area's top in the window at the lock (px), for the hint. */
+      /** The hints' box (the calendar) at the lock, in window px. */
       top: number;
+      height: number;
       track: { t: number; x: number }[];
     } | null = null;
 
@@ -157,14 +164,22 @@ export function useCalendarSwipe(
       if (press) return; // a second finger during a swipe changes nothing
       swiped.current = false;
       if (!startsSwipe(e, window.innerWidth)) return;
+      // Step 1.1: Not from a part with its own sideways drag (the year
+      // tabs); a mouse only on the calendar, so it can select other text.
+      const t = e.target as Element;
+      if (t.closest?.("[data-no-swipe]")) return;
+      if (e.pointerType === "mouse" && !moved.current?.contains(t)) return;
       press = {
         id: e.pointerId,
+        target: t,
+        mouse: e.pointerType === "mouse",
         x0: e.clientX,
         y0: e.clientY,
         locked: false,
         armed: false,
         base: 0,
         top: 0,
+        height: 0,
         track: [],
       };
     }
@@ -179,11 +194,15 @@ export function useCalendarSwipe(
         if (Math.hypot(dx, dy) < SLOP) return;
         if (Math.abs(dx) <= Math.abs(dy)) return void (press = null);
         p.locked = swiped.current = held.current = true;
-        el!.setPointerCapture(e.pointerId);
+        p.target.setPointerCapture(e.pointerId);
         // Step 2.1: A spring back still running is caught where it stands.
         const m = moved.current!;
         p.base = parseFloat(getComputedStyle(m).translate) || 0;
-        p.top = el!.getBoundingClientRect().top;
+        const box = (
+          moved.current!.parentElement ?? el!
+        ).getBoundingClientRect();
+        p.top = box.top;
+        p.height = box.height;
         m.style.transition = "";
         m.style.willChange = "translate";
         latest.current.onDrag?.();
@@ -203,7 +222,9 @@ export function useCalendarSwipe(
       const armed = swipeTo(dx, 0, width) !== 0;
       if (armed && !p.armed) navigator.vibrate?.(8);
       p.armed = armed;
-      hint(dir, e.clientY - p.top, Math.abs(dx) / (COMMIT * width), armed);
+      // The hint stays on the calendar, wherever on the area the finger is.
+      const y = Math.min(Math.max(e.clientY - p.top, 24), p.height - 24);
+      hint(dir, y, Math.abs(dx) / (COMMIT * width), armed);
     }
     function end(e: PointerEvent) {
       const p = press;
@@ -224,7 +245,14 @@ export function useCalendarSwipe(
       settle();
     }
 
+    /** A mouse press on the calendar starts no text selection (WebKit starts
+     *  one on the first move, before the swipe locks). */
+    function select(e: Event) {
+      if (press?.mouse) e.preventDefault();
+    }
+
     el.addEventListener("pointerdown", down);
+    document.addEventListener("selectstart", select);
     // The rest on the window: a press that loses its capture and ends
     // outside the area still ends, so the calendar never stays moved.
     addEventListener("pointermove", move);
@@ -232,6 +260,7 @@ export function useCalendarSwipe(
     addEventListener("pointercancel", end);
     return () => {
       el.removeEventListener("pointerdown", down);
+      document.removeEventListener("selectstart", select);
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", end);
       removeEventListener("pointercancel", end);

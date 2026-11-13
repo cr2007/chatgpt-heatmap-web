@@ -89,6 +89,8 @@ export default function Home() {
   const [streaming, setStreaming] = useState<PartialExports | null>(null);
   /** When the last partial result was drawn (performance.now() ms); 0 after an upload. */
   const lastStream = useRef(0);
+  /** The content under the bar: on a phone a swipe anywhere on it changes the view. */
+  const content = useRef<HTMLElement>(null);
   /** Files are going into the welcome screen's post box: keep that screen
    *  until its flap is shut, and draw no partial result meanwhile. */
   const [posting, setPosting] = useState(false);
@@ -392,6 +394,8 @@ export default function Home() {
         prev: viewName(order[at - 1]),
         next: viewName(order[at + 1]),
         onSwipe: (d) => pickView(order[at + d], "swipe"),
+        // A fold pane swipes on the calendar only.
+        area: posture ? undefined : content,
       }}
     />
   );
@@ -467,15 +471,18 @@ export default function Home() {
       {drop}
     </div>
   ) : (
-    // Step 4.3: Otherwise: the bar, then the figures, the tabs and the calendar at full width.
-    <div className="relative min-h-dvh">
+    // Step 4.3: Otherwise: the bar, then the figures, the tabs and the calendar
+    // at full width. The content fills the window, so the room under a short
+    // year takes the swipe too.
+    <div className="relative flex min-h-dvh flex-col">
       {background}
       {bar}
       <main
+        ref={content}
         id="main-content"
         tabIndex={-1}
         aria-busy={streaming !== null}
-        className="mx-auto flex w-full max-w-6xl animate-fade-slide-up flex-col gap-5 px-5 pt-8 pb-16 outline-hidden sm:px-8"
+        className="mx-auto flex w-full max-w-6xl flex-1 animate-fade-slide-up touch-pan-y touch-pinch-zoom flex-col gap-5 px-5 pt-8 pb-16 outline-hidden sm:px-8"
       >
         {ready ? (
           <>

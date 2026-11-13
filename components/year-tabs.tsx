@@ -353,6 +353,8 @@ export function YearTabs({
     <fieldset
       ref={row}
       id="year-tabs"
+      // The row has its own sideways scroll and drag: no calendar swipe from it.
+      data-no-swipe
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={(e) => end(e, false)}
