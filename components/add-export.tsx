@@ -67,9 +67,16 @@ export function AddExport({
     const width = document.documentElement.clientWidth;
     const [left, right] = pane ? [pane.left, pane.right] : [0, width];
     const el = e.currentTarget;
+    // Step 1.1: Its width (the class: 24rem at most), so its left edge stays
+    // inside too; right-aligned to a button near the edge, it ran off a phone.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const w = Math.min(24 * rem, right - left - 2 * GAP);
+    const end = Math.max(Math.min(b.right, right - GAP), left + GAP + w);
     el.style.top = `${b.bottom + GAP}px`;
-    el.style.right = `${width - Math.min(b.right, right - GAP)}px`;
+    el.style.right = `${width - end}px`;
     el.style.maxWidth = `${right - left - 2 * GAP}px`;
+    // Step 1.2: No taller than the room below the button; the rest scrolls.
+    el.style.maxHeight = `${innerHeight - b.bottom - 2 * GAP}px`;
   }
 
   // Step 3: A mouse that rests on the help button opens it too. Touch and the
@@ -190,7 +197,7 @@ export function AddExport({
           }}
           onPointerEnter={hoverIn}
           onPointerLeave={hoverOut}
-          className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
+          className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain origin-top-right rounded-xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl shadow-zinc-950/10 open:animate-pop-in dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:shadow-black/40"
         >
           <h2 id="export-help-title" className="text-base font-semibold">
             How to export
