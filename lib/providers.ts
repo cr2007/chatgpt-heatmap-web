@@ -16,7 +16,8 @@ export interface ProviderInfo {
   dot: string;
   /**
    * Numbered export steps for the welcome screen and the "How to export"
-   * popover. `code` and **bold** spans are styled.
+   * popover. `code` and **bold** spans are styled. Three short steps each,
+   * so one provider fits the help on a 360 px phone with no scroll.
    * @see components/export-guide.tsx
    */
   guide: readonly string[];
@@ -37,10 +38,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     text: "text-(--g-ink)",
     dot: "bg-(--g-dot)",
     guide: [
-      "Open **Settings** → **Data Controls**.",
-      "Choose **Export data** and confirm.",
-      "Open the link in the email and download the zip.",
-      "Unzip it and drop `conversations.json` here. More than one file is fine.",
+      "Open **Settings** → **Data controls** → **Export data**, then confirm.",
+      "Open the link in the email and download the zip. The link works for 24 hours.",
+      "Unzip it and drop `conversations.json` here.",
     ],
     ramp: "g",
   },
@@ -52,10 +52,8 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     text: "text-(--o-ink)",
     dot: "bg-(--o-dot)",
     guide: [
-      "Open **Settings** → **Privacy**.",
-      "Choose **Export data**.",
-      "Open the link in the email. It shows a list of files.",
-      "Download the `conversations` zip. Each link works for 24 hours.",
+      "Open **Settings** → **Privacy** → **Export data** on the web or the desktop app.",
+      "Open the link in the email and download the `conversations` zip from its list. The link works for 24 hours.",
       "Unzip it and drop `conversations.json` here.",
     ],
     ramp: "o",
