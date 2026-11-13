@@ -41,11 +41,16 @@ export function AppBar({
       <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center gap-3 px-5 sm:px-8">
         <h1
           id="app-title"
-          className="mr-2 shrink-0 text-lg font-semibold tracking-tight"
+          className="mr-2 min-w-0 truncate text-lg font-semibold tracking-tight"
         >
           AI Chat Heatmap
         </h1>
-        <div className="flex min-w-0 flex-1 items-center gap-3">{children}</div>
+        <div
+          id="app-bar-tools"
+          className="flex min-w-0 flex-1 items-center gap-3"
+        >
+          {children}
+        </div>
         <div id="site-links" className="flex shrink-0 items-center gap-2">
           <SiteLinks />
         </div>

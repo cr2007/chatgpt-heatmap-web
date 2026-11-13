@@ -41,7 +41,6 @@ export function LoadedFiles({
       {PROVIDERS.map((p) => {
         const info = loaded[p.key];
         if (!info) return null;
-        const [head, tail] = splitName(info.name);
         return (
           <li
             key={p.key}
@@ -62,16 +61,21 @@ export function LoadedFiles({
               <span className="flex items-baseline justify-between gap-2">
                 <span className={cn("font-medium", p.text)}>{p.label}</span>
                 <span className="shrink-0 text-zinc-600 dark:text-zinc-400">
-                  {plural(info.count, "conversation")}
+                  {plural(info.count, "chat")}
                 </span>
               </span>
-              <span
-                className="flex min-w-0 text-zinc-500 dark:text-zinc-400"
-                title={info.name}
-              >
-                <span className="truncate whitespace-pre">{head}</span>
-                <span className="shrink-0 whitespace-pre">{tail}</span>
-              </span>
+              {/* Every file, cut in the middle: a touch screen has no title tip. */}
+              <ul className="flex flex-col text-zinc-600 dark:text-zinc-400">
+                {info.files.map((f, i) => {
+                  const [head, tail] = splitName(f);
+                  return (
+                    <li key={i} className="flex min-w-0" title={f}>
+                      <span className="truncate whitespace-pre">{head}</span>
+                      <span className="shrink-0 whitespace-pre">{tail}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </span>
             <button
               type="button"

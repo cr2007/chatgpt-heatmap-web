@@ -29,7 +29,7 @@ function DayDetails({ day, counts, chats }: DayProps) {
       <div className="flex items-baseline justify-between gap-4">
         <span className="text-[13px] font-semibold">{formatDay(day)}</span>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {plural(counts.chatgpt + counts.claude, "message")}
+          {plural(counts.chatgpt + counts.claude, "prompt")}
         </span>
       </div>
       {PROVIDERS.filter((p) => counts[p.key] > 0).map((p) => (
@@ -78,6 +78,11 @@ export function DayTooltip({
     const el = ref.current;
     const parent = el?.parentElement?.getBoundingClientRect();
     if (!el || !parent) return;
+    // Step 2.1: Keep it below the sticky top bar; a very busy day is cut at
+    // the window's bottom edge, never at its date.
+    const bar = document.getElementById("app-bar")?.getBoundingClientRect();
+    const minTop = Math.max(EDGE, (bar?.bottom ?? 0) + EDGE);
+    el.style.maxHeight = `${window.innerHeight - minTop - EDGE}px`;
     const { width, height } = el.getBoundingClientRect();
     const cx = parent.left + x;
     const cy = parent.top + y;
@@ -87,7 +92,7 @@ export function DayTooltip({
     if (top + height > window.innerHeight - EDGE)
       top = cy - CURSOR_GAP - height;
     el.style.left = `${Math.max(EDGE, left) - parent.left}px`;
-    el.style.top = `${Math.max(EDGE, top) - parent.top}px`;
+    el.style.top = `${Math.max(minTop, top) - parent.top}px`;
   }, [x, y, day.day]);
 
   // Step 1: Render next to the cursor (`x`, `y` are relative to the parent).
@@ -96,7 +101,7 @@ export function DayTooltip({
       ref={ref}
       id={id}
       role="tooltip"
-      className="pointer-events-none absolute z-20 w-max max-w-[260px] rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-tooltip-in dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
+      className="pointer-events-none absolute z-20 w-max max-w-[min(260px,calc(100vw-16px))] overflow-hidden rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-900 shadow-lg shadow-zinc-950/10 backdrop-blur-sm animate-tooltip-in dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-50 dark:shadow-black/40"
     >
       <DayDetails {...day} />
     </div>

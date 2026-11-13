@@ -36,10 +36,15 @@ export const MEDIUM_QUERY = "(min-width: 600px)";
  * in one row.
  *
  * @remarks
- * Measured: 1,146 px, about 1,180 px with five-digit counts. Below it, the
- * bar keeps the name and the links, and a panel under it holds the rest.
+ * Measured with five-digit chat counts in both chips: at 80rem the time zone
+ * field keeps about 12rem (it may shrink to 10rem, never under the links).
+ * From 80rem the bar is at its width limit, which grows only with the root
+ * font, so whether the tools fit does not depend on the window width. Longer
+ * text (six-digit counts, another locale) can still overflow: the page then
+ * keeps the narrow bar for those exports. Below it, the bar keeps the name
+ * and the links, and a panel under it holds the rest.
  */
-export const WIDE_BAR_QUERY = "(min-width: 76rem)";
+export const WIDE_BAR_QUERY = "(min-width: 80rem)";
 
 /**
  * Matches a half-open foldable: "folded" means half open and spanning the

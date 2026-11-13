@@ -145,7 +145,7 @@ export function TimeZonePicker({
     <div
       className={
         compact
-          ? "flex items-center"
+          ? "flex min-w-0 items-center"
           : inline
             ? "flex flex-wrap items-center gap-x-2 gap-y-1"
             : "flex flex-col gap-2"
@@ -166,7 +166,11 @@ export function TimeZonePicker({
       <div
         className={cn(
           "relative",
-          compact ? "w-52" : inline ? "w-64 max-w-full" : "w-full",
+          compact
+            ? "w-52 min-w-40 shrink"
+            : inline
+              ? "w-64 max-w-full"
+              : "w-full",
         )}
       >
         {compact && (

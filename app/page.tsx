@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { AddExport } from "@/components/add-export";
 import { AppBar } from "@/components/app-bar";
@@ -126,7 +126,10 @@ export default function Home() {
   const isMedium = useMediaQuery(MEDIUM_QUERY);
   const posture = useFoldPosture();
   // A fold pane is half the window: the full bar needs the whole width.
-  const isWideBar = useMediaQuery(WIDE_BAR_QUERY) && !posture;
+  /** The exports whose chips did not fit in the wide bar; new exports try again. */
+  const [tooLong, setTooLong] = useState<Exports | null>(null);
+  const isWideBar =
+    useMediaQuery(WIDE_BAR_QUERY) && tooLong !== exports && !posture;
 
   // Step 2: Aggregate the exports; a streaming upload's partial result stands in.
   // While files go into the post box, the welcome screen shows: skip the partials.
@@ -155,6 +158,19 @@ export default function Home() {
     () => ({ chatgpt: info(exports.chatgpt), claude: info(exports.claude) }),
     [exports],
   );
+  // While the wide bar shows, watch its tools; when they overflow (they would
+  // run under the links), keep the narrow bar for these exports. A wider
+  // window does not help: the bar is at its width limit (WIDE_BAR_QUERY).
+  useLayoutEffect(() => {
+    const tools = isWideBar && document.getElementById("app-bar-tools");
+    if (!tools) return;
+    const ro = new ResizeObserver(() => {
+      if (tools.scrollWidth > tools.clientWidth) setTooLong(exports);
+    });
+    ro.observe(tools);
+    for (const part of tools.children) ro.observe(part);
+    return () => ro.disconnect();
+  }, [isWideBar, exports]);
 
   /**
    * Adds new exports, keeping a provider the upload did not include.
@@ -271,7 +287,7 @@ export default function Home() {
             onFiles={upload.processFiles}
             loaded={(["chatgpt", "claude"] as const).filter((p) => loaded[p])}
           />
-          <div className="ml-auto">
+          <div className="ml-auto flex min-w-0">
             <TimeZonePicker
               id="bar"
               compact
@@ -348,7 +364,10 @@ export default function Home() {
   );
   const empty = (
     <p className="py-24 text-center text-sm text-zinc-500 dark:text-zinc-400">
-      No prompts found in this export
+      {loaded.chatgpt && loaded.claude
+        ? "These exports have"
+        : "This export has"}{" "}
+      no prompts with a date, so there is nothing to draw.
     </p>
   );
   const drop = (
