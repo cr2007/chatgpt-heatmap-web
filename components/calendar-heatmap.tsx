@@ -227,8 +227,12 @@ export function CalendarHeatmap({
   const view = `${startYear}-${endYear}`;
   const tip = pane || shownTip?.view === view ? shownTip : null;
   const layout = useMemo(
-    () => layoutCalendar(startYear, endYear, vertical),
-    [startYear, endYear, vertical],
+    () =>
+      layoutCalendar(startYear, endYear, vertical, {
+        from: firstDay,
+        to: lastDay,
+      }),
+    [startYear, endYear, vertical, firstDay, lastDay],
   );
   // Very large screens grow the root font (app/globals.css); the calendar
   // grows with it, so it keeps its share of the page.

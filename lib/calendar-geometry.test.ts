@@ -100,6 +100,27 @@ describe("layoutCalendar", () => {
     expect(width).toBeLessThan(310); // fits a 375 px phone at scale 1.1
   });
 
+  it("leaves out the narrow months wholly outside the export", () => {
+    const span = { from: "2022-11-30", to: "2024-02-10" };
+    const { cells, labels } = layoutCalendar(2022, 2024, true, span);
+    const months = (y: number) =>
+      labels.filter((l) => l.key.startsWith(`m${y}`)).map((l) => l.text);
+    expect(months(2022)).toEqual(["Nov", "Dec"]);
+    expect(months(2023)).toHaveLength(12);
+    expect(months(2024)).toEqual(["Jan", "Feb"]);
+    expect(cells[0].day).toBe("2022-11-01"); // a partial month stays whole
+    expect(cells.at(-1)!.day).toBe("2024-02-29");
+    // Nov 2022 takes the first place of its year's grid.
+    const nov = labels.find((l) => l.key === "m202210")!;
+    expect(nov.x).toBe(labels.find((l) => l.key === "m20230")!.x);
+    // The wide layout keeps every month.
+    expect(layoutCalendar(2022, 2022, false, span).cells).toHaveLength(365);
+    // Fewer rows, so a shorter drawing.
+    expect(layoutCalendar(2022, 2024, true, span).height).toBeLessThan(
+      layoutCalendar(2022, 2024, true).height,
+    );
+  });
+
   it("puts each month label over the week of its first day", () => {
     const { cells, labels } = layoutCalendar(2024, 2024, false);
     const march1 = cells.find((c) => c.day === "2024-03-01")!;

@@ -140,6 +140,9 @@ export function level(count: number, [a, b, c]: Edges): 0 | 1 | 2 | 3 | 4 {
  * @param endYear - The last year to draw, included.
  * @param vertical - True for the narrow layout (a phone, a fold pane): a
  *   grid of month calendars; false for one row of week columns per year.
+ * @param span - The first and last day of the export (`YYYY-MM-DD`). The
+ *   narrow layout leaves out the months wholly outside it: before the export
+ *   began they hold no data, and on a phone they cost a screen of empty days.
  * @returns The SVG size, the cells and the labels, in SVG units.
  * @see {@link fitScale}, which scales the result to its panel.
  */
@@ -147,16 +150,35 @@ export function layoutCalendar(
   startYear: number,
   endYear: number,
   vertical: boolean,
+  span: { from?: string; to?: string } = {},
 ): CalendarLayout {
-  // Step 1: Size the SVG for the orientation and the number of years.
+  // Step 1: Pick the months each year shows (narrow: not those wholly outside
+  // the export), then size the SVG.
   const years = endYear - startYear + 1;
+  const [from, to] = [span.from?.slice(0, 7), span.to?.slice(0, 7)];
+  const monthsOf = (year: number) => {
+    const all = MONTHS.map((_, m) => m);
+    if (!vertical) return all;
+    const ym = (m: number) => `${year}-${String(m + 1).padStart(2, "0")}`;
+    const kept = all.filter(
+      (m) => (!from || ym(m) >= from) && (!to || ym(m) <= to),
+    );
+    return kept.length ? kept : all;
+  };
+  /** Height of a narrow year section with `n` months. */
+  const vSection = (n: number) => {
+    const rows = Math.ceil(n / V.cols);
+    return V.yearH + V.dowH + rows * MONTH_H + (rows - 1) * V.rowGap;
+  };
   const hSection = H.yearH + H.monthH + 7 * STEP;
-  const vSection = V.yearH + V.dowH + 4 * MONTH_H + 3 * V.rowGap;
+  let vHeight = V.pad.t + (years - 1) * V.yearGap + V.pad.b;
+  for (let y = startYear; y <= endYear; y++)
+    vHeight += vSection(monthsOf(y).length);
   const width = vertical
     ? V.pad.l + V.cols * MONTH_W + (V.cols - 1) * V.colGap + V.pad.r
     : H.pad.l + H.dowW + 54 * STEP + H.pad.r;
   const height = vertical
-    ? V.pad.t + years * vSection + (years - 1) * V.yearGap + V.pad.b
+    ? vHeight
     : H.pad.t + years * hSection + (years - 1) * H.yearGap + H.pad.b;
 
   const rangeStart = Date.UTC(startYear, 0, 1);
@@ -165,7 +187,9 @@ export function layoutCalendar(
   const labels: Label[] = [];
 
   // Step 2: Lay out each year.
+  let vTop = V.pad.t;
   for (let year = startYear; year <= endYear; year++) {
+    const months = monthsOf(year);
     const yi = year - startYear;
     const jan1 = Date.UTC(year, 0, 1);
     const jan1Weekday = new Date(jan1).getUTCDay();
@@ -174,16 +198,19 @@ export function layoutCalendar(
 
     // Grid origin and the year label's place for this year's section.
     const hTop = H.pad.t + yi * (hSection + H.yearGap);
-    const vTop = V.pad.t + yi * (vSection + V.yearGap);
     const gridX = vertical ? V.pad.l : H.pad.l + H.dowW;
     const gridY = vertical
       ? vTop + V.yearH + V.dowH
       : hTop + H.yearH + H.monthH;
-    /** The top-left of month `m`'s day grid in the narrow layout. */
-    const block = (m: number) => ({
-      x: gridX + (m % V.cols) * (MONTH_W + V.colGap),
-      y: gridY + Math.floor(m / V.cols) * (MONTH_H + V.rowGap) + V.monthH,
-    });
+    /** The top-left of month `m`'s day grid in the narrow layout: the
+     *  shown months fill the grid in order, 3 across. */
+    const block = (m: number) => {
+      const p = months.indexOf(m);
+      return {
+        x: gridX + (p % V.cols) * (MONTH_W + V.colGap),
+        y: gridY + Math.floor(p / V.cols) * (MONTH_H + V.rowGap) + V.monthH,
+      };
+    };
 
     // Step 2.1: Add the year label and the weekday labels.
     labels.push(
@@ -206,11 +233,11 @@ export function layoutCalendar(
           },
     );
     if (vertical) {
-      for (let c = 0; c < V.cols; c++)
+      for (let c = 0; c < Math.min(V.cols, months.length); c++)
         [..."SMTWTFS"].forEach((text, col) =>
           labels.push({
             key: `d${year}${c}${col}`,
-            x: block(c).x + col * STEP + CELL / 2,
+            x: block(months[c]).x + col * STEP + CELL / 2,
             y: gridY - 3,
             text,
             size: 7,
@@ -235,6 +262,7 @@ export function layoutCalendar(
     // Step 2.2: Add each month label: over its block (narrow), or at the
     // week of its first day.
     MONTHS.forEach((text, m) => {
+      if (!months.includes(m)) return;
       const week = weekOf((Date.UTC(year, m, 1) - jan1) / DAY_MS);
       labels.push(
         vertical
@@ -266,6 +294,7 @@ export function layoutCalendar(
       let y = gridY + weekday * STEP;
       if (vertical) {
         const m = date.getUTCMonth();
+        if (!months.includes(m)) continue;
         const first = new Date(Date.UTC(year, m, 1)).getUTCDay();
         const b = block(m);
         x = b.x + weekday * STEP;
@@ -278,6 +307,7 @@ export function layoutCalendar(
         t: (ms - rangeStart) / rangeSpan,
       });
     }
+    vTop += vSection(months.length) + V.yearGap;
   }
 
   return { width, height, cells, labels };
