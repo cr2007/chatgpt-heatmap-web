@@ -218,15 +218,18 @@ export default function Home() {
    * keyboard action), but a running wave still stops.
    *
    * @param next - The year, or "all".
-   * @param how - How the tab was picked; "key" for the keyboard.
+   * @param how - How the tab was picked; "key" for the keyboard, "swipe"
+   *   for a swipe on the calendar: its wave runs the way the finger went.
    * @see {@link prepareMorph}
    * @see {@link keepInPlace}
    */
-  function pickView(next: YearView, how: YearTabsHow) {
+  function pickView(next: YearView, how: YearTabsHow | "swipe") {
     if (next === view) return;
-    const svg = document.querySelector<SVGSVGElement>("#calendar svg");
+    const svg = document.querySelector<SVGSVGElement>("#calendar-svg");
     const dir =
-      view !== "all" && next !== "all" ? (next > view ? 1 : -1) : undefined;
+      view !== "all" && next !== "all"
+        ? (next > view ? 1 : -1) * (how === "swipe" ? -1 : 1)
+        : undefined;
     // The calendar stays where it is on screen, whatever changes above it.
     keepInPlace(svg);
     prepareMorph(how === "key" ? null : svg, dir);
@@ -364,6 +367,12 @@ export default function Home() {
       />
     </div>
   );
+  // The calendar swipe goes through the views in the year tabs' order.
+  const order: YearView[] =
+    dataYears.length > 1 ? ["all", ...dataYears] : dataYears;
+  const at = order.indexOf(view);
+  const viewName = (v: YearView | undefined) =>
+    v === undefined ? undefined : v === "all" ? "All years" : String(v);
   const calendar = ready && (
     <CalendarHeatmap
       id="calendar"
@@ -379,6 +388,11 @@ export default function Home() {
       fixedHeight={posture === "tent" && !vertical}
       sweep={sweep}
       pane={posture && { id: "day-pane", onPick: setPickedDay }}
+      swipe={{
+        prev: viewName(order[at - 1]),
+        next: viewName(order[at + 1]),
+        onSwipe: (d) => pickView(order[at + d], "swipe"),
+      }}
     />
   );
   const empty = (

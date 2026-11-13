@@ -856,6 +856,51 @@
   animation: pop-in var(--dur-ui) var(--ease-out);
 }
 
+/* The day sheet (components/day-details.tsx, DaySheet) slides up from the
+   bottom edge on the drawer curve, and out the same way; hidden once out,
+   so it takes no tap. A new day changes its content in place. A drag
+   writes `translate` and turns this transition off until the release. */
+.day-sheet {
+  translate: 0 0;
+  transition:
+    translate var(--dur-enter) var(--ease-drawer),
+    visibility 0s;
+  @starting-style {
+    translate: 0 100%;
+  }
+}
+.day-sheet:not([data-open]) {
+  translate: 0 100%;
+  visibility: hidden;
+  transition:
+    translate var(--dur-ui) var(--ease-out),
+    visibility 0s var(--dur-ui);
+}
+/* A drag goes to the sheet, not to the page scroll; a sheet that scrolls
+   takes it only at its top edge. */
+.day-sheet:not([data-scrolls]),
+.day-sheet [data-grab] {
+  touch-action: none;
+}
+.day-sheet[data-scrolls] {
+  overflow-y: auto;
+}
+
+/* The calendar swipe's hint (components/calendar-swipe.ts) names the view
+   a release goes to; it fills with the accent once the release would go. */
+.swipe-hint {
+  transition:
+    background-color var(--dur-micro) ease-out,
+    color var(--dur-micro) ease-out,
+    scale var(--dur-micro) var(--ease-out);
+}
+.swipe-hint[data-armed] {
+  border-color: transparent;
+  background-color: var(--color-accent-fill);
+  color: var(--color-accent-on);
+  scale: 1.06;
+}
+
 /* An overlay or a disclosed panel fades in. */
 @keyframes fade-in {
   from {

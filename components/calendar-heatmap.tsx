@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -17,7 +18,10 @@ import {
 import { providerInfo } from "@/lib/providers";
 import { cn, formatDay, plural } from "@/lib/utils";
 import { useElementSize } from "@/hooks/use-element-size";
-import { DayTooltip } from "@/components/day-details";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DaySheet, DayTooltip } from "@/components/day-details";
+import { useCalendarSwipe, type Swipe } from "@/components/calendar-swipe";
 import { playMorph } from "@/components/calendar-morph";
 
 /** Wait in ms before the tooltip hides, so crossing the gap between cells keeps it. */
@@ -143,6 +147,8 @@ interface CalendarHeatmapProps {
    *  place of a floating card. `id` is the pane's id; `onPick` gets each
    *  picked day, or null. */
   pane?: { id: string; onPick: (day: string | null) => void };
+  /** A sideways touch swipe goes to the previous or next view ({@link useCalendarSwipe}). */
+  swipe?: Swipe;
 }
 
 /**
@@ -169,20 +175,32 @@ export function CalendarHeatmap({
   maxScale = 1,
   id,
   pane,
+  swipe,
 }: CalendarHeatmapProps) {
   const uid = useId().replace(/:/g, "");
   const tipId = `${id ?? uid}-tip`;
+  const sheetId = `${id ?? uid}-sheet`;
   const [outerRef, panel] = useElementSize<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   /** The day whose details show, and where, relative to the grid. A tap
    *  keeps them open until the next tap. */
-  const [tip, setTip] = useState<{
+  const [shownTip, setTip] = useState<{
+    /** The view (first and last year) they opened in. */
+    view: string;
     day: string;
     x: number;
     y: number;
     tap?: boolean;
+    sheet?: boolean;
   } | null>(null);
+  /** The day in the sheet; it stays while the sheet slides out. */
+  const [sheetDay, setSheetDay] = useState<string | null>(null);
+  const hints = useRef<{ prev: HTMLElement | null; next: HTMLElement | null }>({
+    prev: null,
+    next: null,
+  });
+  const swiped = useCalendarSwipe(outerRef, containerRef, hints, swipe);
   /** The kind of the last pointer press, so focus from a tap counts as a tap. */
   const pressedWith = useRef("");
   /** The day that keeps the tab stop; null means the latest day with prompts. */
@@ -194,14 +212,18 @@ export function CalendarHeatmap({
    *
    * @param next - The day and its place in the grid, or null to hide.
    */
-  function show(next: typeof tip) {
-    setTip(next);
+  function show(next: Omit<NonNullable<typeof tip>, "view"> | null) {
+    setTip(next && { ...next, view });
+    if (next?.sheet) setSheetDay(next.day);
     pane?.onPick(next?.day ?? null);
   }
 
   // Step 1: Lay out the years (lib/calendar-geometry.ts); scale the SVG to the panel.
   // Keyed on the years: the page passes new Date objects on each render.
   const [startYear, endYear] = [from.getFullYear(), to.getFullYear()];
+  // A new view closes floating details: their day may not be in it (a pane keeps it).
+  const view = `${startYear}-${endYear}`;
+  const tip = pane || shownTip?.view === view ? shownTip : null;
   const layout = useMemo(
     () => layoutCalendar(startYear, endYear, vertical),
     [startYear, endYear, vertical],
@@ -271,11 +293,11 @@ export function CalendarHeatmap({
   /**
    * Shows the details of a day at the mouse.
    *
-   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   * @param e - The pointer event; a finger is ignored (a mouse or a pen hovers).
    * @param day - The `YYYY-MM-DD` day under the pointer.
    */
   function handleEnter(e: React.PointerEvent, day: string) {
-    if (e.pointerType !== "mouse" || !containerRef.current) return;
+    if (e.pointerType === "touch" || !containerRef.current) return;
     clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
     show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
@@ -301,9 +323,10 @@ export function CalendarHeatmap({
    * @param day - The `YYYY-MM-DD` day.
    * @param cell - The day's cell, which gives the place.
    * @param tap - A tap opened them, so they stay until the next tap.
-   * @defaultValue `tap` is false.
+   * @param sheet - A finger opened them: they show in the sheet.
+   * @defaultValue `tap` and `sheet` are false.
    */
-  function showAtCell(day: string, cell: Element, tap = false) {
+  function showAtCell(day: string, cell: Element, tap = false, sheet = false) {
     const box = containerRef.current?.getBoundingClientRect();
     if (!box || !data[day]) return show(null);
     clearTimeout(hideTimer.current);
@@ -313,6 +336,7 @@ export function CalendarHeatmap({
       x: c.left + c.width / 2 - box.left,
       y: c.bottom - box.top,
       tap,
+      sheet: sheet && !pane,
     });
   }
 
@@ -366,22 +390,25 @@ export function CalendarHeatmap({
   useEffect(() => {
     if (!tip?.tap || pane) return;
     const close = (e: PointerEvent) => {
-      if (!(e.target as Element).closest?.("[data-day]")) setTip(null);
+      if (!(e.target as Element).closest?.(`[data-day], #${sheetId}`))
+        setTip(null);
     };
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
-  }, [tip?.tap, pane]);
+  }, [tip?.tap, pane, sheetId]);
 
   /**
    * Hides tap details on a second tap of the same day, else shows them.
+   *
+   * A finger opens the sheet, a pen the card. The release of a swipe is no tap.
    *
    * @param e - The pointer up event; a mouse is ignored (it hovers).
    * @param day - The `YYYY-MM-DD` day.
    */
   function onTapUp(e: React.PointerEvent<SVGRectElement>, day: string) {
-    if (e.pointerType === "mouse") return;
+    if (e.pointerType === "mouse" || swiped.current) return;
     if (tip?.tap && tip.day === day && !pane) show(null);
-    else showAtCell(day, e.currentTarget, true);
+    else showAtCell(day, e.currentTarget, true, e.pointerType === "touch");
   }
   // The cells call the handlers of the latest render through this ref.
   const on = useRef({ handleEnter, handleLeave, showAtCell, onTapUp });
@@ -389,7 +416,7 @@ export function CalendarHeatmap({
     on.current = { handleEnter, handleLeave, showAtCell, onTapUp };
   });
   // The open details describe their cell (set here, so the cells stay memoized).
-  const describedBy = pane?.id ?? tipId;
+  const describedBy = pane?.id ?? (tip?.sheet ? sheetId : tipId);
   useLayoutEffect(() => {
     const cell = tip
       ? svgRef.current?.querySelector(`[data-day="${tip.day}"]`)
@@ -398,6 +425,22 @@ export function CalendarHeatmap({
     cell.setAttribute("aria-describedby", describedBy);
     return () => cell.removeAttribute("aria-describedby");
   }, [tip, describedBy, layout]);
+
+  /** Closes the sheet; stable, so the sheet keeps one Escape listener. */
+  const closeSheet = useCallback(() => setTip(null), []);
+  // A sheet that opens over its cell scrolls the page, so the cell stays in view.
+  const sheetFor = tip?.sheet ? tip.day : null;
+  useEffect(() => {
+    const sheet = sheetFor && document.getElementById(sheetId);
+    const cell = svgRef.current?.querySelector(`[data-day="${sheetFor}"]`);
+    if (!sheet || !cell) return;
+    const over =
+      cell.getBoundingClientRect().bottom -
+      (innerHeight - sheet.offsetHeight - 16);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (over > 0)
+      scrollBy({ top: over, behavior: reduced ? "instant" : "smooth" });
+  }, [sheetFor, sheetId]);
 
   // Step 3: Draw the cells; `--t` orders color changes by date, 2 sweep names restart it.
   // The faint edge keeps the palest shade apart from the empty grey.
@@ -435,7 +478,7 @@ export function CalendarHeatmap({
           }
           onPointerLeave={
             hasData
-              ? (e) => e.pointerType === "mouse" && on.current.handleLeave()
+              ? (e) => e.pointerType !== "touch" && on.current.handleLeave()
               : undefined
           }
           onPointerDown={(e) => (pressedWith.current = e.pointerType)}
@@ -445,6 +488,7 @@ export function CalendarHeatmap({
               day,
               e.currentTarget,
               pressedWith.current !== "" && pressedWith.current !== "mouse",
+              pressedWith.current === "touch",
             );
             pressedWith.current = "";
           }}
@@ -467,7 +511,11 @@ export function CalendarHeatmap({
     <div
       ref={outerRef}
       id={id}
-      className="flex h-full w-full items-center justify-center"
+      className={cn(
+        "relative flex h-full w-full items-center justify-center",
+        // The browser keeps the vertical scroll and the zoom; a sideways move is the swipe.
+        swipe && "touch-pan-y touch-pinch-zoom",
+      )}
     >
       <div ref={containerRef} className="relative">
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the key handler moves the roving tab stop between the focusable cells */}
@@ -501,7 +549,7 @@ export function CalendarHeatmap({
           {cells}
         </svg>
 
-        {!pane && tip && data[tip.day] && (
+        {!pane && tip && !tip.sheet && data[tip.day] && (
           <DayTooltip
             id={tipId}
             day={tip.day}
@@ -512,6 +560,43 @@ export function CalendarHeatmap({
           />
         )}
       </div>
+      {/* Swipe hints: the view a release goes to (components/calendar-swipe.ts). */}
+      {(["prev", "next"] as const).map(
+        (key) =>
+          swipe?.[key] && (
+            <span
+              key={key}
+              ref={(el) => {
+                hints.current[key] = el;
+              }}
+              aria-hidden="true"
+              className={cn(
+                "swipe-hint pointer-events-none absolute top-0 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-white/90 text-sm font-medium text-zinc-700 opacity-0 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200",
+                key === "prev" ? "left-0 pr-3 pl-2" : "right-0 pr-2 pl-3",
+              )}
+            >
+              {key === "prev" && <ChevronLeft aria-hidden="true" size={16} />}
+              {swipe[key]}
+              {key === "next" && <ChevronRight aria-hidden="true" size={16} />}
+            </span>
+          ),
+      )}
+      {/* The sheet sits in <body>: a transformed ancestor (the page's
+          entrance, the swipe) would move a fixed element with it. */}
+      {!pane &&
+        sheetDay &&
+        data[sheetDay] &&
+        createPortal(
+          <DaySheet
+            id={sheetId}
+            open={!!tip?.sheet}
+            onClose={closeSheet}
+            day={sheetDay}
+            counts={data[sheetDay]}
+            chats={dayTitles[sheetDay]}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
