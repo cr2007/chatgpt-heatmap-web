@@ -220,9 +220,14 @@ export function playWave(svg: SVGSVGElement, was: WaveSnapshot, dir: number) {
   // Step 2.2: Find each cell's column (its x) and its place along it (its y).
   const cells = [...svg.querySelectorAll<SVGRectElement>("rect[data-day]")];
   if (!cells.length) return;
-  const xs = [...new Set(cells.map((r) => Number(r.getAttribute("x"))))].sort(
-    (a, b) => a - b,
-  );
+  // The columns of both views: a column that only the old view has (2023's
+  // third block of months on the way to 2022's two) keeps its turn in the
+  // wave, or all its cells would go at once.
+  const xs = [
+    ...new Set(
+      [...cells, ...was.cells.values()].map((r) => Number(r.getAttribute("x"))),
+    ),
+  ].sort((a, b) => a - b);
   const ys = cells.map((r) => Number(r.getAttribute("y")));
   const [top, n] = [Math.min(...ys), xs.length];
   const size = Number(cells[0].getAttribute("width"));
