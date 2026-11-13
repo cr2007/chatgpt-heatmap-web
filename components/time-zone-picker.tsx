@@ -5,6 +5,7 @@ import {
   buildIndex,
   nearestFirst,
   searchZones,
+  zoneLabel,
   zoneList,
   type ZoneEntry,
 } from "@/lib/time-zones";
@@ -188,7 +189,7 @@ export function TimeZonePicker({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={activeId}
-          value={open ? query : timeZone}
+          value={open ? query : zoneLabel(timeZone)}
           placeholder={timeZone}
           autoComplete="off"
           autoCapitalize="off"

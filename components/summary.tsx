@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Stats } from "@/lib/stats";
 import { count, plural } from "@/lib/utils";
+import { zoneLabel } from "@/lib/time-zones";
 
 /** "Mar 11, 2024" in the reader's locale. */
 const longDate = new Intl.DateTimeFormat(undefined, {
@@ -108,7 +109,8 @@ export function Summary({
           id="summary-range"
           className="mt-1 text-sm text-zinc-500 dark:text-zinc-400"
         >
-          {range(stats.span.from, stats.span.to)}, counted in {timeZone} time
+          {range(stats.span.from, stats.span.to)}, counted in{" "}
+          {zoneLabel(timeZone)} time
         </p>
       </div>
       <dl

@@ -5,6 +5,7 @@ import {
   nearestFirst,
   placeOf,
   searchZones,
+  zoneLabel,
   zoneList,
 } from "./time-zones";
 
@@ -119,5 +120,21 @@ describe("nearestFirst", () => {
       255,
     );
     expect(placeOf("UTC")).toBeUndefined();
+  });
+
+  it("keeps the sign of a place less than one degree west or south", () => {
+    // zone.tab: London "-0000731", Galapagos "-0054"; Number("-00") is -0.
+    expect(placeOf("Europe/London")!.lon).toBeLessThan(0);
+    expect(placeOf("Pacific/Galapagos")!.lat).toBeLessThan(0);
+  });
+});
+
+describe("zoneLabel", () => {
+  it("shows the city's current name, with spaces", () => {
+    // Chromium resolves "Kolkata" to the old id.
+    expect(zoneLabel("Asia/Calcutta")).toBe("Asia/Kolkata");
+    expect(zoneLabel("Asia/Saigon")).toBe("Asia/Ho Chi Minh");
+    expect(zoneLabel("America/Port_of_Spain")).toBe("America/Port of Spain");
+    expect(zoneLabel("UTC")).toBe("UTC");
   });
 });

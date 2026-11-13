@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { cn, plural } from "@/lib/utils";
+import { zoneLabel } from "@/lib/time-zones";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { LoadedFiles, type LoadedInfo } from "@/components/loaded-files";
@@ -60,7 +61,7 @@ export function ExportPanel({
           />
         ))}
         <span className="min-w-0 truncate">
-          {plural(keys.length, "export")}, {timeZone}
+          {plural(keys.length, "export")}, {zoneLabel(timeZone)}
         </span>
         <ChevronDown
           aria-hidden="true"

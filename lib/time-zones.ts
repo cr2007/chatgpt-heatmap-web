@@ -163,6 +163,27 @@ const RENAMED: Record<string, string> = {
 };
 
 /**
+ * Names a zone for the page: the city's current name, with spaces.
+ *
+ * @remarks
+ * Chromium resolves "Kolkata" to the old id Asia/Calcutta; the page should
+ * not show a name that the user did not pick.
+ *
+ * @param zone - An IANA zone name, maybe a legacy one.
+ * @returns For example "Asia/Kolkata" for Asia/Calcutta, "America/Port of
+ *   Spain" for America/Port_of_Spain.
+ */
+export function zoneLabel(zone: string): string {
+  const parts = zone.split("/");
+  const city = parts.at(-1)!.replaceAll("_", " ");
+  const renamed = RENAMED[city.toLowerCase()];
+  parts[parts.length - 1] = renamed
+    ? renamed.replace(/\b\w/g, (c) => c.toUpperCase())
+    : city;
+  return parts.join("/");
+}
+
+/**
  * Normalizes a text for the search.
  *
  * @param s - Any text.

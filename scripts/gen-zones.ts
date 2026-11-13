@@ -27,7 +27,7 @@ function coords(iso: string): [number, number] {
   const m = /^([+-]\d{2})(\d{2})(\d{2})?([+-]\d{3})(\d{2})(\d{2})?$/.exec(iso);
   if (!m) throw new Error(`bad coordinates ${iso}`);
   const deg = (d: string, mm: string, ss = "0") =>
-    Math.sign(Number(d) || 1) *
+    (d.startsWith("-") ? -1 : 1) * // "-00" is -0, so Math.sign would lose it
     (Math.abs(Number(d)) + Number(mm) / 60 + Number(ss) / 3600);
   const round = (x: number) => Math.round(x * 10) / 10;
   return [round(deg(m[1], m[2], m[3])), round(deg(m[4], m[5], m[6]))];
