@@ -31,6 +31,7 @@ import { summarize } from "@/lib/stats";
 import { SYSTEM_ZONE } from "@/lib/time-zones";
 import type { LoadedExport, Provider } from "@/lib/types";
 import type { Exports as PartialExports } from "@/lib/upload";
+import { cn } from "@/lib/utils";
 import { loadTestData, type Exports } from "@/app/dev-data";
 
 /** Stable empty year list, so effects keyed on it do not rerun. */
@@ -349,17 +350,32 @@ export default function Home() {
       timeZone={timeZone}
     />
   );
+  // On a phone the year tabs stay under the bar while the page scrolls. A
+  // sticky element sticks inside its parent only, so the controls row passes
+  // its children to the calendar section there (display: contents).
+  const pinTabs = vertical && !posture;
   const controls = ready && (
     <div
       id="calendar-controls"
-      className="flex flex-wrap items-center justify-between gap-3"
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3",
+        pinTabs && "contents",
+      )}
     >
-      <YearTabs
-        years={dataYears}
-        totals={yearTotals}
-        view={view}
-        onView={pickView}
-      />
+      <div
+        className={
+          pinTabs
+            ? "sticky top-(--bar-h) z-10 -mx-5 bg-zinc-50/85 px-5 py-2 backdrop-blur-md dark:bg-zinc-950/80"
+            : "contents"
+        }
+      >
+        <YearTabs
+          years={dataYears}
+          totals={yearTotals}
+          view={view}
+          onView={pickView}
+        />
+      </div>
       <HeatLegend
         edges={agg.edges}
         providers={[

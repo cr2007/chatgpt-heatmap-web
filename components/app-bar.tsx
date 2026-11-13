@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { SiteLinks } from "@/components/site-links";
 
 /**
@@ -33,8 +33,25 @@ export function AppBar({
    */
   uploads?: number;
 }) {
+  // Step 1: Publish the bar's height (`--bar-h`), so what sticks under it
+  // (the phone's year tabs) stops at its edge, open export panel or not.
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement.style;
+    const ro = new ResizeObserver(() =>
+      root.setProperty("--bar-h", `${el.offsetHeight}px`),
+    );
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.removeProperty("--bar-h");
+    };
+  }, []);
   return (
     <header
+      ref={ref}
       id="app-bar"
       className="@container sticky top-0 z-20 border-b border-zinc-200/80 bg-zinc-50/85 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80"
     >
