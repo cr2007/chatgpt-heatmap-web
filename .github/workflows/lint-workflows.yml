@@ -1,0 +1,39 @@
+# Lints the GitHub Actions workflows: actionlint (syntax, expressions,
+# shellcheck on run: scripts) and zizmor (security). Runs on every change to
+# .github/, so a broken workflow fails before a release tag needs it.
+
+name: Lint workflows
+
+on:
+  pull_request:
+    paths: [".github/**"]
+  push:
+    paths: [".github/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The official image (with shellcheck and pyflakes), pinned by digest.
+      # Dependabot does not update docker:// refs; bump the tag and digest by hand.
+      - uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color
+
+  zizmor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Prints findings and fails on them, with no upload to code scanning,
+      # so the job needs no security-events right.
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          advanced-security: false
