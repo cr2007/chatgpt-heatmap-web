@@ -200,7 +200,14 @@ export function CalendarHeatmap({
     prev: null,
     next: null,
   });
-  const swiped = useCalendarSwipe(outerRef, containerRef, hints, swipe);
+  // A swipe hides a hover card; a sheet a tap opened stays.
+  const { swiped, held } = useCalendarSwipe(
+    outerRef,
+    containerRef,
+    hints,
+    swipe,
+    () => setTip((t) => (t?.tap ? t : null)),
+  );
   /** The kind of a pointer press under way, so the focus it gives is not taken for the keyboard's. */
   const pressedWith = useRef("");
   /** The day that keeps the tab stop; null means the latest day with prompts. */
@@ -299,13 +306,16 @@ export function CalendarHeatmap({
   /**
    * Shows the details of a day at the mouse.
    *
-   * @param e - The pointer event; a finger is ignored (a mouse or a pen hovers).
+   * @param e - The pointer event; a finger or a press is ignored (a mouse or a
+   *   pen hovers with no button down).
    * @param day - The `YYYY-MM-DD` day under the pointer.
    */
   function handleEnter(e: React.PointerEvent, day: string) {
-    // A finger has no hover; an open sheet stays until a tap or a close.
-    if (e.pointerType === "touch" || tip?.sheet || !containerRef.current)
+    // A finger has no hover, and a pen on the screen or a held mouse button
+    // is a press (a tap or a swipe); an open sheet stays until a tap or a close.
+    if (e.pointerType === "touch" || e.buttons || held.current || tip?.sheet)
       return;
+    if (!containerRef.current) return;
     clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
     show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
@@ -554,8 +564,9 @@ export function CalendarHeatmap({
       id={id}
       className={cn(
         "relative flex h-full w-full items-center justify-center",
-        // The browser keeps the vertical scroll and the zoom; a sideways move is the swipe.
-        swipe && "touch-pan-y touch-pinch-zoom",
+        // The browser keeps the vertical scroll and the zoom; a sideways move
+        // is the swipe. A mouse drag selects no text.
+        swipe && "touch-pan-y touch-pinch-zoom select-none",
       )}
     >
       <div ref={containerRef} className="relative">

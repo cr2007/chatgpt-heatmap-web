@@ -21,6 +21,27 @@ export const PULL = 96;
 const TRACK = 6;
 
 /**
+ * Decides if a press can start a swipe.
+ *
+ * @remarks
+ * A finger and a pen swipe; the browser pans for both, so a press from a
+ * screen edge is left to the back swipe. A mouse swipes with its main button
+ * only, from anywhere (no back swipe starts from a mouse press).
+ *
+ * @param e - the press
+ * @param width - the window's width, in px
+ */
+export function startsSwipe(
+  e: Pick<PointerEvent, "pointerType" | "isPrimary" | "button" | "clientX">,
+  width: number,
+) {
+  if (!e.isPrimary || e.button !== 0) return false;
+  if (e.pointerType === "mouse") return true;
+  if (e.pointerType !== "touch" && e.pointerType !== "pen") return false;
+  return e.clientX >= EDGE && e.clientX <= width - EDGE;
+}
+
+/**
  * Decides where a released swipe goes.
  *
  * @param dx - the finger's way from the start, in px (negative to the left)
@@ -48,11 +69,13 @@ export interface Swipe {
 }
 
 /**
- * A horizontal touch swipe on the calendar goes to the previous or next view.
+ * A horizontal swipe on the calendar (a finger, a pen, or a mouse drag) goes
+ * to the previous or next view.
  *
  * @remarks
  * The area has `touch-action: pan-y pinch-zoom`, so the browser keeps the
- * vertical scroll and the zoom and sends a horizontal move here. The
+ * vertical scroll and the zoom and sends a horizontal move here. A mouse
+ * drag gets no browser pan, and the area selects no text (`select-none`). The
  * calendar follows the finger on a rubber band (it has no next page to
  * show), and a hint at the side names the view it goes to; it fills with
  * the accent once a release would go there. On release the calendar
@@ -62,19 +85,24 @@ export interface Swipe {
  * @param moved - the element that follows the finger
  * @param hints - the hints for a swipe to the right (`prev`) and to the left (`next`)
  * @param swipe - the views and the change; undefined turns the swipe off
- * @returns a ref that is true from the moment a touch became a swipe until
- *   the next press, so its release is not also a tap
+ * @param onDrag - called once a press becomes a swipe (to hide a hover card)
+ * @returns `swiped`, true from the moment a press became a swipe until the
+ *   next press, so its release is not also a tap; and `held`, true while
+ *   that swipe is under way, so the calendar shows no hover card meanwhile
+ *   (the browser can send a mouse hover as the calendar moves under a pen)
  */
 export function useCalendarSwipe(
   area: RefObject<HTMLElement | null>,
   moved: RefObject<HTMLElement | null>,
   hints: RefObject<{ prev: HTMLElement | null; next: HTMLElement | null }>,
   swipe: Swipe | undefined,
+  onDrag?: () => void,
 ) {
   const swiped = useRef(false);
-  const latest = useRef(swipe);
+  const held = useRef(false);
+  const latest = useRef({ swipe, onDrag });
   useLayoutEffect(() => {
-    latest.current = swipe;
+    latest.current = { swipe, onDrag };
   });
   const on = !!swipe && !!(swipe.prev || swipe.next);
 
@@ -124,11 +152,11 @@ export function useCalendarSwipe(
     };
 
     function down(e: PointerEvent) {
-      // Step 1: Touch only, one finger, and not from a screen edge (the back swipe).
+      // Step 1: One finger, a pen or a mouse button, and not from a screen
+      // edge (the back swipe).
       if (press) return; // a second finger during a swipe changes nothing
       swiped.current = false;
-      if (e.pointerType !== "touch" || !e.isPrimary) return;
-      if (e.clientX < EDGE || e.clientX > window.innerWidth - EDGE) return;
+      if (!startsSwipe(e, window.innerWidth)) return;
       press = {
         id: e.pointerId,
         x0: e.clientX,
@@ -150,7 +178,7 @@ export function useCalendarSwipe(
       if (!p.locked) {
         if (Math.hypot(dx, dy) < SLOP) return;
         if (Math.abs(dx) <= Math.abs(dy)) return void (press = null);
-        p.locked = swiped.current = true;
+        p.locked = swiped.current = held.current = true;
         el!.setPointerCapture(e.pointerId);
         // Step 2.1: A spring back still running is caught where it stands.
         const m = moved.current!;
@@ -158,13 +186,15 @@ export function useCalendarSwipe(
         p.top = el!.getBoundingClientRect().top;
         m.style.transition = "";
         m.style.willChange = "translate";
+        latest.current.onDrag?.();
       }
       p.track.push({ t: e.timeStamp, x: e.clientX });
       if (p.track.length > TRACK) p.track.shift();
       // Step 3: The calendar follows on a rubber band; with no view that way,
       // a stiffer one.
       const dir = dx < 0 ? 1 : -1;
-      const to = dir === 1 ? latest.current?.next : latest.current?.prev;
+      const to =
+        dir === 1 ? latest.current.swipe?.next : latest.current.swipe?.prev;
       const room = to ? PULL : PULL / 4;
       moved.current!.style.translate = `${p.base + Math.sign(dx) * rubber(Math.abs(dx), room)}px 0`;
       if (!to) return hint(0);
@@ -180,12 +210,13 @@ export function useCalendarSwipe(
       if (!p || e.pointerId !== p.id) return;
       press = null;
       if (!p.locked) return;
+      held.current = false;
       // Step 4: Spring back; a release that goes somewhere changes the view.
       const [a, b] = [p.track[0], p.track.at(-1)];
       const v = a && b && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0;
       const dx = e.clientX - p.x0;
       const dir = e.type === "pointerup" ? swipeTo(dx, v, el!.clientWidth) : 0;
-      const s = latest.current;
+      const s = latest.current.swipe;
       // The page measures the old view first (components/calendar-morph.ts),
       // where the calendar still stands, then the spring starts.
       if (dir === 1 && s?.next) s.onSwipe(1);
@@ -194,16 +225,18 @@ export function useCalendarSwipe(
     }
 
     el.addEventListener("pointerdown", down);
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", end);
+    // The rest on the window: a press that loses its capture and ends
+    // outside the area still ends, so the calendar never stays moved.
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", end);
+    addEventListener("pointercancel", end);
     return () => {
       el.removeEventListener("pointerdown", down);
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", end);
-      el.removeEventListener("pointercancel", end);
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", end);
+      removeEventListener("pointercancel", end);
     };
   }, [area, moved, hints, on]);
 
-  return swiped;
+  return { swiped, held };
 }

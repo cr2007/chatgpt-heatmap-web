@@ -29,9 +29,11 @@
  * calendar cells (106.3 kB); JS to 110 kB and CSS to 13.25 kB for the phone
  * gestures and fixes: the calendar swipe between views, the day sheet
  * with its swipe down, the toast swipe, the year row edge fade and the
- * touch rules for controls (109.4 and 13.0 kB).
+ * touch rules for controls (109.4 and 13.0 kB); JS to 110.5 kB for the
+ * year swipe with a pen and a mouse, and a hover card that ends with the
+ * native pointerleave (110.1 kB).
  */
-const BUDGET = { js: 110_000, css: 13_250 } as const;
+const BUDGET = { js: 110_500, css: 13_250 } as const;
 
 // Step 1: Gzip every JS and CSS file in dist/ and add up the sizes per type.
 const totals = { js: 0, css: 0 };
