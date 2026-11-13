@@ -9,6 +9,10 @@
  * press clears it, so a tap leaves no hover behind. Chrome's own hover
  * updates after a tap send no move, so they do not set it.
  */
+/** True while the pointer in use can hover (see {@link trackHover}). */
+export const hovering = () =>
+  document.documentElement.hasAttribute("data-hover");
+
 export function trackHover() {
   const root = document.documentElement;
   const opts = { capture: true, passive: true };

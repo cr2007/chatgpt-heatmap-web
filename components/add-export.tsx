@@ -3,6 +3,7 @@ import { CircleQuestionMark, LoaderCircle, Plus } from "lucide-react";
 import { PROVIDERS } from "@/lib/providers";
 import type { Provider } from "@/lib/types";
 import { ExportGuide } from "@/components/export-guide";
+import { hovering } from "@/app/hover-input";
 
 /**
  * Safari before 17 has no Popover API: the help would show all the time.
@@ -13,7 +14,7 @@ const HAS_POPOVER =
   typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 /** Gap in px between the help button and its popover. */
 const GAP = 8;
-/** A mouse rests this long (ms) on the help button before the help opens,
+/** A mouse or a pen rests this long (ms) on the help button before the help opens,
  *  so a pointer that only passes over it opens nothing. */
 const HOVER_OPEN = 300;
 /** The help stays this long (ms) after the mouse leaves, so the pointer can
@@ -41,7 +42,7 @@ export function AddExport({
   loaded: Provider[];
 }) {
   const help = useRef<HTMLButtonElement>(null);
-  /** The help is open because a mouse rests on it (not clicked open). */
+  /** The help is open because a mouse or a pen rests on it (not clicked open). */
   const byHover = useRef(false);
   /** About to open the help (by a programmatic click), so the click is not
    *  a pin. */
@@ -74,13 +75,14 @@ export function AddExport({
   // Step 3: A mouse that rests on the help button opens it too. Touch and the
   // keyboard open it by a press only.
   /**
-   * Opens the help after a mouse rests on the button or the help for
+   * Opens the help after a mouse or a pen rests on the button or the help for
    * {@link HOVER_OPEN} ms, or keeps it open.
    *
-   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   * @param e - The pointer event; a finger, or a pointer that cannot hover
+   *   now (Chrome's mouse after a tap), is ignored.
    */
   function hoverIn(e: React.PointerEvent) {
-    if (e.pointerType !== "mouse") return;
+    if (e.pointerType === "touch" || !hovering()) return;
     clearTimeout(timer.current);
     const pop = document.getElementById("export-help");
     if (pop?.matches(":popover-open")) return;
@@ -98,10 +100,10 @@ export function AddExport({
    * Closes a hover-opened help {@link HOVER_CLOSE} ms after the mouse leaves
    * the button or the help.
    *
-   * @param e - The pointer event; a pointer that is not a mouse is ignored.
+   * @param e - The pointer event; a finger is ignored.
    */
   function hoverOut(e: React.PointerEvent) {
-    if (e.pointerType !== "mouse") return;
+    if (e.pointerType === "touch") return;
     clearTimeout(timer.current);
     if (!byHover.current) return;
     timer.current = setTimeout(() => {
