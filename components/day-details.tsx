@@ -155,12 +155,19 @@ function ChatList({ chats }: { chats: ChatCount[] }) {
       {chats.slice(0, MAX_ROWS).map((chat, i) => (
         <li key={i} className="flex items-start justify-between gap-3 text-xs">
           {/* dir="auto": an Arabic or Hebrew title reads right to left. */}
-          <span
-            dir="auto"
-            className="line-clamp-2 min-w-0 wrap-anywhere text-zinc-600 dark:text-zinc-300"
-          >
-            {chat.title}
-          </span>
+          {chat.title ? (
+            <span
+              dir="auto"
+              className="line-clamp-2 min-w-0 wrap-anywhere text-zinc-600 dark:text-zinc-300"
+            >
+              {chat.title}
+            </span>
+          ) : (
+            // A chat with no title; a chat named "Untitled" shows upright.
+            <span className="min-w-0 text-zinc-500 italic dark:text-zinc-400">
+              Untitled chat
+            </span>
+          )}
           <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
             {chat.count}
           </span>

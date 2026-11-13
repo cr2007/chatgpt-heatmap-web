@@ -127,6 +127,32 @@
     ]
   },
   {
+    "uuid": "k4",
+    "name": "Untitled",
+    "created_at": "2024-07-03T10:00:00.000000Z",
+    "updated_at": "2024-07-03T10:00:00.000000Z",
+    "account": {
+      "uuid": "acct"
+    },
+    "chat_messages": [
+      {
+        "uuid": "m7",
+        "text": "real title Untitled",
+        "content": [
+          {
+            "type": "text",
+            "text": "..."
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-07-03T10:00:00.000000Z",
+        "updated_at": "2024-07-03T10:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
     "uuid": "k3",
     "name": "Empty Claude chat",
     "created_at": "2024-08-15T09:00:00.000000Z",

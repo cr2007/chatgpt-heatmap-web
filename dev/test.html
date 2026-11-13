@@ -572,6 +572,7 @@
         );
         for (let i = 0; i < 133; i++)
           gpt.push(gptChat(PLAIN_TITLES[i % 10] + " " + (i + 1), times(b, 4)));
+        gpt.push(gptChat(null, times(b, 14))); // a null title, as old exports have
         [30, 25, 20, 15, 10, 8, 6].forEach((c, i) =>
           claude.push(claudeChat(WORST_TITLES[i + 7], times(b, c))),
         );

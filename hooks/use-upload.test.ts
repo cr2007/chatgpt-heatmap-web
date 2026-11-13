@@ -74,7 +74,7 @@ describe("readUpload", () => {
       h,
     );
     expect(getToasts().at(-1)?.text).toStartWith(
-      "Claude export loaded - 3 chats",
+      "Claude export loaded - 4 chats",
     );
   });
 });

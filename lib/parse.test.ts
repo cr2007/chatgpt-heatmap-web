@@ -30,10 +30,17 @@ describe("titles", () => {
   it.each([
     ["chatgpt", parseChatGPT(chatgpt)],
     ["claude", parseClaude(claude)],
-  ])("%s trims titles and falls back to Untitled", (_name, parsed) => {
+  ])("%s trims titles and keeps a missing one empty", (_name, parsed) => {
     const titles = parsed.map((c) => c.title);
-    expect(titles).toContain("Untitled");
+    // A blank, empty or null title becomes "", so the UI can tell it apart.
+    expect(titles).toContain("");
     expect(titles).not.toContain("   ");
+    // A chat really named "Untitled" keeps its name, once.
+    expect(titles.filter((t) => t === "Untitled")).toHaveLength(1);
+  });
+
+  it("keeps a null ChatGPT title empty", () => {
+    expect(parseChatGPT([{ title: null, mapping: {} }])[0]?.title).toBe("");
   });
 });
 

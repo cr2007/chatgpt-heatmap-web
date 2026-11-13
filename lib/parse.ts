@@ -10,7 +10,7 @@ interface RawGPTMessage {
 
 /** The fields of a ChatGPT conversation that the count reads. */
 interface RawGPTConversation {
-  title?: string;
+  title?: string | null;
   create_time?: number;
   mapping?: Record<string, { message?: RawGPTMessage | null } | null>;
 }
@@ -132,13 +132,13 @@ export function detectFormat(arr: unknown[]): "chatgpt" | "claude" | "unknown" {
  * too. Malformed data and invalid times are skipped, never thrown.
  *
  * @param conversation - One parsed element of the export.
- * @returns The title ("Untitled" when empty) and the prompt times in ms.
+ * @returns The trimmed title ("" when missing or blank) and the prompt times in ms.
  * @see {@link isVisiblePrompt}, which picks the counted messages.
  */
 export function summarizeChatGPT(conversation: unknown): ConversationSummary {
   const c = conversation as RawGPTConversation | null;
   const summary: ConversationSummary = {
-    title: c?.title?.trim() || "Untitled",
+    title: c?.title?.trim() ?? "",
     times: [],
   };
   const latest = Date.now() + DAY;
@@ -154,12 +154,12 @@ export function summarizeChatGPT(conversation: unknown): ConversationSummary {
  * Keeps the title and the human message times of one Claude conversation.
  *
  * @param conversation - One parsed element of the export.
- * @returns The title ("Untitled" when empty) and the message times in ms.
+ * @returns The trimmed title ("" when missing or blank) and the message times in ms.
  */
 export function summarizeClaude(conversation: unknown): ConversationSummary {
   const c = conversation as RawClaudeConversation | null;
   const summary: ConversationSummary = {
-    title: c?.name?.trim() || "Untitled",
+    title: c?.name?.trim() ?? "",
     times: [],
   };
   const latest = Date.now() + DAY;

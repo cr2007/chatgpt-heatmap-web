@@ -667,5 +667,87 @@
     "current_node": "u1",
     "conversation_id": "fixture--",
     "is_archived": false
+  },
+  {
+    "title": null,
+    "create_time": 1719907200,
+    "update_time": 1719907800,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": ["u1"]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719907200,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": ["null title"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "u1",
+    "conversation_id": "fixture-null-title",
+    "is_archived": false
+  },
+  {
+    "title": "Untitled",
+    "create_time": 1719993600,
+    "update_time": 1719994200,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": ["u1"]
+      },
+      "u1": {
+        "id": "u1",
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1719993600,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": ["real title Untitled"]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "u1",
+    "conversation_id": "fixture-untitled",
+    "is_archived": false
   }
 ]

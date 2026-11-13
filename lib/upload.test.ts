@@ -17,9 +17,9 @@ describe("loadExports", () => {
       "chatgpt-export.json",
       "chatgpt-export-2.json",
     ]);
-    expect(r.exports.chatgpt?.chats).toHaveLength(6);
+    expect(r.exports.chatgpt?.chats).toHaveLength(8);
     expect(r.exports.claude?.name).toBe("claude-export.json");
-    expect(r.exports.claude?.chats).toHaveLength(3);
+    expect(r.exports.claude?.chats).toHaveLength(4);
   });
 
   it("leaves out a provider the batch does not include", async () => {

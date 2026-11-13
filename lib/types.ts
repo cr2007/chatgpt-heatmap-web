@@ -13,7 +13,7 @@ export interface LoadedExport {
 
 /** One chat, reduced to its title and its prompt times. */
 export interface ConversationSummary {
-  /** The chat title; "Untitled" when the export has none. */
+  /** The trimmed chat title; "" when the export has none (the UI shows "Untitled chat"). */
   title: string;
   /**
    * The time (ms since 1970) of each visible user prompt.
@@ -34,7 +34,7 @@ export interface CalHeatmapDay {
 
 /** One chat on one day: its title and how many prompts it got that day. */
 export interface ChatCount {
-  /** The chat title. */
+  /** The chat title; "" when the export has none. */
   title: string;
   /** Prompts in this chat that day, 1 or more. */
   count: number;
