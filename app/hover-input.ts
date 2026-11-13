@@ -28,7 +28,8 @@ export const hovering = () =>
  * mouse or a pen that moves with no button down sets the mark. A finger
  * press clears it, so a tap leaves no hover behind (Chrome's own hover
  * updates after a tap send no move, so they do not set it). A pen that goes
- * quiet for {@link PEN_GONE} ms clears it too; a still mouse keeps it.
+ * quiet for {@link PEN_GONE} ms clears it too, but not while it presses the
+ * screen; a still mouse keeps it.
  */
 export function trackHover() {
   const root = document.documentElement;
@@ -54,6 +55,17 @@ export function trackHover() {
     "pointerdown",
     (e: PointerEvent) => {
       if (e.pointerType === "touch") end();
+      // A pen on the screen sends no move while it rests, but it is there.
+      if (e.pointerType === "pen") clearTimeout(gone);
+    },
+    opts,
+  );
+  addEventListener(
+    "pointerup",
+    (e: PointerEvent) => {
+      // It lifts: hover moves follow, or nothing if it left the range.
+      if (e.pointerType === "pen" && hovering())
+        gone = setTimeout(end, PEN_GONE);
     },
     opts,
   );
