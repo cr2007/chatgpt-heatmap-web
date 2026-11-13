@@ -201,7 +201,7 @@ export function CalendarHeatmap({
     next: null,
   });
   const swiped = useCalendarSwipe(outerRef, containerRef, hints, swipe);
-  /** The kind of the last pointer press, so focus from a tap counts as a tap. */
+  /** The kind of a pointer press under way, so the focus it gives is not taken for the keyboard's. */
   const pressedWith = useRef("");
   /** The day that keeps the tab stop; null means the latest day with prompts. */
   const [active, setActive] = useState<string | null>(null);
@@ -303,7 +303,9 @@ export function CalendarHeatmap({
    * @param day - The `YYYY-MM-DD` day under the pointer.
    */
   function handleEnter(e: React.PointerEvent, day: string) {
-    if (e.pointerType === "touch" || !containerRef.current) return;
+    // A finger has no hover; an open sheet stays until a tap or a close.
+    if (e.pointerType === "touch" || tip?.sheet || !containerRef.current)
+      return;
     clearTimeout(hideTimer.current);
     const b = containerRef.current.getBoundingClientRect();
     show({ day, x: e.clientX - b.left, y: e.clientY - b.top });
@@ -406,15 +408,16 @@ export function CalendarHeatmap({
   /**
    * Hides tap details on a second tap of the same day, else shows them.
    *
-   * A finger opens the sheet, a pen the card. The release of a swipe is no tap.
+   * A tap or a click opens the sheet, with a finger, a pen or a mouse (a
+   * hover shows the card). The release of a swipe is no tap.
    *
-   * @param e - The pointer up event; a mouse is ignored (it hovers).
+   * @param e - The pointer up event.
    * @param day - The `YYYY-MM-DD` day.
    */
   function onTapUp(e: React.PointerEvent<SVGRectElement>, day: string) {
-    if (e.pointerType === "mouse" || swiped.current) return;
+    if (swiped.current || e.button > 0) return;
     if (tip?.tap && tip.day === day && !pane) show(null);
-    else showAtCell(day, e.currentTarget, true, e.pointerType === "touch");
+    else showAtCell(day, e.currentTarget, true, true);
   }
   // The cells call the handlers of the latest render through this ref.
   const on = useRef({ handleEnter, handleLeave, showAtCell, onTapUp });
@@ -499,16 +502,18 @@ export function CalendarHeatmap({
               ? (e) => e.pointerType !== "touch" && on.current.handleLeave()
               : undefined
           }
-          onPointerDown={(e) => (pressedWith.current = e.pointerType)}
+          onPointerDown={(e) => {
+            // A scroll or a swipe never focuses the cell: forget the press soon.
+            pressedWith.current = e.pointerType;
+            setTimeout(() => (pressedWith.current = ""), 1000);
+          }}
           onFocus={(e) => {
             setActive(day);
             setKeyed(e.currentTarget.matches(":focus-visible") ? day : null);
-            on.current.showAtCell(
-              day,
-              e.currentTarget,
-              pressedWith.current !== "" && pressedWith.current !== "mouse",
-              pressedWith.current === "touch",
-            );
+            // A pointer press is handled on its release (onTapUp); the
+            // keyboard shows the card at the cell.
+            if (pressedWith.current === "")
+              on.current.showAtCell(day, e.currentTarget);
             pressedWith.current = "";
           }}
           onBlur={() => {

@@ -137,7 +137,7 @@ export function DayTooltip({
 const CLOSE = { share: 0.25, speed: 0.4 };
 
 /**
- * The day details as a sheet at the bottom of the window, for a tap with a finger.
+ * The day details as a sheet at the bottom of the window, for a tap or a click.
  *
  * @remarks
  * A floating card sits under the finger and is small to read; Maps and
@@ -148,7 +148,7 @@ const CLOSE = { share: 0.25, speed: 0.4 };
  * closed, so it can slide out; `inert` keeps it out of reach meanwhile. The
  * tapped cell names it as its description (`id`).
  *
- * @see {@link DayTooltip} for a mouse, a pen or the keyboard.
+ * @see {@link DayTooltip} for a hover (a mouse, a pen) or the keyboard.
  */
 export function DaySheet({
   id,
