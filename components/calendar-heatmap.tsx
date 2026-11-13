@@ -312,12 +312,17 @@ export function CalendarHeatmap({
   }
   // Step 4.2: Leaving waits a moment, so the next cell updates the open tooltip
   // instead of reopening it. A pane keeps the last day.
-  /** Hides floating details after {@link HIDE_DELAY}; a tap or a pane
-   *  keeps them. */
-  function handleLeave() {
+  /**
+   * Hides floating details after {@link HIDE_DELAY}; a tap or a pane keeps
+   * them.
+   *
+   * @param day - The `YYYY-MM-DD` day left. Details of another day stay: the
+   *   pointer already entered it (React sends that enter first).
+   */
+  function handleLeave(day: string) {
     if (pane) return;
     hideTimer.current = setTimeout(
-      () => setTip((t) => (t?.tap ? t : null)),
+      () => setTip((t) => (t?.tap || t?.day !== day ? t : null)),
       HIDE_DELAY,
     );
   }
@@ -424,6 +429,20 @@ export function CalendarHeatmap({
   useLayoutEffect(() => {
     on.current = { handleEnter, handleLeave, showAtCell, onTapUp };
   });
+  // A hover ends with the native pointerleave: React's onPointerLeave comes
+  // from pointerout, which a browser may skip when a pen leaves hover range.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const leave = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      const day = (e.target as Element).getAttribute?.("data-day");
+      if (day) on.current.handleLeave(day);
+    };
+    // Capture: pointerleave does not bubble, but the capture phase still runs.
+    svg.addEventListener("pointerleave", leave, true);
+    return () => svg.removeEventListener("pointerleave", leave, true);
+  }, []);
   // The open details describe their cell, and a tapped day is marked as
   // picked (set here, so the cells stay memoized).
   // The ring of the picked or keyed day: drawn over the cells, apart from its
@@ -497,11 +516,6 @@ export function CalendarHeatmap({
           onPointerEnter={
             hasData ? (e) => on.current.handleEnter(e, day) : undefined
           }
-          onPointerLeave={
-            hasData
-              ? (e) => e.pointerType !== "touch" && on.current.handleLeave()
-              : undefined
-          }
           onPointerDown={(e) => {
             // A scroll or a swipe never focuses the cell: forget the press soon.
             pressedWith.current = e.pointerType;
@@ -518,7 +532,7 @@ export function CalendarHeatmap({
           }}
           onBlur={() => {
             setKeyed(null);
-            on.current.handleLeave();
+            on.current.handleLeave(day);
           }}
           onPointerUp={(e) => on.current.onTapUp(e, day)}
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an SVG cell cannot be an <img>
