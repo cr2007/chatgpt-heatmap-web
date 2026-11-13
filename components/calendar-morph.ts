@@ -128,8 +128,10 @@ function restore(svg: SVGSVGElement) {
   anchor = null;
   if (Math.abs(moved) < 0.5) return;
   const { scroll, pad } = placeBack(moved, scrollY);
-  // Step 2: Scroll by that much (the hold keeps the page tall enough).
-  hold(scrollY + scroll + innerHeight);
+  // Step 2: Scroll by that much. The hold keeps the page tall enough for
+  // where it is and where it goes: a hold short of where it is clamped the
+  // scroll first, and the calendar moved twice (a change to a short year).
+  hold(scrollY + Math.max(0, scroll) + innerHeight);
   scrollBy({ top: scroll, behavior: "instant" });
   // Step 3: What scrolling cannot make up (the page is at its top) becomes
   // padding above the calendar, until the next view change.
